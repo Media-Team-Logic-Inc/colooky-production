@@ -1,6 +1,6 @@
 import express from 'express';
 import { CodeAnalysisService } from '../services/codeAnalysis';
-import { UsageService } from '../services/usage';
+import { UsageService, UsageEventType } from '../services/usage';
 import { requireSubscription } from '../middleware/subscription';
 
 const router = express.Router();
@@ -27,7 +27,12 @@ router.post('/repositories/:id', requireSubscription(['trial', 'individual', 'te
     const analysis = await CodeAnalysisService.startAnalysis(repositoryId, branch, userId, forceRefresh);
     
     // Track usage
-    await UsageService.trackUsage(userId, 'analyses', 1);
+    await UsageService.trackUsage({
+      userId,
+      eventType: UsageEventType.REPOSITORY_ANALYZED,
+      metadata: { repositoryId, branch },
+      timestamp: new Date()
+    });
 
     res.status(202).json({
       analysisId: analysis.id,

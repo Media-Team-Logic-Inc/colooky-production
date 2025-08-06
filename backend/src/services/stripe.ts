@@ -441,7 +441,7 @@ export class StripeService {
         data: {
           eventType: 'payment_succeeded',
           eventData: {
-            subscriptionId: invoice.subscription,
+            subscriptionId: typeof invoice.subscription === 'string' ? invoice.subscription : invoice.subscription?.id || null,
             amount: invoice.amount_paid,
             currency: invoice.currency,
           }

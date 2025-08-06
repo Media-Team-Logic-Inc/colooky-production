@@ -13,7 +13,7 @@ export const rateLimiter = rateLimit({
   handler: (req: Request, res: Response) => {
     res.status(429).json({
       error: 'Too many requests',
-      retryAfter: Math.round(req.rateLimit.resetTime! / 1000)
+      retryAfter: Math.round(Date.now() / 1000) + 900 // 15 minutes from now
     });
   }
 });

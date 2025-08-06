@@ -4,6 +4,7 @@
     "module": "ES2020",
     "moduleResolution": "node",
     "strict": true,
+    "strictNullChecks": false,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "skipLibCheck": true,

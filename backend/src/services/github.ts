@@ -21,6 +21,7 @@ export interface Repository {
   language: string;
   size: number;
   updated_at: string;
+  description: string | null;
 }
 
 export class GitHubService {
@@ -50,7 +51,8 @@ export class GitHubService {
         default_branch: repo.default_branch || 'main',
         language: repo.language || 'Unknown',
         size: repo.size,
-        updated_at: repo.updated_at,
+        updated_at: repo.updated_at || new Date().toISOString(),
+        description: repo.description,
       }));
     } catch (error) {
       console.error('Error fetching repositories:', error);
@@ -195,7 +197,7 @@ export class GitHubService {
         }),
       });
 
-      const tokenData = await tokenResponse.json();
+      const tokenData: any = await tokenResponse.json();
       
       if (tokenData.error) {
         throw new Error(`GitHub OAuth error: ${tokenData.error_description}`);

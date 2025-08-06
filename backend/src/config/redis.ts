@@ -4,8 +4,8 @@ let redis: Redis;
 
 export async function initRedis() {
   try {
-    redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
-      retryDelayOnFailover: 100,
+    const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
+    redis = new Redis(redisUrl, {
       enableReadyCheck: false,
       maxRetriesPerRequest: 3,
       lazyConnect: true,

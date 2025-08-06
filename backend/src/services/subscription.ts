@@ -397,7 +397,8 @@ export class SubscriptionService {
   }
 
   private getPriceIdForTier(tier: SubscriptionTier): string {
-    const priceIds = {
+    const priceIds: Record<SubscriptionTier, string> = {
+      [SubscriptionTier.TRIAL]: '', // Trial has no price ID
       [SubscriptionTier.INDIVIDUAL]: process.env.STRIPE_INDIVIDUAL_MONTHLY_PRICE_ID!,
       [SubscriptionTier.TEAM]: process.env.STRIPE_TEAM_MONTHLY_PRICE_ID!,
       [SubscriptionTier.ENTERPRISE]: process.env.STRIPE_ENTERPRISE_MONTHLY_PRICE_ID!,

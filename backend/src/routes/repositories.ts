@@ -3,6 +3,7 @@ import { prisma } from '../config/database';
 import { GitHubService } from '../services/github';
 import { UsageService } from '../services/usage';
 import { requireSubscription } from '../middleware/subscription';
+import { decryptGitHubToken } from '../lib/encryption';
 
 const router = express.Router();
 
@@ -66,7 +67,12 @@ router.post('/sync', async (req, res) => {
     }
 
     const user = await prisma.user.findUnique({ where: { id: userId } });
-    const githubService = new GitHubService(user!.accessToken);
+    if (!user || !user.accessToken) {
+      return res.status(401).json({ error: 'GitHub token not found' });
+    }
+    
+    const decryptedToken = decryptGitHubToken(user.accessToken);
+    const githubService = new GitHubService(decryptedToken);
     
     const githubRepos = await githubService.getUserRepositories();
     

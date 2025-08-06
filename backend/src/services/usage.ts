@@ -37,25 +37,57 @@ export interface UsagePeriodStats {
 }
 
 export class UsageService {
-  static async checkUsageLimit(userId: string, resourceType: string): Promise<boolean> {
+  static async checkUsageLimit(userId: string, resourceType: string): Promise<{
+    allowed: boolean;
+    usage: number;
+    limit: number;
+  }> {
     try {
       const subscription = await subscriptionService.getUserSubscription(userId);
+      const usageService = new UsageService();
+      const monthlyUsage = await usageService.getUsageMetricsForPeriod(
+        userId,
+        new Date(new Date().getFullYear(), new Date().getMonth(), 1)
+      );
       
+      let allowed = true;
+      let usage = 0;
+      let limit = -1; // -1 means unlimited
+
       // Check specific limits based on resource type
       switch (resourceType) {
         case 'repositories':
         case 'analyses':
-          return await subscriptionService.checkSubscriptionLimits(userId, 'analyze_repository');
+          usage = monthlyUsage.repositoriesAnalyzed;
+          limit = subscription.limits.repositoriesPerMonth;
+          allowed = limit === -1 || usage < limit;
+          break;
         case 'exports':
-          return await subscriptionService.checkSubscriptionLimits(userId, 'export_format', { format: 'PNG' });
+          usage = monthlyUsage.exportsGenerated;
+          limit = 100; // Example limit
+          allowed = usage < limit;
+          break;
         case 'api_calls':
-          return await subscriptionService.checkSubscriptionLimits(userId, 'api_access');
+          usage = monthlyUsage.apiRequests;
+          limit = subscription.limits.apiAccess ? 1000 : 0;
+          allowed = subscription.limits.apiAccess && usage < limit;
+          break;
         default:
-          return true;
+          allowed = true;
       }
+
+      return {
+        allowed,
+        usage,
+        limit,
+      };
     } catch (error) {
       console.error('Error checking usage limit:', error);
-      return false;
+      return {
+        allowed: false,
+        usage: 0,
+        limit: 0,
+      };
     }
   }
 
@@ -276,18 +308,22 @@ export class UsageService {
   }
 
   async getPopularRepositories(userId: string, limit = 10): Promise<Array<{
-    repositoryId: number;
+    repositoryId: string;
     repositoryName: string;
     analysisCount: number;
     lastAnalyzed: Date;
   }>> {
     try {
       const analyses = await prisma.analysisResult.findMany({
-        where: { userId },
+        where: {
+          repository: {
+            userId,
+          },
+        },
         orderBy: { updatedAt: 'desc' },
       });
 
-      const repositoryStats = new Map<number, {
+      const repositoryStats = new Map<string, {
         name: string;
         count: number;
         lastAnalyzed: Date;
@@ -433,7 +469,7 @@ export class UsageService {
       if (format === 'csv') {
         const csvHeader = 'Date,Event Type,Metadata\n';
         const csvRows = events.map(event => 
-          `${event.timestamp.toISOString()},${event.eventType},"${JSON.stringify(event.metadata)}"`
+          `${event.timestamp.toISOString()},${event.eventType},"${JSON.stringify(event.eventData)}"`
         ).join('\n');
         
         return csvHeader + csvRows;

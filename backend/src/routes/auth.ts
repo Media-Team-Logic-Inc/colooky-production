@@ -17,8 +17,7 @@ router.post('/github/callback', async (req, res) => {
     }
 
     // Exchange code for GitHub access token
-    const githubService = new GitHubService();
-    const { accessToken, user: githubUser } = await githubService.exchangeCodeForToken(code);
+    const { accessToken, user: githubUser } = await GitHubService.exchangeCodeForToken(code);
 
     // Find or create user
     let user = await prisma.user.findUnique({
