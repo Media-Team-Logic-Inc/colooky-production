@@ -88,11 +88,15 @@ export class UsageService {
 
   async getUsageMetricsForPeriod(userId: string, since: Date): Promise<UsageMetrics> {
     try {
-      const events = await prisma.analytics.findMany({
+      const periodStart = new Date(since);
+      periodStart.setDate(1);
+      periodStart.setHours(0, 0, 0, 0);
+      
+      const usageData = await prisma.usageTracking.findMany({
         where: {
           userId,
-          timestamp: {
-            gte: since,
+          periodMonth: {
+            gte: periodStart,
           },
         },
       });
@@ -106,25 +110,25 @@ export class UsageService {
         themesApplied: 0,
       };
 
-      events.forEach(event => {
-        switch (event.eventType) {
-          case UsageEventType.REPOSITORY_ANALYZED:
-            metrics.repositoriesAnalyzed++;
+      usageData.forEach(usage => {
+        switch (usage.resourceType) {
+          case 'analyses':
+            metrics.repositoriesAnalyzed += usage.resourceCount;
             break;
-          case UsageEventType.FILES_PROCESSED:
-            metrics.filesProcessed += (event.metadata as any)?.fileCount || 1;
+          case 'files':
+            metrics.filesProcessed += usage.resourceCount;
             break;
-          case UsageEventType.EXPORT_GENERATED:
-            metrics.exportsGenerated++;
+          case 'exports':
+            metrics.exportsGenerated += usage.resourceCount;
             break;
-          case UsageEventType.API_REQUEST:
-            metrics.apiRequests++;
+          case 'api_calls':
+            metrics.apiRequests += usage.resourceCount;
             break;
-          case UsageEventType.ANALYSIS_VIEWED:
-            metrics.analysisViews++;
+          case 'visualizations':
+            metrics.analysisViews += usage.resourceCount;
             break;
-          case UsageEventType.THEME_APPLIED:
-            metrics.themesApplied++;
+          case 'themes':
+            metrics.themesApplied += usage.resourceCount;
             break;
         }
       });
@@ -302,31 +306,35 @@ export class UsageService {
 
   private async updateUsageCounters(event: UsageEvent): Promise<void> {
     try {
-      const today = new Date().toISOString().split('T')[0];
+      const periodMonth = new Date();
+      periodMonth.setDate(1);
+      periodMonth.setHours(0, 0, 0, 0);
+      
+      const resourceType = this.getResourceType(event.eventType);
+      const incrementValue = this.getIncrementValue(event);
       
       await prisma.usageTracking.upsert({
         where: {
-          userId_date: {
+          userId_organizationId_resourceType_periodMonth: {
             userId: event.userId,
-            date: today,
+            organizationId: null,
+            resourceType: resourceType,
+            periodMonth: periodMonth,
           },
         },
         update: {
-          [`${this.getCounterField(event.eventType)}`]: {
-            increment: this.getIncrementValue(event),
+          resourceCount: {
+            increment: incrementValue,
           },
-          updatedAt: new Date(),
+          metadata: event.metadata || {},
         },
         create: {
           userId: event.userId,
-          date: today,
-          repositoriesAnalyzed: event.eventType === UsageEventType.REPOSITORY_ANALYZED ? 1 : 0,
-          filesProcessed: event.eventType === UsageEventType.FILES_PROCESSED ? 
-            ((event.metadata as any)?.fileCount || 1) : 0,
-          exportsGenerated: event.eventType === UsageEventType.EXPORT_GENERATED ? 1 : 0,
-          apiRequests: event.eventType === UsageEventType.API_REQUEST ? 1 : 0,
-          analysisViews: event.eventType === UsageEventType.ANALYSIS_VIEWED ? 1 : 0,
-          themesApplied: event.eventType === UsageEventType.THEME_APPLIED ? 1 : 0,
+          organizationId: null,
+          resourceType: resourceType,
+          resourceCount: incrementValue,
+          periodMonth: periodMonth,
+          metadata: event.metadata || {},
         },
       });
     } catch (error) {
@@ -335,22 +343,22 @@ export class UsageService {
     }
   }
 
-  private getCounterField(eventType: UsageEventType): string {
+  private getResourceType(eventType: UsageEventType): string {
     switch (eventType) {
       case UsageEventType.REPOSITORY_ANALYZED:
-        return 'repositoriesAnalyzed';
+        return 'analyses';
       case UsageEventType.FILES_PROCESSED:
-        return 'filesProcessed';
+        return 'files';
       case UsageEventType.EXPORT_GENERATED:
-        return 'exportsGenerated';
+        return 'exports';
       case UsageEventType.API_REQUEST:
-        return 'apiRequests';
+        return 'api_calls';
       case UsageEventType.ANALYSIS_VIEWED:
-        return 'analysisViews';
+        return 'visualizations';
       case UsageEventType.THEME_APPLIED:
-        return 'themesApplied';
+        return 'themes';
       default:
-        return 'apiRequests';
+        return 'api_calls';
     }
   }
 
