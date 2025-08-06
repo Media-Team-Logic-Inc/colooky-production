@@ -1,0 +1,444 @@
+// prisma/schema.prisma - Production Database Schema
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ===================================
+// USER MANAGEMENT
+// ===================================
+
+model User {
+  id                 String    @id @default(cuid())
+  githubId           Int       @unique
+  username           String
+  email              String    @unique
+  avatarUrl          String?
+  accessToken        Json?     // Encrypted GitHub token
+  
+  // Subscription fields
+  subscriptionStatus String    @default("trial") // trial, active, cancelled, expired
+  subscriptionTier   String    @default("trial") // trial, individual, team, enterprise
+  trialStartedAt     DateTime  @default(now())
+  trialEndsAt        DateTime?
+  stripeCustomerId   String?
+  
+  // Profile fields
+  firstName          String?
+  lastName           String?
+  company            String?
+  timezone           String?
+  emailVerified      Boolean   @default(false)
+  marketingOptIn     Boolean   @default(false)
+  
+  // Timestamps
+  lastLoginAt        DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  
+  // Relations
+  repositories       Repository[]
+  organizationMembers OrganizationMember[]
+  subscriptions      Subscription[]
+  usageTracking      UsageTracking[]
+  promoCodeUsages    PromoCodeUsage[]
+  affiliateLinks     AffiliateLink[]
+  
+  @@map("users")
+}
+
+model Organization {
+  id                   String    @id @default(cuid())
+  name                 String
+  slug                 String    @unique
+  ownerId              String
+  subscriptionTier     String    @default("team")
+  subscriptionStatus   String    @default("active")
+  stripeSubscriptionId String?
+  maxMembers           Int       @default(5)
+  
+  // Organization settings
+  settings             Json      @default("{}")
+  billingEmail         String?
+  taxId                String?
+  
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  
+  // Relations
+  members              OrganizationMember[]
+  repositories         Repository[]
+  subscriptions        Subscription[]
+  usageTracking        UsageTracking[]
+  
+  @@map("organizations")
+}
+
+model OrganizationMember {
+  id             String       @id @default(cuid())
+  organizationId String
+  userId         String
+  role           String       @default("member") // owner, admin, member, viewer
+  invitedBy      String?
+  invitedAt      DateTime     @default(now())
+  joinedAt       DateTime?
+  
+  // Relations
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([organizationId, userId])
+  @@map("organization_members")
+}
+
+// ===================================
+// SUBSCRIPTION & BILLING
+// ===================================
+
+model Subscription {
+  id                    String    @id @default(cuid())
+  userId                String?
+  organizationId        String?
+  stripeSubscriptionId  String?   @unique
+  stripeCustomerId      String?
+  tier                  String    // individual, team, enterprise
+  status                String    // active, cancelled, past_due, unpaid, incomplete
+  
+  // Pricing details
+  amount                Int       // Amount in cents
+  currency              String    @default("usd")
+  interval              String    @default("month") // month, year
+  
+  // Periods
+  currentPeriodStart    DateTime?
+  currentPeriodEnd      DateTime?
+  cancelAtPeriodEnd     Boolean   @default(false)
+  cancelledAt           DateTime?
+  
+  // Promo codes
+  promoCodeId           String?
+  discountAmount        Int?      // Discount in cents
+  discountPercent       Float?    // Discount percentage
+  
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  
+  // Relations
+  user                  User?         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization          Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  promoCode             PromoCode?    @relation(fields: [promoCodeId], references: [id])
+  
+  @@map("subscriptions")
+}
+
+model PromoCode {
+  id                String    @id @default(cuid())
+  code              String    @unique
+  name              String?
+  description       String?
+  
+  // Discount settings
+  discountType      String    // percentage, fixed_amount, free_trial
+  discountValue     Float     // Percentage (0-100) or amount in cents
+  currency          String    @default("usd")
+  
+  // Usage limits
+  maxUses           Int?      // null = unlimited
+  usedCount         Int       @default(0)
+  maxUsesPerCustomer Int?     @default(1)
+  
+  // Validity period
+  validFrom         DateTime  @default(now())
+  validUntil        DateTime?
+  
+  // Restrictions
+  minimumAmount     Int?      // Minimum order amount in cents
+  applicableTiers   String[]  // Which tiers this applies to
+  newCustomersOnly  Boolean   @default(false)
+  
+  // Affiliate tracking
+  affiliateId       String?
+  affiliateCommission Float?  // Commission percentage for affiliate
+  
+  // Status
+  isActive          Boolean   @default(true)
+  
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  
+  // Relations
+  subscriptions     Subscription[]
+  usages            PromoCodeUsage[]
+  affiliate         AffiliateLink? @relation(fields: [affiliateId], references: [id])
+  
+  @@map("promo_codes")
+}
+
+model PromoCodeUsage {
+  id            String    @id @default(cuid())
+  promoCodeId   String
+  userId        String
+  subscriptionId String?
+  
+  // Usage details
+  discountAmount Int      // Actual discount applied in cents
+  orderAmount   Int       // Original order amount in cents
+  
+  usedAt        DateTime  @default(now())
+  
+  // Relations
+  promoCode     PromoCode @relation(fields: [promoCodeId], references: [id])
+  user          User      @relation(fields: [userId], references: [id])
+  
+  @@unique([promoCodeId, userId]) // One use per customer (can be overridden by maxUsesPerCustomer)
+  @@map("promo_code_usages")
+}
+
+model AffiliateLink {
+  id                String    @id @default(cuid())
+  userId            String    // User who owns this affiliate link
+  code              String    @unique
+  name              String?
+  
+  // Commission settings
+  commissionRate    Float     @default(10) // Percentage
+  commissionType    String    @default("recurring") // one_time, recurring, lifetime
+  
+  // Tracking
+  clickCount        Int       @default(0)
+  conversionCount   Int       @default(0)
+  totalEarnings     Int       @default(0) // In cents
+  
+  // Status
+  isActive          Boolean   @default(true)
+  
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  
+  // Relations
+  user              User      @relation(fields: [userId], references: [id])
+  promoCodes        PromoCode[]
+  
+  @@map("affiliate_links")
+}
+
+// ===================================
+// REPOSITORY & CODE ANALYSIS
+// ===================================
+
+model Repository {
+  id               String    @id @default(cuid())
+  githubId         Int       @unique
+  userId           String?
+  organizationId   String?
+  name             String
+  fullName         String
+  defaultBranch    String    @default("main")
+  lastAnalyzedCommit String?
+  isPrivate        Boolean   @default(false)
+  description      String?
+  language         String?
+  htmlUrl          String?
+  
+  // Analysis settings
+  autoAnalyze      Boolean   @default(true)
+  webhookEnabled   Boolean   @default(false)
+  
+  // Metadata
+  starCount        Int?
+  forkCount        Int?
+  size             Int?      // Repository size in KB
+  
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  
+  // Relations
+  user             User?         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization     Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  analysisResults  AnalysisResult[]
+  
+  @@map("repositories")
+}
+
+model AnalysisResult {
+  id             String    @id @default(cuid())
+  repositoryId   String
+  commitSha      String
+  branch         String    @default("main")
+  analysisData   Json      @default("{}")
+  
+  // Analysis metadata
+  fileCount      Int       @default(0)
+  functionCount  Int       @default(0)
+  classCount     Int       @default(0)
+  importCount    Int       @default(0)
+  apiCallCount   Int       @default(0)
+  linesOfCode    Int       @default(0)
+  
+  // Processing info
+  status         String    @default("pending") // pending, running, completed, failed
+  errorMessage   String?
+  processingTime Int?      // Processing time in milliseconds
+  
+  // Visualization settings
+  layoutType     String    @default("subway") // subway, tree, force
+  theme          String    @default("dark")   // dark, light
+  
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  
+  // Relations
+  repository     Repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+  codeEntities   CodeEntity[]
+  
+  @@unique([repositoryId, commitSha, branch])
+  @@map("analysis_results")
+}
+
+model CodeEntity {
+  id           String    @id @default(cuid())
+  analysisId   String
+  entityType   String    // function, class, import, export, api_call, variable
+  name         String
+  filePath     String
+  lineStart    Int
+  lineEnd      Int?
+  
+  // Code details
+  complexity   Int?      // Cyclomatic complexity for functions
+  parameters   Json?     // Function parameters
+  returnType   String?   // Return type if available
+  isAsync      Boolean   @default(false)
+  isExported   Boolean   @default(false)
+  
+  // Relationships
+  dependencies Json      @default("[]") // Array of entity IDs this depends on
+  dependents   Json      @default("[]") // Array of entity IDs that depend on this
+  
+  // Additional metadata
+  metadata     Json      @default("{}")
+  
+  createdAt    DateTime  @default(now())
+  
+  // Relations
+  analysis     AnalysisResult @relation(fields: [analysisId], references: [id], onDelete: Cascade)
+  
+  @@index([analysisId, entityType])
+  @@map("code_entities")
+}
+
+// ===================================
+// USAGE TRACKING & ANALYTICS
+// ===================================
+
+model UsageTracking {
+  id             String    @id @default(cuid())
+  userId         String?
+  organizationId String?
+  resourceType   String    // repositories, analyses, visualizations, exports, api_calls
+  resourceCount  Int       @default(1)
+  periodMonth    DateTime  // First day of the month for aggregation
+  
+  // Additional metrics
+  metadata       Json      @default("{}")
+  
+  createdAt      DateTime  @default(now())
+  
+  // Relations
+  user           User?         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, organizationId, resourceType, periodMonth])
+  @@map("usage_tracking")
+}
+
+model Analytics {
+  id            String    @id @default(cuid())
+  eventType     String    // page_view, signup, subscription, analysis_completed
+  userId        String?
+  sessionId     String?
+  
+  // Event data
+  eventData     Json      @default("{}")
+  userAgent     String?
+  ipAddress     String?
+  referrer      String?
+  
+  // Timestamps
+  timestamp     DateTime  @default(now())
+  
+  @@index([eventType, timestamp])
+  @@index([userId, timestamp])
+  @@map("analytics")
+}
+
+// ===================================
+// INTEGRATIONS & WEBHOOKS
+// ===================================
+
+model Integration {
+  id            String    @id @default(cuid())
+  userId        String?
+  organizationId String?
+  type          String    // github_webhook, slack, discord, teams
+  name          String
+  
+  // Integration settings
+  settings      Json      @default("{}")
+  isActive      Boolean   @default(true)
+  
+  // Webhook details
+  webhookUrl    String?
+  webhookSecret String?
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  @@map("integrations")
+}
+
+model WebhookEvent {
+  id            String    @id @default(cuid())
+  source        String    // github, stripe
+  eventType     String
+  eventData     Json
+  
+  // Processing status
+  status        String    @default("pending") // pending, processed, failed
+  attempts      Int       @default(0)
+  lastAttempt   DateTime?
+  errorMessage  String?
+  
+  createdAt     DateTime  @default(now())
+  
+  @@index([source, eventType, status])
+  @@map("webhook_events")
+}
+
+// ===================================
+// FEATURE FLAGS & EXPERIMENTS
+// ===================================
+
+model FeatureFlag {
+  id            String    @id @default(cuid())
+  name          String    @unique
+  description   String?
+  isEnabled     Boolean   @default(false)
+  
+  // Targeting
+  userPercent   Float?    // Percentage of users (0-100)
+  targetTiers   String[]  // Which subscription tiers
+  targetUsers   String[]  // Specific user IDs
+  
+  // Metadata
+  metadata      Json      @default("{}")
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  @@map("feature_flags")
+}
