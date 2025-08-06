@@ -1,158 +1,91 @@
-# README.md - Production Setup Guide
-# 🚀 Colooky - Production Deployment Guide
+# 🚀 Colooky - Production Repository
 
-## 📋 Pre-Deployment Checklist
+Transform your GitHub repositories into beautiful subway map visualizations.
 
-### 1. **Infrastructure Requirements**
-- [ ] Domain name (colooky.com)
-- [ ] SSL certificate
-- [ ] Server with Docker support (2GB+ RAM recommended)
-- [ ] PostgreSQL database
-- [ ] Redis instance
+## 🎨 What is Colooky?
 
-### 2. **External Service Setup**
+Colooky is a SaaS platform that helps developers visualize their code structure through interactive subway map-style diagrams. Perfect for understanding complex projects, onboarding team members, and creating stunning presentations of your work.
 
-#### GitHub OAuth App
-1. Go to GitHub Settings > Developer settings > OAuth Apps
-2. Create new OAuth App:
-   - **Application name**: Colooky
-   - **Homepage URL**: `https://colooky.com`
-   - **Authorization callback URL**: `https://colooky.com/api/auth/github/callback`
-3. Save Client ID and Client Secret
+## ✨ Features
 
-#### Stripe Setup
-1. Create Stripe account
-2. Create products and prices:
-   - Individual: $19/month, $190/year
-   - Team: $49/month, $490/year  
-   - Enterprise: $199/month, $1990/year
-3. Set up webhook endpoint: `https://colooky.com/api/webhooks/stripe`
-4. Copy all price IDs and webhook secret
+- **Beautiful Visualizations**: Transform code into intuitive subway maps
+- **GitHub Integration**: Seamless OAuth and repository sync
+- **Team Collaboration**: Share visualizations with your team
+- **Export Options**: PNG/SVG export for presentations
+- **Subscription Tiers**: Individual, Team, and Enterprise plans
 
-### 3. **Environment Configuration**
+## 🏗️ Architecture
+
+- **Frontend**: Next.js 14 with Tailwind CSS
+- **Backend**: Node.js with Express and TypeScript
+- **Database**: PostgreSQL with Prisma ORM
+- **Cache**: Redis for performance
+- **Payments**: Stripe integration
+- **Auth**: GitHub OAuth
+
+## 🚀 Quick Start
+
+1. **Clone the repository**
 ```bash
-# Copy and fill environment variables
+git clone https://github.com/Media-Team-Logic-Inc/colooky-production.git
+cd colooky-production
+```
+
+2. **Set up environment variables**
+```bash
 cp .env.example .env
 # Edit .env with your actual values
 ```
 
-### 4. **Database Setup**
+3. **Install dependencies**
 ```bash
-# Generate Prisma client
-cd backend && npx prisma generate
+# Frontend
+cd frontend && npm install
 
-# Run migrations
-npx prisma migrate deploy
-
-# Seed initial data (optional)
-npx prisma db seed
+# Backend  
+cd ../backend && npm install
 ```
 
-## 🚀 **Deployment Options**
-
-### Option 1: Docker Compose (Recommended)
+4. **Start development servers**
 ```bash
-# Clone repository
-git clone <your-repo-url>
-cd colooky
+# Frontend (port 3000)
+cd frontend && npm run dev
 
-# Set up environment
-cp .env.example .env
-# Edit .env file with your values
-
-# Start all services
-docker-compose up -d
-
-# Check logs
-docker-compose logs -f
+# Backend (port 3001)
+cd backend && npm run dev
 ```
 
-### Option 2: Separate Hosting
-- **Frontend**: Deploy to Vercel/Netlify
-- **Backend**: Deploy to Railway/Render
-- **Database**: Use Supabase/PlanetScale
-- **Redis**: Use Upstash/Redis Cloud
+## 📊 Subscription Plans
 
-### Option 3: Cloud Platforms
-- **AWS**: ECS + RDS + ElastiCache
-- **Google Cloud**: Cloud Run + Cloud SQL + Memorystore
-- **Azure**: Container Instances + Azure Database + Azure Cache
+- **Individual**: $19/mo - 10 repositories, standard visualizations
+- **Team**: $49/mo - 50 repositories, 5 team members, advanced features
+- **Enterprise**: $199/mo - Unlimited everything, custom branding, SSO
 
-## 🔧 **Post-Deployment Setup**
+## 🔧 Production Deployment
 
-### 1. **Verify Services**
-```bash
-# Check all services are running
-docker-compose ps
+Deploy to Railway for backend, Vercel for frontend:
 
-# Test API health
-curl https://colooky.com/api/health
+1. **Backend to Railway**: Deploy from GitHub, add Redis service
+2. **Frontend to Vercel**: Connect repository, set environment variables
+3. **Domain**: Point colooky.com to Vercel, api.colooky.com to Railway
 
-# Test frontend
-curl https://colooky.com
-```
+## 📋 Environment Variables
 
-### 2. **Create Admin User**
-```bash
-# Connect to backend container
-docker-compose exec backend npm run create-admin
+Key variables needed for production:
+- `NEXTAUTH_URL=https://colooky.com`
+- `NEXT_PUBLIC_API_URL=https://api.colooky.com`
+- `GITHUB_CLIENT_ID` & `GITHUB_CLIENT_SECRET`
+- `STRIPE_SECRET_KEY` & publishable key
+- `DATABASE_URL` (Supabase)
+- `REDIS_URL` (Railway Redis)
 
-# Or manually in database
-```
+## 🛡️ Security
 
-### 3. **Set Up Monitoring**
-- Configure error tracking (Sentry)
-- Set up uptime monitoring
-- Enable application metrics
+- Environment variables protected by .gitignore
+- JWT authentication with secure secrets
+- Rate limiting and CORS configured
+- Stripe webhooks for secure payments
 
-### 4. **Test Complete Flow**
-1. [ ] Landing page loads
-2. [ ] GitHub OAuth works
-3. [ ] Repository sync works
-4. [ ] Code analysis completes
-5. [ ] Visualization displays
-6. [ ] Subscription flow works
-7. [ ] Promo codes work
-8. [ ] Webhooks receive events
+---
 
-## 📊 **Production Monitoring**
-
-### Key Metrics to Track
-- Response times
-- Error rates
-- User signups
-- Subscription conversions
-- Code analysis success rate
-- Database performance
-
-### Alerts to Configure
-- Service downtime
-- High error rates
-- Failed payments
-- Database connection issues
-- Disk space warnings
-
-## 🛡️ **Security Checklist**
-- [ ] SSL certificate installed
-- [ ] Environment variables secured
-- [ ] Database access restricted
-- [ ] Rate limiting configured
-- [ ] CORS properly set
-- [ ] Security headers enabled
-- [ ] Regular backups scheduled
-
-## 🔄 **Backup Strategy**
-```bash
-# Database backup
-pg_dump $DATABASE_URL > backup_$(date +%Y%m%d).sql
-
-# Automated daily backups
-0 2 * * * /path/to/backup-script.sh
-```
-
-## 📈 **Scaling Considerations**
-- **Frontend**: CDN for static assets
-- **Backend**: Load balancer + multiple instances
-- **Database**: Read replicas for analytics
-- **Cache**: Redis cluster for high availability
-- **Files**: Object storage for large repositories
+Built with ❤️ using Claude Code
