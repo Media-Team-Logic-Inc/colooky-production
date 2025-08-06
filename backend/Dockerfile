@@ -2,6 +2,9 @@ FROM node:18-alpine
 
 WORKDIR /app
 
+# Install Python and build tools for native dependencies
+RUN apk add --no-cache python3 make g++ py3-pip
+
 # Copy package files
 COPY package*.json ./
 RUN npm ci --only=production
