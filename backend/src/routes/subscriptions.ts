@@ -1,6 +1,6 @@
 import express from 'express';
-import { StripeService } from '../services/stripe.js';
-import { UsageService } from '../services/usage.js';
+import { StripeService } from '../services/stripe';
+import { UsageService } from '../services/usage';
 
 const router = express.Router();
 

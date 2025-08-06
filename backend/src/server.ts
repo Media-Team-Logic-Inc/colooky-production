@@ -7,20 +7,20 @@ import morgan from 'morgan';
 import dotenv from 'dotenv';
 
 // Import routes
-import authRoutes from './routes/auth.js';
-import repositoryRoutes from './routes/repositories.js';
-import subscriptionRoutes from './routes/subscriptions.js';
-import webhookRoutes from './routes/webhooks.js';
-import analysisRoutes from './routes/analysis.js';
+import authRoutes from './routes/auth';
+import repositoryRoutes from './routes/repositories';
+import subscriptionRoutes from './routes/subscriptions';
+import webhookRoutes from './routes/webhooks';
+import analysisRoutes from './routes/analysis';
 
 // Import middleware
-import { authenticateUser } from './middleware/auth.js';
-import { errorHandler } from './middleware/errorHandler.js';
-import { rateLimiter } from './middleware/rateLimit.js';
+import { authenticateUser } from './middleware/auth';
+import { errorHandler } from './middleware/errorHandler';
+import { rateLimiter } from './middleware/rateLimit';
 
 // Import database
-import { initDatabase } from './config/database.js';
-import { initRedis } from './config/redis.js';
+import { initDatabase } from './config/database';
+import { initRedis } from './config/redis';
 
 dotenv.config();
 
