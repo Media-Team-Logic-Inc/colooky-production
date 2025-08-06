@@ -46,12 +46,12 @@ export class UsageService {
         throw new Error('Usage limit exceeded for current subscription tier');
       }
 
-      // Record the usage event
-      await prisma.usageEvent.create({
+      // Record the usage event  
+      await prisma.analytics.create({
         data: {
           userId: event.userId,
           eventType: event.eventType,
-          metadata: event.metadata || {},
+          eventData: event.metadata || {},
           timestamp: event.timestamp,
         },
       });
@@ -88,7 +88,7 @@ export class UsageService {
 
   async getUsageMetricsForPeriod(userId: string, since: Date): Promise<UsageMetrics> {
     try {
-      const events = await prisma.usageEvent.findMany({
+      const events = await prisma.analytics.findMany({
         where: {
           userId,
           timestamp: {
@@ -237,7 +237,7 @@ export class UsageService {
     lastAnalyzed: Date;
   }>> {
     try {
-      const analyses = await prisma.repositoryAnalysis.findMany({
+      const analyses = await prisma.analysisResult.findMany({
         where: { userId },
         orderBy: { updatedAt: 'desc' },
       });
@@ -285,7 +285,7 @@ export class UsageService {
     try {
       const cutoffDate = new Date(Date.now() - retentionDays * 24 * 60 * 60 * 1000);
       
-      await prisma.usageEvent.deleteMany({
+      await prisma.analytics.deleteMany({
         where: {
           timestamp: {
             lt: cutoffDate,
@@ -304,7 +304,7 @@ export class UsageService {
     try {
       const today = new Date().toISOString().split('T')[0];
       
-      await prisma.dailyUsage.upsert({
+      await prisma.usageTracking.upsert({
         where: {
           userId_date: {
             userId: event.userId,
@@ -368,7 +368,7 @@ export class UsageService {
     format: 'json' | 'csv' = 'json'
   ): Promise<string> {
     try {
-      const events = await prisma.usageEvent.findMany({
+      const events = await prisma.analytics.findMany({
         where: {
           userId,
           timestamp: {

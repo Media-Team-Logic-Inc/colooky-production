@@ -182,7 +182,7 @@ export class GitHubService {
     analysisData: any
   ) {
     try {
-      return await prisma.repositoryAnalysis.upsert({
+      return await prisma.analysisResult.upsert({
         where: {
           userId_repositoryId: {
             userId,
@@ -207,7 +207,7 @@ export class GitHubService {
 
   async getRepositoryAnalysis(userId: string, repositoryId: number) {
     try {
-      return await prisma.repositoryAnalysis.findUnique({
+      return await prisma.analysisResult.findUnique({
         where: {
           userId_repositoryId: {
             userId,

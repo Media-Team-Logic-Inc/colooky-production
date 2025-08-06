@@ -130,7 +130,7 @@ export class SubscriptionService {
     }
   ) {
     try {
-      return await prisma.subscription.update({
+      return await prisma.subscription.updateMany({
         where: { userId },
         data: {
           ...updates,
@@ -199,9 +199,11 @@ export class SubscriptionService {
     startOfMonth.setDate(1);
     startOfMonth.setHours(0, 0, 0, 0);
 
-    const analysisCount = await prisma.repositoryAnalysis.count({
+    const analysisCount = await prisma.analysisResult.count({
       where: {
-        userId,
+        repository: {
+          userId,
+        },
         createdAt: {
           gte: startOfMonth,
         },
@@ -218,16 +220,22 @@ export class SubscriptionService {
       startOfMonth.setHours(0, 0, 0, 0);
 
       const [repositoriesAnalyzed, totalAnalyses, subscription] = await Promise.all([
-        prisma.repositoryAnalysis.count({
+        prisma.analysisResult.count({
           where: {
-            userId,
+            repository: {
+              userId,
+            },
             createdAt: {
               gte: startOfMonth,
             },
           },
         }),
-        prisma.repositoryAnalysis.count({
-          where: { userId },
+        prisma.analysisResult.count({
+          where: {
+            repository: {
+              userId,
+            },
+          },
         }),
         this.getUserSubscription(userId),
       ]);
