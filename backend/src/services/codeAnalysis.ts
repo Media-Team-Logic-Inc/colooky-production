@@ -85,6 +85,46 @@ class CodeAnalysisService {
     ]);
   }
 
+  static async startAnalysis(repositoryId: string, branch: string = 'main', userId?: string, forceRefresh: boolean = false): Promise<any> {
+    try {
+      // This would typically create a background job and return immediately
+      // For now, return a mock analysis result
+      return {
+        id: `analysis_${repositoryId}_${Date.now()}`,
+        repositoryId,
+        branch,
+        status: 'running',
+        startedAt: new Date(),
+        userId,
+      };
+    } catch (error) {
+      console.error('Error starting analysis:', error);
+      throw new Error('Failed to start code analysis');
+    }
+  }
+
+  static async getAnalysisResult(analysisId: string, userId?: string): Promise<any> {
+    try {
+      // This would typically fetch from database
+      // For now, return a mock result
+      return {
+        id: analysisId,
+        status: 'completed',
+        result: {
+          functions: [],
+          imports: [],
+          apiCalls: [],
+          fileCount: 0,
+        },
+        completedAt: new Date(),
+        userId,
+      };
+    } catch (error) {
+      console.error('Error getting analysis result:', error);
+      throw new Error('Failed to get analysis result');
+    }
+  }
+
   private getLanguageForFile(filePath: string): any {
     const ext = path.extname(filePath).toLowerCase();
     return this.languages.get(ext) || JavaScript; // Default to JavaScript

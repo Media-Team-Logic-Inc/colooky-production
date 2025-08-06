@@ -37,6 +37,47 @@ export interface UsagePeriodStats {
 }
 
 export class UsageService {
+  static async checkUsageLimit(userId: string, resourceType: string): Promise<boolean> {
+    try {
+      const subscription = await subscriptionService.getUserSubscription(userId);
+      
+      // Check specific limits based on resource type
+      switch (resourceType) {
+        case 'repositories':
+        case 'analyses':
+          return await subscriptionService.checkSubscriptionLimits(userId, 'analyze_repository');
+        case 'exports':
+          return await subscriptionService.checkSubscriptionLimits(userId, 'export_format', { format: 'PNG' });
+        case 'api_calls':
+          return await subscriptionService.checkSubscriptionLimits(userId, 'api_access');
+        default:
+          return true;
+      }
+    } catch (error) {
+      console.error('Error checking usage limit:', error);
+      return false;
+    }
+  }
+
+  static async getUserUsage(userId: string): Promise<any> {
+    try {
+      const usageService = new UsageService();
+      return await usageService.getUserUsageStats(userId);
+    } catch (error) {
+      console.error('Error getting user usage:', error);
+      throw new Error('Failed to get user usage statistics');
+    }
+  }
+
+  static async trackUsage(event: UsageEvent): Promise<void> {
+    try {
+      const usageService = new UsageService();
+      return await usageService.trackUsage(event);
+    } catch (error) {
+      console.error('Error tracking usage:', error);
+      throw new Error('Failed to track usage');
+    }
+  }
   async trackUsage(event: UsageEvent): Promise<void> {
     try {
       // Check if action is allowed based on subscription limits

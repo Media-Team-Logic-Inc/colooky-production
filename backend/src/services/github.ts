@@ -176,17 +176,60 @@ export class GitHubService {
     }
   }
 
+  static async exchangeCodeForToken(code: string): Promise<{
+    accessToken: string;
+    user: any;
+  }> {
+    try {
+      // Exchange code for access token
+      const tokenResponse = await fetch('https://github.com/login/oauth/access_token', {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          client_id: process.env.GITHUB_CLIENT_ID,
+          client_secret: process.env.GITHUB_CLIENT_SECRET,
+          code,
+        }),
+      });
+
+      const tokenData = await tokenResponse.json();
+      
+      if (tokenData.error) {
+        throw new Error(`GitHub OAuth error: ${tokenData.error_description}`);
+      }
+
+      const accessToken = tokenData.access_token;
+
+      // Get user information
+      const githubService = new GitHubService(accessToken);
+      const user = await githubService.getUserInfo();
+
+      return {
+        accessToken,
+        user,
+      };
+    } catch (error) {
+      console.error('Error exchanging code for token:', error);
+      throw new Error('Failed to exchange authorization code');
+    }
+  }
+
   async saveRepositoryAnalysis(
-    userId: string,
-    repositoryId: number,
-    analysisData: any
+    repositoryId: string,
+    commitSha: string,
+    analysisData: any,
+    branch: string = 'main'
   ) {
     try {
       return await prisma.analysisResult.upsert({
         where: {
-          userId_repositoryId: {
-            userId,
+          repositoryId_commitSha_branch: {
             repositoryId,
+            commitSha,
+            branch,
           },
         },
         update: {
@@ -194,8 +237,9 @@ export class GitHubService {
           updatedAt: new Date(),
         },
         create: {
-          userId,
           repositoryId,
+          commitSha,
+          branch,
           analysisData,
         },
       });
@@ -205,13 +249,14 @@ export class GitHubService {
     }
   }
 
-  async getRepositoryAnalysis(userId: string, repositoryId: number) {
+  async getRepositoryAnalysis(repositoryId: string, commitSha: string, branch: string = 'main') {
     try {
       return await prisma.analysisResult.findUnique({
         where: {
-          userId_repositoryId: {
-            userId,
+          repositoryId_commitSha_branch: {
             repositoryId,
+            commitSha,
+            branch,
           },
         },
       });

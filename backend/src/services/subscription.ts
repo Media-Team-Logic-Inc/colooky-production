@@ -65,7 +65,7 @@ export const SUBSCRIPTION_LIMITS: Record<SubscriptionTier, SubscriptionLimits> =
 export class SubscriptionService {
   async getUserSubscription(userId: string) {
     try {
-      const subscription = await prisma.subscription.findUnique({
+      const subscription = await prisma.subscription.findFirst({
         where: { userId },
         include: {
           user: true,
@@ -103,11 +103,15 @@ export class SubscriptionService {
     customerId?: string
   ) {
     try {
+      const amount = this.getPriceForTier(tier);
       return await prisma.subscription.create({
         data: {
           userId,
           tier,
           status: 'active',
+          amount,
+          currency: 'usd',
+          interval: 'month',
           stripeSubscriptionId,
           stripeCustomerId: customerId,
           currentPeriodStart: new Date(),
@@ -381,6 +385,17 @@ export class SubscriptionService {
     return subscription?.userId || null;
   }
 
+  private getPriceForTier(tier: SubscriptionTier): number {
+    const prices = {
+      [SubscriptionTier.TRIAL]: 0,
+      [SubscriptionTier.INDIVIDUAL]: 1900, // $19.00 in cents
+      [SubscriptionTier.TEAM]: 4900, // $49.00 in cents  
+      [SubscriptionTier.ENTERPRISE]: 19900, // $199.00 in cents
+    };
+    
+    return prices[tier];
+  }
+
   private getPriceIdForTier(tier: SubscriptionTier): string {
     const priceIds = {
       [SubscriptionTier.INDIVIDUAL]: process.env.STRIPE_INDIVIDUAL_MONTHLY_PRICE_ID!,
@@ -399,5 +414,43 @@ export class SubscriptionService {
     
     // Monthly subscription
     return new Date(now.getFullYear(), now.getMonth() + 1, now.getDate());
+  }
+
+  static async initializeUsageTracking(userId: string): Promise<void> {
+    try {
+      // Create initial usage tracking records for the current month
+      const periodMonth = new Date();
+      periodMonth.setDate(1);
+      periodMonth.setHours(0, 0, 0, 0);
+
+      const resourceTypes = ['analyses', 'exports', 'api_calls', 'visualizations'];
+
+      await Promise.all(
+        resourceTypes.map(resourceType =>
+          prisma.usageTracking.upsert({
+            where: {
+              userId_organizationId_resourceType_periodMonth: {
+                userId,
+                organizationId: null,
+                resourceType,
+                periodMonth,
+              },
+            },
+            update: {},
+            create: {
+              userId,
+              organizationId: null,
+              resourceType,
+              resourceCount: 0,
+              periodMonth,
+              metadata: {},
+            },
+          })
+        )
+      );
+    } catch (error) {
+      console.error('Error initializing usage tracking:', error);
+      // Don't throw - this is not critical for user creation
+    }
   }
 }
