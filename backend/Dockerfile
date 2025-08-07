@@ -6,9 +6,7 @@ WORKDIR /app
 # Install system dependencies needed for native modules and Prisma
 RUN apk add --no-cache python3 make g++ openssl openssl-dev ca-certificates
 
-# Set Prisma binary target for Alpine Linux
-ENV PRISMA_QUERY_ENGINE_LIBRARY=/app/node_modules/.prisma/client/libquery_engine-linux-musl.so.node
-ENV PRISMA_QUERY_ENGINE_BINARY=/app/node_modules/.prisma/client/query-engine-linux-musl
+# Let Prisma auto-detect the correct binary for Alpine Linux
 
 # Copy package files
 COPY package.json package-lock.json ./
@@ -22,10 +20,7 @@ COPY prisma ./prisma
 # Generate Prisma client (without database connection)
 # Set a dummy DATABASE_URL for generation only
 ENV DATABASE_URL="postgresql://dummy:dummy@dummy:5432/dummy"
-# Debug: check if schema exists and show Prisma version
-RUN ls -la prisma/ && npx prisma --version
-# Generate with verbose output
-RUN npx prisma generate --verbose
+RUN npx prisma generate
 
 # Remove the dummy DATABASE_URL (runtime will use the real one)
 ENV DATABASE_URL=""
