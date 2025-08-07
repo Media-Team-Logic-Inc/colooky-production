@@ -1,10 +1,14 @@
-FROM node:18-alpine
+FROM node:18-alpine3.17
 
 # Set working directory
 WORKDIR /app
 
 # Install system dependencies needed for native modules and Prisma
-RUN apk add --no-cache python3 make g++ openssl1.1-compat
+RUN apk add --no-cache python3 make g++ openssl openssl-dev ca-certificates
+
+# Set Prisma binary target for Alpine Linux
+ENV PRISMA_QUERY_ENGINE_LIBRARY=/app/node_modules/.prisma/client/libquery_engine-linux-musl.so.node
+ENV PRISMA_QUERY_ENGINE_BINARY=/app/node_modules/.prisma/client/query-engine-linux-musl
 
 # Copy package files
 COPY package.json package-lock.json ./
