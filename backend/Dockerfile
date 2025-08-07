@@ -22,7 +22,10 @@ COPY prisma ./prisma
 # Generate Prisma client (without database connection)
 # Set a dummy DATABASE_URL for generation only
 ENV DATABASE_URL="postgresql://dummy:dummy@dummy:5432/dummy"
-RUN npx prisma generate
+# Debug: check if schema exists and show Prisma version
+RUN ls -la prisma/ && npx prisma --version
+# Generate with verbose output
+RUN npx prisma generate --verbose
 
 # Remove the dummy DATABASE_URL (runtime will use the real one)
 ENV DATABASE_URL=""
