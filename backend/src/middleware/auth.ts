@@ -1,6 +1,6 @@
 import jwt from 'jsonwebtoken';
 import { Request, Response, NextFunction } from 'express';
-import { prisma } from '../config/database';
+import { prisma } from '../config/database.js';
 
 interface AuthRequest extends Request {
   user?: any;

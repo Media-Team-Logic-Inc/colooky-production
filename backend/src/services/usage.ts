@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import { SubscriptionService } from './subscription';
+import { SubscriptionService } from './subscription.js';
 
 const prisma = new PrismaClient();
 const subscriptionService = new SubscriptionService();

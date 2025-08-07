@@ -1,6 +1,6 @@
 // src/services/stripe.ts - Enhanced Stripe Service with Promo Codes
 import Stripe from 'stripe';
-import { prisma } from '../config/database';
+import { prisma } from '../config/database.js';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2023-10-16',

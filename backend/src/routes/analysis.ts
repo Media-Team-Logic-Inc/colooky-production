@@ -1,7 +1,7 @@
 import express from 'express';
-import { CodeAnalysisService } from '../services/codeAnalysis';
-import { UsageService, UsageEventType } from '../services/usage';
-import { requireSubscription } from '../middleware/subscription';
+import { CodeAnalysisService } from '../services/codeAnalysis.js';
+import { UsageService, UsageEventType } from '../services/usage.js';
+import { requireSubscription } from '../middleware/subscription.js';
 
 const router = express.Router();
 

@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { SUBSCRIPTION_LIMITS } from '../services/subscription';
+import { SUBSCRIPTION_LIMITS } from '../services/subscription.js';
 
 interface AuthRequest extends Request {
   user?: any;

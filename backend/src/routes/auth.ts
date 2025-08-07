@@ -1,9 +1,9 @@
 import express from 'express';
 import jwt from 'jsonwebtoken';
-import { prisma } from '../config/database';
-import { GitHubService } from '../services/github';
-import { SubscriptionService } from '../services/subscription';
-import { encryptGitHubToken, decryptGitHubToken } from '../lib/encryption';
+import { prisma } from '../config/database.js';
+import { GitHubService } from '../services/github.js';
+import { SubscriptionService } from '../services/subscription.js';
+import { encryptGitHubToken, decryptGitHubToken } from '../lib/encryption.js';
 
 const router = express.Router();
 
