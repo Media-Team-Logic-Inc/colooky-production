@@ -16,11 +16,19 @@ COPY package.json package-lock.json ./
 # Install all dependencies
 RUN npm ci
 
-# Copy source code
-COPY . .
+# Copy Prisma schema first
+COPY prisma ./prisma
 
-# Generate Prisma client
+# Generate Prisma client (without database connection)
+# Set a dummy DATABASE_URL for generation only
+ENV DATABASE_URL="postgresql://dummy:dummy@dummy:5432/dummy"
 RUN npx prisma generate
+
+# Remove the dummy DATABASE_URL (runtime will use the real one)
+ENV DATABASE_URL=""
+
+# Copy rest of source code
+COPY . .
 
 # Build TypeScript to JavaScript
 RUN npx tsc
