@@ -1,0 +1,12 @@
+[phases.setup]
+nixPkgs = ['nodejs_18', 'python3', 'gcc', 'gnumake']
+
+[phases.build]
+cmds = [
+  'npm ci',
+  'npx prisma generate',
+  'npm run build'
+]
+
+[phases.start]
+cmd = 'node dist/server.js'
