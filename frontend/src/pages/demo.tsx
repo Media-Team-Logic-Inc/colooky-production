@@ -70,7 +70,8 @@ export default function DemoPage() {
   const loadDemoSamples = async () => {
     try {
       setLoading(true);
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      // Temporary hardcoded Railway backend URL until env var issue is resolved
+      const apiUrl = 'https://colooky-production-production.up.railway.app';
       const response = await fetch(`${apiUrl}/api/demo/samples`);
       
       if (!response.ok) {
@@ -91,7 +92,8 @@ export default function DemoPage() {
       setLoading(true);
       setError(null);
       
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      // Temporary hardcoded Railway backend URL until env var issue is resolved
+      const apiUrl = 'https://colooky-production-production.up.railway.app';
       const response = await fetch(`${apiUrl}/api/demo/analysis/${sampleId}`);
       
       if (!response.ok) {

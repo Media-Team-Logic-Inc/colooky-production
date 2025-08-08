@@ -1,6 +1,7 @@
 import axios from 'axios';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+// Temporary hardcoded Railway backend URL until env var issue is resolved
+const API_BASE_URL = 'https://colooky-production-production.up.railway.app';
 
 // Debug logging for Railway deployment
 if (typeof window === 'undefined') {
