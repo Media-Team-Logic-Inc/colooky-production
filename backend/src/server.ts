@@ -12,6 +12,7 @@ import repositoryRoutes from './routes/repositories.js';
 import subscriptionRoutes from './routes/subscriptions.js';
 import webhookRoutes from './routes/webhooks.js';
 import analysisRoutes from './routes/analysis.js';
+import demoRoutes from './routes/demo.js';
 
 // Import middleware
 import { authenticateUser } from './middleware/auth.js';
@@ -74,6 +75,7 @@ app.use('/api/repositories', authenticateUser, repositoryRoutes);
 app.use('/api/subscriptions', authenticateUser, subscriptionRoutes);
 app.use('/api/analysis', authenticateUser, analysisRoutes);
 app.use('/api/webhooks', webhookRoutes); // No auth for webhooks
+app.use('/api/demo', demoRoutes); // Public demo endpoints
 
 // Error handling
 app.use(errorHandler);
