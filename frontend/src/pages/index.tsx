@@ -74,9 +74,12 @@ export default function Home() {
               Start with GitHub
               <ArrowRight className="h-5 w-5" />
             </Link>
-            <button className="border-2 border-purple-400/50 hover:border-purple-400 bg-purple-900/20 hover:bg-purple-800/30 text-purple-100 px-8 py-4 rounded-xl font-semibold text-lg transition-all duration-300 backdrop-blur-sm">
+            <Link 
+              href="/demo"
+              className="border-2 border-purple-400/50 hover:border-purple-400 bg-purple-900/20 hover:bg-purple-800/30 text-purple-100 px-8 py-4 rounded-xl font-semibold text-lg transition-all duration-300 backdrop-blur-sm inline-block text-center"
+            >
               View Demo
-            </button>
+            </Link>
           </div>
         </div>
       </section>
