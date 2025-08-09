@@ -7,6 +7,16 @@ import '../styles/globals.css';
 console.log('🔧 App initializing...');
 console.log('🔧 Environment check - NODE_ENV:', process.env.NODE_ENV);
 
+// Add Node.js process error handlers
+process.on('uncaughtException', (error) => {
+  console.error('❌ Uncaught Exception:', error);
+  console.error('❌ Stack:', error.stack);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
 // Add error boundary for the entire app
 if (typeof window !== 'undefined') {
   window.addEventListener('error', (error) => {

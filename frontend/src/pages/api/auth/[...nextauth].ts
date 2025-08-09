@@ -1,27 +1,18 @@
-import NextAuth from 'next-auth';
-import { authOptions } from '../../../lib/auth';
+import { NextApiRequest, NextApiResponse } from 'next';
 
-console.log('🔧 NextAuth API route initializing...');
+console.log('🔧 NextAuth API route loading...');
 
-// Wrap the NextAuth handler to add logging
-const handler = async (req: any, res: any) => {
-  console.log('🔧 NextAuth request:', req.method, req.url);
-  console.log('🔧 NextAuth query:', req.query);
+// Temporarily disable NextAuth to test if it's causing the crash
+const handler = async (req: NextApiRequest, res: NextApiResponse) => {
+  console.log('🔧 NextAuth fallback request:', req.method, req.url);
+  console.log('🔧 NextAuth fallback query:', req.query);
   
-  try {
-    return await NextAuth(authOptions)(req, res);
-  } catch (error) {
-    console.error('❌ NextAuth handler error:', error);
-    console.error('❌ Error stack:', error instanceof Error ? error.stack : 'No stack trace');
-    
-    // Return a proper error response
-    if (!res.headersSent) {
-      res.status(500).json({ 
-        error: 'Authentication error',
-        message: error instanceof Error ? error.message : 'Unknown error'
-      });
-    }
-  }
+  res.status(501).json({ 
+    error: 'NextAuth temporarily disabled for debugging',
+    message: 'Testing container stability'
+  });
 };
+
+console.log('🔧 NextAuth fallback handler created');
 
 export default handler;
