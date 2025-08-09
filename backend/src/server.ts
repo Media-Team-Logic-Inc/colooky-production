@@ -44,6 +44,9 @@ const allowedOrigins = [
   process.env.FRONTEND_URL
 ].filter((origin): origin is string => Boolean(origin));
 
+// Debug CORS origins
+console.log('🔧 Allowed CORS origins:', allowedOrigins);
+
 app.use(cors({
   origin: allowedOrigins,
   credentials: true,
