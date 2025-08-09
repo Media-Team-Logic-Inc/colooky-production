@@ -15,13 +15,10 @@ import {
   Bell
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
-import { useSubscription } from '../../hooks/useSubscription';
 import { Button } from '../ui/Button';
-import { calculateTrialDaysLeft } from '../../lib/utils';
 
 const Header = () => {
   const { user, logout } = useAuth();
-  const { usage } = useSubscription();
   const router = useRouter();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -86,22 +83,7 @@ const Header = () => {
 
           {/* Right side */}
           <div className="flex items-center space-x-4">
-            {/* Trial warning */}
-            {isTrialExpiring && (
-              <div className="hidden sm:flex items-center space-x-2 bg-yellow-500/20 border border-yellow-500/30 rounded-lg px-3 py-2">
-                <Bell className="w-4 h-4 text-yellow-400" />
-                <span className="text-yellow-300 text-sm font-medium">
-                  {trialDaysLeft} days left
-                </span>
-                <Button 
-                  size="sm" 
-                  onClick={() => router.push('/pricing')}
-                  className="ml-2 text-xs"
-                >
-                  Upgrade
-                </Button>
-              </div>
-            )}
+            {/* Demo mode - no trial warnings */}
 
             {/* User Menu */}
             {user && (
@@ -154,32 +136,17 @@ const Header = () => {
                           </span>
                           {isTrialUser && (
                             <span className="text-yellow-400 text-xs font-medium">
-                              {trialDaysLeft} days left
+                              Demo Mode
                             </span>
                           )}
                         </div>
                         
-                        {/* Usage indicators */}
-                        {usage && (
-                          <div className="mt-2 space-y-1">
-                            <div className="flex justify-between text-xs">
-                              <span className="text-slate-400">Repositories</span>
-                              <span className="text-slate-300">
-                                {usage.repositories.current}/{usage.repositories.limit === -1 ? '∞' : usage.repositories.limit}
-                              </span>
-                            </div>
-                            <div className="w-full bg-slate-600 rounded-full h-1">
-                              <div 
-                                className="bg-blue-500 h-1 rounded-full" 
-                                style={{ 
-                                  width: usage.repositories.limit === -1 
-                                    ? '20%' 
-                                    : `${Math.min((usage.repositories.current / usage.repositories.limit) * 100, 100)}%` 
-                                }}
-                              />
-                            </div>
+                        {/* Demo mode - no usage limits */}
+                        <div className="mt-2">
+                          <div className="text-xs text-slate-400">
+                            Demo Mode - Unlimited Access
                           </div>
-                        )}
+                        </div>
                       </div>
                     </div>
 
@@ -259,26 +226,7 @@ const Header = () => {
                 );
               })}
               
-              {/* Mobile trial warning */}
-              {isTrialExpiring && (
-                <div className="px-3 py-2">
-                  <div className="bg-yellow-500/20 border border-yellow-500/30 rounded-lg p-3">
-                    <div className="flex items-center space-x-2 mb-2">
-                      <Bell className="w-4 h-4 text-yellow-400" />
-                      <span className="text-yellow-300 text-sm font-medium">
-                        Trial ending in {trialDaysLeft} days
-                      </span>
-                    </div>
-                    <Button 
-                      size="sm" 
-                      onClick={() => router.push('/pricing')}
-                      className="w-full"
-                    >
-                      Upgrade Now
-                    </Button>
-                  </div>
-                </div>
-              )}
+              {/* Demo mode - no mobile trial warnings */}
             </nav>
           </div>
         )}
