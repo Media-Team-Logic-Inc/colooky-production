@@ -3,12 +3,20 @@ import { demoSamples } from '../data/demoSamples.js';
 
 const router = express.Router();
 
+// Health check for demo routes
+router.get('/health', (req, res) => {
+  res.json({ status: 'ok', message: 'Demo routes healthy' });
+});
+
 // Get all available demo samples
 router.get('/samples', async (req, res) => {
   try {
     // Debug CORS request
     console.log('🔧 Demo samples request from origin:', req.headers.origin);
     console.log('🔧 Request headers:', req.headers);
+    
+    // Check if demoSamples loaded properly
+    console.log('🔧 Demo samples available:', Object.keys(demoSamples));
     
     const samples = Object.values(demoSamples).map(sample => ({
       id: sample.id,
@@ -24,12 +32,14 @@ router.get('/samples', async (req, res) => {
       }
     }));
 
+    console.log('🔧 Returning samples:', samples.length);
     res.json({
       success: true,
       samples
     });
   } catch (error) {
-    console.error('Error fetching demo samples:', error);
+    console.error('❌ Error fetching demo samples:', error);
+    console.error('❌ Error stack:', error.stack);
     res.status(500).json({
       success: false,
       error: 'Failed to fetch demo samples'
