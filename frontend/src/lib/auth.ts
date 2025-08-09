@@ -1,6 +1,12 @@
 import { NextAuthOptions } from 'next-auth';
 import GitHubProvider from 'next-auth/providers/github';
 
+// Debug environment variables
+console.log('🔧 GITHUB_CLIENT_ID:', process.env.GITHUB_CLIENT_ID ? 'present' : 'missing');
+console.log('🔧 GITHUB_CLIENT_SECRET:', process.env.GITHUB_CLIENT_SECRET ? 'present' : 'missing');
+console.log('🔧 NEXTAUTH_URL:', process.env.NEXTAUTH_URL);
+console.log('🔧 NEXTAUTH_SECRET:', process.env.NEXTAUTH_SECRET ? 'present' : 'missing');
+
 export const authOptions: NextAuthOptions = {
   providers: [
     GitHubProvider({
