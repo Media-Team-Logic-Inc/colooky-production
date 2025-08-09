@@ -34,13 +34,17 @@ app.use(compression());
 
 // CORS configuration
 const allowedOrigins = [
+  // Local development
   'http://localhost:3000',
   'http://localhost:3002', 
   'http://127.0.0.1:3000',
   'http://127.0.0.1:3002',
-  'https://colooky-frontend-production-production.up.railway.app', // Railway frontend
-  'https://colooky.com', // Production domain
-  'https://www.colooky.com', // Production domain with www
+  // Railway direct URLs (backup)
+  'https://colooky-frontend-production-production.up.railway.app',
+  // Production custom domains
+  'https://colooky.com',
+  'https://www.colooky.com',
+  // Environment variable override
   process.env.FRONTEND_URL
 ].filter((origin): origin is string => Boolean(origin));
 
