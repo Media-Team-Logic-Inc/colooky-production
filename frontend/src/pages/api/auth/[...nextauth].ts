@@ -3,18 +3,25 @@ import { authOptions } from '../../../lib/auth';
 
 console.log('🔧 NextAuth API route initializing...');
 
-let handler;
-
-try {
-  handler = NextAuth(authOptions);
-  console.log('🔧 NextAuth handler created successfully');
-} catch (error) {
-  console.error('❌ Error initializing NextAuth:', error);
-  // Fallback handler to prevent complete crash
-  handler = function fallbackHandler(req: any, res: any) {
-    console.error('❌ NextAuth fallback handler called');
-    res.status(500).json({ error: 'Authentication service unavailable' });
-  };
-}
+// Wrap the NextAuth handler to add logging
+const handler = async (req: any, res: any) => {
+  console.log('🔧 NextAuth request:', req.method, req.url);
+  console.log('🔧 NextAuth query:', req.query);
+  
+  try {
+    return await NextAuth(authOptions)(req, res);
+  } catch (error) {
+    console.error('❌ NextAuth handler error:', error);
+    console.error('❌ Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+    
+    // Return a proper error response
+    if (!res.headersSent) {
+      res.status(500).json({ 
+        error: 'Authentication error',
+        message: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  }
+};
 
 export default handler;

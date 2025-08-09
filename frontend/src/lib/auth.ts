@@ -34,11 +34,12 @@ export const authOptions: NextAuthOptions = {
     GitHubProvider({
       clientId: process.env.GITHUB_CLIENT_ID || 'missing-client-id',
       clientSecret: process.env.GITHUB_CLIENT_SECRET || 'missing-client-secret',
-      authorization: {
-        params: {
-          scope: 'read:user user:email repo',
-        },
-      },
+      // Temporarily remove custom authorization to test basic OAuth flow
+      // authorization: {
+      //   params: {
+      //     scope: 'read:user user:email repo',
+      //   },
+      // },
     }),
   ],
   callbacks: {
