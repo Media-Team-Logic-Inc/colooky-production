@@ -4,6 +4,9 @@ import { SessionProvider } from 'next-auth/react';
 import { ToastProvider } from '../components/ui/Toast';
 import '../styles/globals.css';
 
+console.log('🔧 App initializing...');
+console.log('🔧 Environment check - NODE_ENV:', process.env.NODE_ENV);
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
