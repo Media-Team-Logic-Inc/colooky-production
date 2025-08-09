@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
+import SubwayMap from '../components/SubwayMap';
 
 // Demo API types
 interface DemoSample {
@@ -70,8 +71,10 @@ export default function DemoPage() {
   const loadDemoSamples = async () => {
     try {
       setLoading(true);
-      // Temporary hardcoded Railway backend URL until env var issue is resolved
-      const apiUrl = 'https://colooky-production-production.up.railway.app';
+      // Use custom domain for API in production, fallback to Railway URL
+      const apiUrl = process.env.NODE_ENV === 'production' 
+        ? 'https://api.colooky.com'
+        : 'https://colooky-production-production.up.railway.app';
       const response = await fetch(`${apiUrl}/api/demo/samples`);
       
       if (!response.ok) {
@@ -92,8 +95,10 @@ export default function DemoPage() {
       setLoading(true);
       setError(null);
       
-      // Temporary hardcoded Railway backend URL until env var issue is resolved
-      const apiUrl = 'https://colooky-production-production.up.railway.app';
+      // Use custom domain for API in production, fallback to Railway URL
+      const apiUrl = process.env.NODE_ENV === 'production' 
+        ? 'https://api.colooky.com'
+        : 'https://colooky-production-production.up.railway.app';
       const response = await fetch(`${apiUrl}/api/demo/analysis/${sampleId}`);
       
       if (!response.ok) {
@@ -269,11 +274,21 @@ export default function DemoPage() {
               </div>
             </div>
 
+            {/* Subway Map Visualization */}
+            <div className="mb-8">
+              <SubwayMap 
+                entities={analysis.entities}
+                flows={analysis.flows}
+                selectedFlow={selectedFlow}
+              />
+            </div>
+
             <div className="grid lg:grid-cols-3 gap-6">
               {/* Flow Selection */}
               <div className="lg:col-span-1">
                 <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">Authentication Flows</h3>
+                  <p className="text-sm text-gray-600 mb-4">Select a flow to highlight it in the subway map above</p>
                   <div className="space-y-3">
                     {analysis.flows.map((flow) => (
                       <button

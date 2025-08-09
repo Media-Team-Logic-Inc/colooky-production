@@ -1,12 +1,17 @@
 import axios from 'axios';
 
-// Temporary hardcoded Railway backend URL until env var issue is resolved
-const API_BASE_URL = 'https://colooky-production-production.up.railway.app';
+// Use custom domain for API in production, fallback to Railway URL
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 
+  (process.env.NODE_ENV === 'production' 
+    ? 'https://api.colooky.com'
+    : 'https://colooky-production-production.up.railway.app'
+  );
 
-// Debug logging for Railway deployment
+// Debug logging for deployment
 if (typeof window === 'undefined') {
   console.log('🔧 API_BASE_URL during build:', API_BASE_URL);
   console.log('🔧 NEXT_PUBLIC_API_URL:', process.env.NEXT_PUBLIC_API_URL);
+  console.log('🔧 NODE_ENV:', process.env.NODE_ENV);
 }
 
 export const api = axios.create({
@@ -43,6 +48,8 @@ api.interceptors.response.use(
 );
 
 export const authAPI = {
+  // Note: These endpoints are handled by NextAuth, not our backend
+  // Keeping for compatibility but should use NextAuth session instead
   githubCallback: (code: string) => api.post('/auth/github/callback', { code }),
   getCurrentUser: () => api.get('/auth/me'),
   logout: () => api.post('/auth/logout'),

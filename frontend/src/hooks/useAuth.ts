@@ -1,34 +1,15 @@
-import { useEffect } from 'react';
-import { useAuthStore } from '../store/auth';
-import { authAPI } from '../lib/api';
+import { useSession, signIn, signOut } from 'next-auth/react';
 
 export const useAuth = () => {
-  const { user, loading, setUser, setLoading } = useAuthStore();
+  const { data: session, status } = useSession();
 
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const response = await authAPI.getCurrentUser();
-        setUser(response.data.user);
-      } catch (error) {
-        setUser(null);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    checkAuth();
-  }, [setUser, setLoading]);
-
-  const login = (userData: any) => {
-    setUser(userData);
+  const login = () => {
+    signIn('github');
   };
 
   const logout = async () => {
     try {
-      await authAPI.logout();
-      setUser(null);
-      localStorage.removeItem('auth-token');
+      await signOut({ redirect: false });
       window.location.href = '/';
     } catch (error) {
       console.error('Logout error:', error);
@@ -36,9 +17,9 @@ export const useAuth = () => {
   };
 
   return {
-    user,
-    loading,
-    isAuthenticated: !!user,
+    user: session?.user || null,
+    loading: status === 'loading',
+    isAuthenticated: status === 'authenticated',
     login,
     logout,
   };
