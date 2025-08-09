@@ -4,21 +4,26 @@ import { SessionProvider } from 'next-auth/react';
 import { ToastProvider } from '../components/ui/Toast';
 import '../styles/globals.css';
 
-console.log('🔧 App initializing...');
-console.log('🔧 Environment check - NODE_ENV:', process.env.NODE_ENV);
+console.log('🔧 Step 1: App file loading...');
+console.log('🔧 Step 2: Environment check - NODE_ENV:', process.env.NODE_ENV);
 
-// Add Node.js process error handlers
+// Add Node.js process error handlers FIRST
 process.on('uncaughtException', (error) => {
-  console.error('❌ Uncaught Exception:', error);
-  console.error('❌ Stack:', error.stack);
+  console.error('❌ FATAL: Uncaught Exception:', error);
+  console.error('❌ FATAL: Stack:', error.stack);
+  console.error('❌ FATAL: This will cause container restart');
 });
 
 process.on('unhandledRejection', (reason, promise) => {
-  console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
+  console.error('❌ FATAL: Unhandled Rejection at:', promise, 'reason:', reason);
+  console.error('❌ FATAL: This will cause container restart');
 });
+
+console.log('🔧 Step 3: Process error handlers installed');
 
 // Add error boundary for the entire app
 if (typeof window !== 'undefined') {
+  console.log('🔧 Step 4: Installing browser error handlers');
   window.addEventListener('error', (error) => {
     console.error('❌ Global error caught:', error);
   });
@@ -26,8 +31,11 @@ if (typeof window !== 'undefined') {
   window.addEventListener('unhandledrejection', (event) => {
     console.error('❌ Unhandled promise rejection:', event.reason);
   });
+} else {
+  console.log('🔧 Step 4: Server-side, skipping browser error handlers');
 }
 
+console.log('🔧 Step 5: Creating QueryClient...');
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -36,12 +44,15 @@ const queryClient = new QueryClient({
     },
   },
 });
+console.log('🔧 Step 6: QueryClient created successfully');
 
 export default function App({ Component, pageProps: { session, ...pageProps } }: AppProps) {
-  console.log('🔧 App component rendering...');
+  console.log('🔧 Step 7: App component function called');
+  console.log('🔧 Step 8: Props received - Component:', Component?.name || 'Unknown');
   
   try {
-    return (
+    console.log('🔧 Step 9: Creating JSX structure...');
+    const jsx = (
       <SessionProvider session={session}>
         <QueryClientProvider client={queryClient}>
           <ToastProvider />
@@ -49,8 +60,11 @@ export default function App({ Component, pageProps: { session, ...pageProps } }:
         </QueryClientProvider>
       </SessionProvider>
     );
+    console.log('🔧 Step 10: JSX structure created successfully');
+    return jsx;
   } catch (error) {
     console.error('❌ Error in App component:', error);
+    console.error('❌ Error stack:', error instanceof Error ? error.stack : 'No stack trace');
     throw error;
   }
 }
