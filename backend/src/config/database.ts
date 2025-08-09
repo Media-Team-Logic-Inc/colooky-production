@@ -24,16 +24,23 @@ const prisma = new PrismaClient({
 
 export async function initDatabase() {
   try {
+    console.log('📊 Attempting Prisma connection...');
     await prisma.$connect();
     console.log('✅ Database connected successfully');
+    
+    console.log('📊 Testing database with simple query...');
+    await prisma.$queryRaw`SELECT 1 as test`;
+    console.log('✅ Database query test successful');
     
     // Run any pending migrations in production
     if (process.env.NODE_ENV === 'production') {
       // Note: In production, you should run migrations separately
       // This is just for development convenience
+      console.log('📊 Production mode - skipping migrations');
     }
   } catch (error) {
     console.error('❌ Database connection failed:', error);
+    console.error('❌ Database error details:', error instanceof Error ? error.message : 'Unknown error');
     throw error;
   }
 }

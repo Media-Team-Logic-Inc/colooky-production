@@ -94,22 +94,33 @@ app.use('*', (req, res) => {
 // Initialize database and start server
 async function startServer() {
   try {
+    console.log('🚀 Starting server initialization...');
+    console.log('🔧 NODE_ENV:', process.env.NODE_ENV);
+    console.log('🔧 PORT:', process.env.PORT);
+    console.log('🔧 DATABASE_URL present:', !!process.env.DATABASE_URL);
+    console.log('🔧 REDIS_URL present:', !!process.env.REDIS_URL);
+    
+    console.log('📊 Initializing database...');
     await initDatabase();
     
     // Initialize Redis (optional - continue without it if it fails)
+    console.log('📊 Initializing Redis...');
     try {
       await initRedis();
     } catch (redisError) {
       console.log('⚠️ Redis not available - continuing without cache');
     }
     
+    console.log('📊 Starting HTTP server...');
     app.listen(PORT, () => {
       console.log(`🚀 Colooky API server running on port ${PORT}`);
       console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
       console.log(`🔗 Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:3000'}`);
+      console.log('✅ Server startup completed successfully');
     });
   } catch (error) {
-    console.error('Failed to start server:', error);
+    console.error('❌ Failed to start server:', error);
+    console.error('❌ Error stack:', error instanceof Error ? error.stack : 'No stack trace');
     process.exit(1);
   }
 }
