@@ -25,12 +25,11 @@ const SubscriptionGuard: React.FC<SubscriptionGuardProps> = ({
 
   if (!user) return null;
 
-  const tierHierarchy = { trial: 0, individual: 1, team: 2, enterprise: 3 };
-  const userTierLevel = tierHierarchy[user.subscriptionTier as keyof typeof tierHierarchy] || 0;
-  const requiredTierLevel = tierHierarchy[requiredTier];
-
-  // Check if user has access
-  if (userTierLevel >= requiredTierLevel) {
+  // For demo purposes, allow all authenticated users access to all features
+  // In a full implementation, you would fetch subscription data from your backend
+  const hasAccess = true; // TODO: Implement real subscription checking
+  
+  if (hasAccess) {
     return <>{children}</>;
   }
 

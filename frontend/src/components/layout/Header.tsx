@@ -45,9 +45,9 @@ const Header = () => {
     { name: 'Analytics', href: '/analytics', icon: BarChart3 },
   ];
 
-  const trialDaysLeft = user?.trialEndsAt ? calculateTrialDaysLeft(user.trialEndsAt) : 0;
-  const isTrialUser = user?.subscriptionTier === 'trial';
-  const isTrialExpiring = isTrialUser && trialDaysLeft <= 3;
+  // For demo purposes, disable subscription-related features
+  const isTrialUser = false; // TODO: Implement subscription checking
+  const isTrialExpiring = false;
 
   return (
     <header className="border-b border-slate-800/50 backdrop-blur-sm bg-slate-900/50 sticky top-0 z-50">
@@ -114,16 +114,16 @@ const Header = () => {
                   className="flex items-center space-x-2 text-slate-300 hover:text-white transition-colors p-2 rounded-lg hover:bg-slate-800/50"
                 >
                   <img
-                    src={user.avatarUrl}
-                    alt={user.username}
+                    src={user.image || `https://api.dicebear.com/7.x/initials/svg?seed=${user.name || user.email}`}
+                    alt={user.name || 'User'}
                     className="w-8 h-8 rounded-full border-2 border-transparent hover:border-blue-500 transition-colors"
                   />
                   <div className="hidden sm:block text-left">
                     <div className="text-sm font-medium text-white">
-                      {user.username}
+                      {user.name || user.email}
                     </div>
-                    <div className="text-xs text-slate-400 capitalize">
-                      {user.subscriptionTier} plan
+                    <div className="text-xs text-slate-400">
+                      Free Plan
                     </div>
                   </div>
                   <ChevronDown className="w-4 h-4" />
@@ -136,12 +136,12 @@ const Header = () => {
                     <div className="p-4 border-b border-slate-700">
                       <div className="flex items-center space-x-3">
                         <img
-                          src={user.avatarUrl}
-                          alt={user.username}
+                          src={user.image || `https://api.dicebear.com/7.x/initials/svg?seed=${user.name || user.email}`}
+                          alt={user.name || 'User'}
                           className="w-10 h-10 rounded-full"
                         />
                         <div>
-                          <div className="text-white font-medium">{user.username}</div>
+                          <div className="text-white font-medium">{user.name || user.email}</div>
                           <div className="text-slate-400 text-sm">{user.email}</div>
                         </div>
                       </div>
@@ -149,8 +149,8 @@ const Header = () => {
                       {/* Subscription status */}
                       <div className="mt-3 p-2 bg-slate-700/50 rounded-lg">
                         <div className="flex justify-between items-center">
-                          <span className="text-slate-300 text-sm capitalize">
-                            {user.subscriptionTier} plan
+                          <span className="text-slate-300 text-sm">
+                            Free Plan
                           </span>
                           {isTrialUser && (
                             <span className="text-yellow-400 text-xs font-medium">
