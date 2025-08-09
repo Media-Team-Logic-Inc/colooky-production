@@ -1,7 +1,7 @@
 import type { AppProps } from 'next/app';
 import { QueryClient, QueryClientProvider } from 'react-query';
 import { SessionProvider } from 'next-auth/react';
-import { ToastProvider } from '../components/ui/Toast';
+// import { ToastProvider } from '../components/ui/Toast'; // Temporarily disabled for debugging
 import '../styles/globals.css';
 
 console.log('🔧 Step 1: App file loading...');
@@ -55,7 +55,7 @@ export default function App({ Component, pageProps: { session, ...pageProps } }:
     const jsx = (
       <SessionProvider session={session}>
         <QueryClientProvider client={queryClient}>
-          <ToastProvider />
+          {/* <ToastProvider /> Temporarily disabled for debugging */}
           <Component {...pageProps} />
         </QueryClientProvider>
       </SessionProvider>
