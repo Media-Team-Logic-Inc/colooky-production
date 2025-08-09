@@ -28,6 +28,9 @@ dotenv.config();
 const app = express();
 const PORT = parseInt(process.env.PORT || '3001', 10);
 
+// Trust proxy for Railway/Cloudflare (required for rate limiting and IP detection)
+app.set('trust proxy', 1);
+
 // Security middleware
 app.use(helmet());
 app.use(compression());
