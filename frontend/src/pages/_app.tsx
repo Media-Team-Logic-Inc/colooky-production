@@ -6,6 +6,12 @@ import '../styles/globals.css';
 
 console.log('🔧 Step 1: App file loading...');
 console.log('🔧 Step 2: Environment check - NODE_ENV:', process.env.NODE_ENV);
+console.log('🔧 Step 2.1: Railway PORT check:', process.env.PORT || 'not set');
+console.log('🔧 Step 2.2: Railway env vars:', {
+  RAILWAY_ENVIRONMENT: process.env.RAILWAY_ENVIRONMENT,
+  RAILWAY_PROJECT_ID: process.env.RAILWAY_PROJECT_ID,
+  PORT: process.env.PORT
+});
 
 // Add Node.js process error handlers FIRST
 process.on('uncaughtException', (error) => {
@@ -45,6 +51,13 @@ const queryClient = new QueryClient({
   },
 });
 console.log('🔧 Step 6: QueryClient created successfully');
+
+// Add periodic heartbeat to show the process is alive
+setInterval(() => {
+  console.log('💓 Application heartbeat - uptime:', process.uptime(), 'seconds');
+}, 10000); // Log every 10 seconds
+
+console.log('🔧 Step 6.5: Heartbeat timer started');
 
 export default function App({ Component, pageProps: { session, ...pageProps } }: AppProps) {
   console.log('🔧 Step 7: App component function called');

@@ -6,8 +6,8 @@ export default function Document() {
       <Head>
         <meta name="description" content="Visualize your code like a subway map" />
         <meta name="keywords" content="code visualization, developer tools, code analysis" />
-        {/* Temporarily disabled for debugging
-        <link rel="icon" href="/favicon.ico" />
+        <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+        {/* External fonts temporarily disabled for debugging
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
         <link
