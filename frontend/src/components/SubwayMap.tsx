@@ -144,7 +144,7 @@ const SubwayMap: React.FC<SubwayMapProps> = ({ entities, flows, selectedFlow }) 
       const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
       circle.setAttribute('cx', node.x.toString());
       circle.setAttribute('cy', node.y.toString());
-      circle.setAttribute('r', node.complexity ? Math.max(12, node.complexity * 2) : '12');
+      circle.setAttribute('r', node.complexity ? Math.max(12, node.complexity * 2).toString() : '12');
       circle.setAttribute('fill', node.color);
       circle.setAttribute('stroke', '#FFFFFF');
       circle.setAttribute('stroke-width', '3');
