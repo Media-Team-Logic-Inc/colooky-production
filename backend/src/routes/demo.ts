@@ -39,7 +39,7 @@ router.get('/samples', async (req, res) => {
     });
   } catch (error) {
     console.error('❌ Error fetching demo samples:', error);
-    console.error('❌ Error stack:', error.stack);
+    console.error('❌ Error stack:', error instanceof Error ? error.stack : 'No stack trace');
     res.status(500).json({
       success: false,
       error: 'Failed to fetch demo samples'
