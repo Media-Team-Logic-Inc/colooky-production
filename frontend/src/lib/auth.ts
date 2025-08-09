@@ -10,14 +10,23 @@ console.log('🔧 NEXTAUTH_URL:', process.env.NEXTAUTH_URL);
 console.log('🔧 NEXTAUTH_SECRET:', process.env.NEXTAUTH_SECRET ? 'present' : 'missing');
 
 // Validate required environment variables
+const missingVars: string[] = [];
 if (!process.env.GITHUB_CLIENT_ID) {
   console.error('❌ GITHUB_CLIENT_ID is required');
+  missingVars.push('GITHUB_CLIENT_ID');
 }
 if (!process.env.GITHUB_CLIENT_SECRET) {
   console.error('❌ GITHUB_CLIENT_SECRET is required');
+  missingVars.push('GITHUB_CLIENT_SECRET');
 }
 if (!process.env.NEXTAUTH_SECRET) {
   console.error('❌ NEXTAUTH_SECRET is required');
+  missingVars.push('NEXTAUTH_SECRET');
+}
+
+if (missingVars.length > 0) {
+  console.error(`❌ Missing required environment variables: ${missingVars.join(', ')}`);
+  console.error('❌ Application may not function correctly');
 }
 
 export const authOptions: NextAuthOptions = {

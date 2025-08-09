@@ -7,6 +7,17 @@ import '../styles/globals.css';
 console.log('🔧 App initializing...');
 console.log('🔧 Environment check - NODE_ENV:', process.env.NODE_ENV);
 
+// Add error boundary for the entire app
+if (typeof window !== 'undefined') {
+  window.addEventListener('error', (error) => {
+    console.error('❌ Global error caught:', error);
+  });
+  
+  window.addEventListener('unhandledrejection', (event) => {
+    console.error('❌ Unhandled promise rejection:', event.reason);
+  });
+}
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -17,12 +28,19 @@ const queryClient = new QueryClient({
 });
 
 export default function App({ Component, pageProps: { session, ...pageProps } }: AppProps) {
-  return (
-    <SessionProvider session={session}>
-      <QueryClientProvider client={queryClient}>
-        <ToastProvider />
-        <Component {...pageProps} />
-      </QueryClientProvider>
-    </SessionProvider>
-  );
+  console.log('🔧 App component rendering...');
+  
+  try {
+    return (
+      <SessionProvider session={session}>
+        <QueryClientProvider client={queryClient}>
+          <ToastProvider />
+          <Component {...pageProps} />
+        </QueryClientProvider>
+      </SessionProvider>
+    );
+  } catch (error) {
+    console.error('❌ Error in App component:', error);
+    throw error;
+  }
 }
