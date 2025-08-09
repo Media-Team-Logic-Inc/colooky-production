@@ -142,24 +142,39 @@ async function startServer() {
 }
 
 // Handle process events
-process.on('uncaughtException', (error) => {
+process.on('uncaughtException', async (error) => {
   console.error('❌ Uncaught Exception:', error);
+  await cleanup();
   process.exit(1);
 });
 
-process.on('unhandledRejection', (reason, promise) => {
+process.on('unhandledRejection', async (reason, promise) => {
   console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
+  await cleanup();
   process.exit(1);
 });
 
-process.on('SIGTERM', () => {
+process.on('SIGTERM', async () => {
   console.log('📊 SIGTERM received - shutting down gracefully');
+  await cleanup();
   process.exit(0);
 });
 
-process.on('SIGINT', () => {
+process.on('SIGINT', async () => {
   console.log('📊 SIGINT received - shutting down gracefully');
+  await cleanup();
   process.exit(0);
 });
+
+// Cleanup function
+async function cleanup() {
+  try {
+    const { prisma } = await import('./config/database.js');
+    await prisma.$disconnect();
+    console.log('✅ Database connection closed');
+  } catch (error) {
+    console.error('❌ Error during cleanup:', error);
+  }
+}
 
 startServer();

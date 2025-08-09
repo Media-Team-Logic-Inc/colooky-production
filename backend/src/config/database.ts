@@ -28,9 +28,8 @@ export async function initDatabase() {
     await prisma.$connect();
     console.log('✅ Database connected successfully');
     
-    console.log('📊 Testing database with simple query...');
-    await prisma.$queryRaw`SELECT 1 as test`;
-    console.log('✅ Database query test successful');
+    // Skip test query to avoid prepared statement conflicts on Railway
+    console.log('📊 Skipping database test query in production');
     
     // Run any pending migrations in production
     if (process.env.NODE_ENV === 'production') {
