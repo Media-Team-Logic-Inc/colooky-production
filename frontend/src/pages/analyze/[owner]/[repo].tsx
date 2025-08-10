@@ -77,7 +77,10 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
 
   // Supported file extensions for analysis
   const supportedExtensions = new Set([
-    '.js', '.jsx', '.ts', '.tsx', '.py', '.java', '.go', '.rs', '.cpp', '.c', '.php', '.rb'
+    '.js', '.jsx', '.ts', '.tsx', '.py', '.java', '.go', '.rs', '.cpp', '.c', '.php', '.rb',
+    '.css', '.scss', '.sass', '.less', '.html', '.htm', '.vue', '.svelte', '.json', '.xml',
+    '.yaml', '.yml', '.md', '.mdx', '.graphql', '.sql', '.sh', '.bash', '.dockerfile',
+    '.swift', '.kt', '.dart', '.r', '.scala', '.clj', '.hs', '.elm', '.f90', '.pl', '.lua'
   ]);
 
   useEffect(() => {
@@ -132,7 +135,8 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
         language: getLanguageFromExtension(extension)
       };
 
-      if (item.type === 'dir' && shouldExpandDirectory(item.name)) {
+      if (item.type === 'dir') {
+        // Always try to load directory contents, but only auto-expand important ones
         try {
           const dirResponse = await fetch(item.url, {
             headers: {
@@ -144,7 +148,11 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
           if (dirResponse.ok) {
             const dirContents = await dirResponse.json();
             node.children = await buildFileTree(dirContents, item.path);
-            setExpandedDirs(prev => new Set(prev).add(item.path));
+            
+            // Auto-expand important directories
+            if (shouldExpandDirectory(item.name)) {
+              setExpandedDirs(prev => new Set(prev).add(item.path));
+            }
           }
         } catch (error) {
           console.warn(`Could not load directory ${item.path}:`, error);
@@ -161,26 +169,30 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
   };
 
   const shouldExpandDirectory = (dirName: string) => {
-    const importantDirs = ['src', 'lib', 'components', 'pages', 'utils', 'services'];
+    const importantDirs = [
+      'src', 'lib', 'components', 'pages', 'utils', 'services', 'hooks', 'contexts', 
+      'auth', 'layout', 'subscription', 'types', 'ui', 'api', 'config', 'constants',
+      'helpers', 'middleware', 'models', 'controllers', 'views', 'public', 'assets',
+      'styles', 'scss', 'css', 'app', 'routes', 'store', 'reducers', 'actions'
+    ];
     return importantDirs.includes(dirName.toLowerCase());
   };
 
   const getLanguageFromExtension = (ext: string): string => {
     const languageMap: { [key: string]: string } = {
-      '.js': 'JavaScript',
-      '.jsx': 'JavaScript',
-      '.ts': 'TypeScript',
-      '.tsx': 'TypeScript',
-      '.py': 'Python',
-      '.java': 'Java',
-      '.go': 'Go',
-      '.rs': 'Rust',
-      '.cpp': 'C++',
-      '.c': 'C',
-      '.php': 'PHP',
-      '.rb': 'Ruby'
+      '.js': 'JavaScript', '.jsx': 'JavaScript',
+      '.ts': 'TypeScript', '.tsx': 'TypeScript',
+      '.py': 'Python', '.java': 'Java', '.go': 'Go', '.rs': 'Rust',
+      '.cpp': 'C++', '.c': 'C', '.php': 'PHP', '.rb': 'Ruby',
+      '.css': 'CSS', '.scss': 'SCSS', '.sass': 'Sass', '.less': 'Less',
+      '.html': 'HTML', '.htm': 'HTML', '.vue': 'Vue', '.svelte': 'Svelte',
+      '.json': 'JSON', '.xml': 'XML', '.yaml': 'YAML', '.yml': 'YAML',
+      '.md': 'Markdown', '.mdx': 'MDX', '.graphql': 'GraphQL', '.sql': 'SQL',
+      '.sh': 'Shell', '.bash': 'Bash', '.dockerfile': 'Docker',
+      '.swift': 'Swift', '.kt': 'Kotlin', '.dart': 'Dart', '.r': 'R',
+      '.scala': 'Scala', '.clj': 'Clojure', '.hs': 'Haskell', '.elm': 'Elm'
     };
-    return languageMap[ext.toLowerCase()] || 'Unknown';
+    return languageMap[ext.toLowerCase()] || 'Text';
   };
 
   const autoSelectSupportedFiles = (tree: FileTreeNode[]) => {
@@ -603,16 +615,23 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
                   onClick={() => {
                     setCurrentStep('select');
                     setAnalysis(null);
+                    setSelectedFiles([]);
                   }}
                   className="px-6 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-medium transition-colors"
                 >
-                  Analyze Again
+                  ← Back to File Selection
                 </button>
                 <Link
                   href={`/analytics/${repository.owner}/${repository.name}`}
                   className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
                 >
                   View Full Analytics
+                </Link>
+                <Link
+                  href="/repositories"
+                  className="px-6 py-3 bg-slate-600 hover:bg-slate-500 text-white rounded-lg font-medium transition-colors"
+                >
+                  All Repositories
                 </Link>
               </div>
             </div>
