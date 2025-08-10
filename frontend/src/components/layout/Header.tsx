@@ -51,7 +51,7 @@ const Header = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center py-4">
           {/* Logo */}
-          <Link href="/dashboard" className="flex items-center group">
+          <Link href="/" className="flex items-center group">
             <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
               <Code className="w-5 h-5 text-white" />
             </div>

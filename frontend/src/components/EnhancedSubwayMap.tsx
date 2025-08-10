@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
+import { ChevronUp, ChevronDown, Move, ZoomIn, ZoomOut } from 'lucide-react';
 
 interface SubwayNode {
   id: string;
@@ -22,6 +23,12 @@ interface SubwayConnection {
 
 const EnhancedSubwayMap: React.FC = () => {
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
+  const [legendCollapsed, setLegendCollapsed] = useState(false);
+  const [zoom, setZoom] = useState(1);
+  const [legendPosition, setLegendPosition] = useState({ top: 24, right: 24 });
+  const [infoPanelPosition, setInfoPanelPosition] = useState({ bottom: 24, left: 24 });
+  const [isDragging, setIsDragging] = useState<'legend' | 'info' | null>(null);
+  const mapRef = useRef<HTMLDivElement>(null);
 
   const nodes: SubwayNode[] = [
     {
@@ -202,6 +209,35 @@ const EnhancedSubwayMap: React.FC = () => {
 
   const selectedNodeInfo = nodes.find(node => node.id === selectedNode);
 
+  const handleZoomIn = () => setZoom(prev => Math.min(prev + 0.2, 3));
+  const handleZoomOut = () => setZoom(prev => Math.max(prev - 0.2, 0.5));
+
+  const handleMouseDown = (panel: 'legend' | 'info') => {
+    setIsDragging(panel);
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging || !mapRef.current) return;
+    
+    const rect = mapRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    
+    if (isDragging === 'legend') {
+      setLegendPosition({ 
+        top: Math.max(0, y - 50), 
+        right: Math.max(0, rect.width - x - 100)
+      });
+    } else if (isDragging === 'info') {
+      setInfoPanelPosition({ 
+        bottom: Math.max(0, rect.height - y - 50), 
+        left: Math.max(0, x - 100)
+      });
+    }
+  };
+
+  const handleMouseUp = () => setIsDragging(null);
+
   return (
     <div className="w-full bg-slate-900 rounded-lg border border-slate-700">
       {/* Header */}
@@ -210,24 +246,81 @@ const EnhancedSubwayMap: React.FC = () => {
         <p className="text-slate-400">User Signup Flow - From Button Click to Database</p>
       </div>
 
-      <div className="relative p-6">
-        {/* Legend */}
-        <div className="absolute top-6 right-6 bg-slate-800/95 border border-slate-600 rounded-lg p-4 z-10">
-          <h3 className="text-sm font-semibold text-white mb-3">Legend</h3>
-          {legendItems.map((item, index) => (
-            <div key={index} className="flex items-center mb-2 last:mb-0">
-              <div 
-                className="w-4 h-4 rounded mr-2" 
-                style={{ backgroundColor: item.color }}
-              />
-              <span className="text-xs text-slate-300">{item.label}</span>
+      <div 
+        ref={mapRef}
+        className="relative p-6"
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
+      >
+        {/* Zoom Controls */}
+        <div className="absolute top-6 left-6 flex flex-col gap-2 z-20">
+          <button
+            onClick={handleZoomIn}
+            className="p-2 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-lg transition-colors"
+            title="Zoom In"
+          >
+            <ZoomIn className="w-4 h-4 text-white" />
+          </button>
+          <button
+            onClick={handleZoomOut}
+            className="p-2 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-lg transition-colors"
+            title="Zoom Out"
+          >
+            <ZoomOut className="w-4 h-4 text-white" />
+          </button>
+          <div className="text-xs text-slate-400 text-center">{Math.round(zoom * 100)}%</div>
+        </div>
+
+        {/* Movable Legend */}
+        <div 
+          className="absolute bg-slate-800/95 border border-slate-600 rounded-lg z-10 cursor-move"
+          style={{ 
+            top: `${legendPosition.top}px`, 
+            right: `${legendPosition.right}px`,
+            minWidth: legendCollapsed ? 'auto' : '120px'
+          }}
+        >
+          <div 
+            className="flex items-center justify-between p-2 border-b border-slate-600"
+            onMouseDown={() => handleMouseDown('legend')}
+          >
+            <h3 className="text-sm font-semibold text-white">Legend</h3>
+            <div className="flex items-center gap-1">
+              <Move className="w-3 h-3 text-slate-400" />
+              <button
+                onClick={() => setLegendCollapsed(!legendCollapsed)}
+                className="p-1 hover:bg-slate-700 rounded"
+              >
+                {legendCollapsed ? 
+                  <ChevronDown className="w-3 h-3 text-slate-400" /> : 
+                  <ChevronUp className="w-3 h-3 text-slate-400" />
+                }
+              </button>
             </div>
-          ))}
+          </div>
+          {!legendCollapsed && (
+            <div className="p-3">
+              {legendItems.map((item, index) => (
+                <div key={index} className="flex items-center mb-2 last:mb-0">
+                  <div 
+                    className="w-4 h-4 rounded mr-2 flex-shrink-0" 
+                    style={{ backgroundColor: item.color }}
+                  />
+                  <span className="text-xs text-slate-300">{item.label}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* SVG Flow Diagram */}
-        <div className="relative w-full h-[500px] overflow-visible">
-          <svg viewBox="0 0 800 420" className="w-full h-full">
+        <div className="relative w-full h-[500px] overflow-hidden">
+          <svg 
+            viewBox="0 0 800 420" 
+            className="w-full h-full transition-transform duration-200"
+            style={{ transform: `scale(${zoom})` }}
+          >
             <defs>
               <marker id="arrowhead" markerWidth="10" markerHeight="7" 
                       refX="9" refY="3.5" orient="auto">
@@ -307,26 +400,41 @@ const EnhancedSubwayMap: React.FC = () => {
           </svg>
         </div>
 
-        {/* Node Information Panel */}
-        <div className="absolute bottom-6 left-6 bg-slate-800/95 border border-slate-600 rounded-lg p-4 max-w-sm">
-          {selectedNodeInfo ? (
-            <>
-              <h3 className="text-blue-400 font-semibold mb-2">{selectedNodeInfo.title}</h3>
-              {selectedNodeInfo.details.map((detail, index) => (
-                <p key={index} className="text-xs text-slate-300 mb-1">• {detail}</p>
-              ))}
-            </>
-          ) : (
-            <>
-              <h3 className="text-blue-400 font-semibold mb-2">Click any node to see details</h3>
-              <p className="text-xs text-slate-300 mb-1">
-                This diagram shows the complete flow from when a user clicks "Sign Up" to when they land on the dashboard.
-              </p>
-              <p className="text-xs text-slate-300">
-                <strong>Colors represent different layers:</strong> Blue for frontend, Green for API, Purple for security, Yellow for database operations.
-              </p>
-            </>
-          )}
+        {/* Movable Node Information Panel */}
+        <div 
+          className="absolute bg-slate-800/95 border border-slate-600 rounded-lg z-10 max-w-sm cursor-move"
+          style={{ 
+            bottom: `${infoPanelPosition.bottom}px`, 
+            left: `${infoPanelPosition.left}px` 
+          }}
+        >
+          <div 
+            className="flex items-center justify-between p-2 border-b border-slate-600"
+            onMouseDown={() => handleMouseDown('info')}
+          >
+            <h3 className="text-sm font-semibold text-white">Node Info</h3>
+            <Move className="w-3 h-3 text-slate-400" />
+          </div>
+          <div className="p-3">
+            {selectedNodeInfo ? (
+              <>
+                <h4 className="text-blue-400 font-semibold mb-2">{selectedNodeInfo.title}</h4>
+                {selectedNodeInfo.details.map((detail, index) => (
+                  <p key={index} className="text-xs text-slate-300 mb-1">• {detail}</p>
+                ))}
+              </>
+            ) : (
+              <>
+                <h4 className="text-blue-400 font-semibold mb-2">Click any node to see details</h4>
+                <p className="text-xs text-slate-300 mb-1">
+                  This diagram shows the complete flow from when a user clicks "Sign Up" to when they land on the dashboard.
+                </p>
+                <p className="text-xs text-slate-300">
+                  <strong>Colors represent different layers:</strong> Blue for frontend, Green for API, Purple for security, Yellow for database operations.
+                </p>
+              </>
+            )}
+          </div>
         </div>
       </div>
     </div>
