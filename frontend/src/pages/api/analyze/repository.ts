@@ -390,17 +390,43 @@ async function generateVisualization(analysis: any): Promise<any> {
   let globalIndex = 0;
   const filePositions: { [key: string]: { x: number; y: number } } = {};
   
-  // Create horizontal-focused layout with better spacing
+  // Create intelligent layout based on file count and elements
+  const totalFiles = Object.keys(fileGroups).length;
+  const totalElements = analysis.elements.length;
+  
+  // Adjust layout based on content size
+  let columnsPerFile, elementSpacing, fileSpacing, verticalSpacing;
+  
+  if (totalElements <= 5) {
+    // Small analysis: spread elements out more
+    columnsPerFile = 1;
+    elementSpacing = 200;
+    fileSpacing = 300;
+    verticalSpacing = 80;
+  } else if (totalElements <= 15) {
+    // Medium analysis: balanced layout
+    columnsPerFile = 2;
+    elementSpacing = 150;
+    fileSpacing = 350;
+    verticalSpacing = 70;
+  } else {
+    // Large analysis: compact but readable
+    columnsPerFile = 3;
+    elementSpacing = 120;
+    fileSpacing = 400;
+    verticalSpacing = 60;
+  }
+
   Object.keys(fileGroups).forEach((filePath, fileIndex) => {
     const fileElements = fileGroups[filePath];
-    const fileX = 80 + (fileIndex % 6) * 280; // 6 columns horizontally, closer together
-    const fileY = 80 + Math.floor(fileIndex / 6) * 180; // Less vertical stacking
+    const fileX = 100 + (fileIndex % 4) * fileSpacing;
+    const fileY = 100 + Math.floor(fileIndex / 4) * 200;
     filePositions[filePath] = { x: fileX, y: fileY };
     
-    // Create nodes for each element within the file - horizontal flow
+    // Create nodes for each element within the file
     fileElements.forEach((element: any, elementIndex: number) => {
-      const nodeX = fileX + (elementIndex % 4) * 65; // 4 elements per row, tighter spacing
-      const nodeY = fileY + Math.floor(elementIndex / 4) * 45; // Reduced vertical spacing
+      const nodeX = fileX + (elementIndex % columnsPerFile) * elementSpacing;
+      const nodeY = fileY + Math.floor(elementIndex / columnsPerFile) * verticalSpacing;
       
       const nodeColor = 
         element.type === 'function' ? '#3b82f6' :
@@ -414,13 +440,17 @@ async function generateVisualization(analysis: any): Promise<any> {
         element.type === 'import' ? '#fbbf24' :
         element.type === 'export' ? '#b0e0e6' : '#a78bfa'; // Light baby blue stroke
 
+      // Adjust node size based on analysis size
+      const nodeWidth = totalElements <= 5 ? 180 : totalElements <= 15 ? 140 : 105;
+      const nodeHeight = totalElements <= 5 ? 50 : 40;
+      
       nodes.push({
         id: element.id,
-        title: element.name.length > 15 ? element.name.substring(0, 15) + '...' : element.name,
+        title: element.name.length > (nodeWidth/8) ? element.name.substring(0, Math.floor(nodeWidth/8)) + '...' : element.name,
         x: nodeX,
         y: nodeY,
-        width: 105, // Slightly smaller
-        height: 40,
+        width: nodeWidth,
+        height: nodeHeight,
         color: nodeColor,
         strokeColor: strokeColor,
         stepNumber: globalIndex + 1,
