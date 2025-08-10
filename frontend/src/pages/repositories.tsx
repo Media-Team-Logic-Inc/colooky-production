@@ -198,15 +198,12 @@ export default function Repositories({ user, accessToken }: RepositoriesProps) {
                     </div>
                     
                     <div className="ml-4">
-                      <button
-                        onClick={() => {
-                          // TODO: Implement repository analysis
-                          console.log('Analyzing repository:', repo.full_name);
-                        }}
-                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
+                      <Link
+                        href={`/analyze/${repo.owner.login}/${repo.name}`}
+                        className="inline-block px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
                       >
                         Analyze Repository
-                      </button>
+                      </Link>
                     </div>
                   </div>
                 </div>
