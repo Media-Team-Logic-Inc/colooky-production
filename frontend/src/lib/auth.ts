@@ -55,11 +55,10 @@ export const authOptions: NextAuthOptions = {
       return session;
     },
   },
-  // Temporarily disable custom pages for debugging
-  // pages: {
-  //   signIn: '/auth/signin',
-  //   error: '/auth/error',
-  // },
+  pages: {
+    signIn: '/auth/signin',
+    error: '/auth/error',
+  },
   secret: process.env.NEXTAUTH_SECRET || 'fallback-secret-for-development',
   useSecureCookies: process.env.NODE_ENV === 'production',
   cookies: {
