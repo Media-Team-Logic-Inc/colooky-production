@@ -41,12 +41,14 @@ interface FlexibleSubwayMapProps {
   scenario: FlowScenario;
   onScenarioChange?: (scenarioId: string) => void;
   availableScenarios?: FlowScenario[];
+  onNodeClick?: (nodeDetails: any) => void;
 }
 
 const FlexibleSubwayMap: React.FC<FlexibleSubwayMapProps> = ({ 
   scenario, 
   onScenarioChange,
-  availableScenarios = []
+  availableScenarios = [],
+  onNodeClick
 }) => {
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
   const [legendCollapsed, setLegendCollapsed] = useState(false);
@@ -260,7 +262,12 @@ const FlexibleSubwayMap: React.FC<FlexibleSubwayMapProps> = ({
               <g
                 key={node.id}
                 className="cursor-pointer transition-transform hover:scale-105"
-                onClick={() => setSelectedNode(node.id)}
+                onClick={() => {
+                  setSelectedNode(node.id);
+                  if (onNodeClick) {
+                    onNodeClick(node);
+                  }
+                }}
               >
                 <rect
                   x={node.x}

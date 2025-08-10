@@ -400,19 +400,19 @@ async function generateVisualization(analysis: any): Promise<any> {
 
   // Create connections based on dependencies with detailed labels
   analysis.dependencies.forEach((dep: any) => {
-    // Find source and target nodes
+    // Find source file nodes (imports)
     const sourceNodes = nodes.filter(n => n.id.includes(dep.from.replace(/[^a-zA-Z0-9]/g, '_')));
-    const targetPath = dep.to;
     
-    // Look for target file or related imports
-    const targetNodes = nodes.filter(n => 
-      n.id.includes(targetPath.replace(/[^a-zA-Z0-9]/g, '_')) ||
-      (n.details && n.details.some((d: string) => d.includes(targetPath)))
+    // For imports, connect to any node that imports the same module
+    const importTargetNodes = nodes.filter(n => 
+      n.id.includes('import') && 
+      (n.id.includes(dep.to.replace(/[^a-zA-Z0-9]/g, '_')) || 
+       (n.details && n.details.some((d: string) => d.includes(dep.to))))
     );
 
-    if (sourceNodes.length > 0 && targetNodes.length > 0) {
+    if (sourceNodes.length > 0 && importTargetNodes.length > 0) {
       const sourceNode = sourceNodes[0];
-      const targetNode = targetNodes[0];
+      const targetNode = importTargetNodes[0];
       
       connections.push({
         from: { x: sourceNode.x + sourceNode.width, y: sourceNode.y + sourceNode.height / 2 },
@@ -422,6 +422,25 @@ async function generateVisualization(analysis: any): Promise<any> {
         detail: dep.detail,
         animated: true
       });
+    }
+  });
+
+  // Add basic sequential connections between functions in the same file for visual flow
+  Object.keys(fileGroups).forEach(filePath => {
+    const fileElements = fileGroups[filePath].filter(el => el.type === 'function');
+    for (let i = 0; i < fileElements.length - 1; i++) {
+      const currentNode = nodes.find(n => n.id === fileElements[i].id);
+      const nextNode = nodes.find(n => n.id === fileElements[i + 1].id);
+      
+      if (currentNode && nextNode) {
+        connections.push({
+          from: { x: currentNode.x + currentNode.width, y: currentNode.y + currentNode.height / 2 },
+          to: { x: nextNode.x, y: nextNode.y + nextNode.height / 2 },
+          color: '#64b5f6',
+          label: 'Flow',
+          detail: `Function flow in ${filePath}`
+        });
+      }
     }
   });
 
