@@ -35,12 +35,12 @@ export const authOptions: NextAuthOptions = {
     GitHubProvider({
       clientId: process.env.GITHUB_CLIENT_ID || 'missing-client-id',
       clientSecret: process.env.GITHUB_CLIENT_SECRET || 'missing-client-secret',
-      // Temporarily remove custom authorization to test basic OAuth flow
-      // authorization: {
-      //   params: {
-      //     scope: 'read:user user:email repo',
-      //   },
-      // },
+      authorization: {
+        params: {
+          scope: 'read:user user:email',
+          redirect_uri: `${process.env.NEXTAUTH_URL || 'https://colooky.com'}/api/auth/callback/github`
+        },
+      },
     }),
   ],
   callbacks: {
