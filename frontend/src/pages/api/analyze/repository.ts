@@ -373,7 +373,7 @@ async function generateVisualization(analysis: any): Promise<any> {
     { color: '#3b82f6', label: 'Functions' },
     { color: '#10b981', label: 'Classes' },
     { color: '#f59e0b', label: 'Imports' },
-    { color: '#e11d48', label: 'Exports' },
+    { color: '#87ceeb', label: 'Exports' }, // Baby blue for exports
     { color: '#8b5cf6', label: 'Function Calls' },
     { color: '#ef4444', label: 'Cross-file Dependencies' }
   ];
@@ -390,29 +390,29 @@ async function generateVisualization(analysis: any): Promise<any> {
   let globalIndex = 0;
   const filePositions: { [key: string]: { x: number; y: number } } = {};
   
-  // Create file-based layout with better spacing
+  // Create horizontal-focused layout with better spacing
   Object.keys(fileGroups).forEach((filePath, fileIndex) => {
     const fileElements = fileGroups[filePath];
-    const fileX = 100 + (fileIndex % 3) * 450; // Wider columns, 3 per row
-    const fileY = 100 + Math.floor(fileIndex / 3) * 250; // More vertical space
+    const fileX = 80 + (fileIndex % 6) * 280; // 6 columns horizontally, closer together
+    const fileY = 80 + Math.floor(fileIndex / 6) * 180; // Less vertical stacking
     filePositions[filePath] = { x: fileX, y: fileY };
     
-    // Create nodes for each element within the file with better spacing
+    // Create nodes for each element within the file - horizontal flow
     fileElements.forEach((element: any, elementIndex: number) => {
-      const nodeX = fileX + (elementIndex % 2) * 180; // 2 elements per row for better spacing
-      const nodeY = fileY + Math.floor(elementIndex / 2) * 70; // More vertical spacing
+      const nodeX = fileX + (elementIndex % 4) * 65; // 4 elements per row, tighter spacing
+      const nodeY = fileY + Math.floor(elementIndex / 4) * 45; // Reduced vertical spacing
       
       const nodeColor = 
         element.type === 'function' ? '#3b82f6' :
         element.type === 'class' ? '#10b981' :
         element.type === 'import' ? '#f59e0b' :
-        element.type === 'export' ? '#e11d48' : '#8b5cf6';
+        element.type === 'export' ? '#87ceeb' : '#8b5cf6'; // Baby blue for exports
         
       const strokeColor = 
         element.type === 'function' ? '#60a5fa' :
         element.type === 'class' ? '#34d399' :
         element.type === 'import' ? '#fbbf24' :
-        element.type === 'export' ? '#f87171' : '#a78bfa';
+        element.type === 'export' ? '#b0e0e6' : '#a78bfa'; // Light baby blue stroke
 
       nodes.push({
         id: element.id,

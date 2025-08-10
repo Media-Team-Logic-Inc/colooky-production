@@ -190,16 +190,16 @@ const FlexibleSubwayMap: React.FC<FlexibleSubwayMapProps> = ({
             style={{ 
               transform: `scale(${zoom})`,
               transformOrigin: 'top left',
-              width: `${1600 * zoom}px`,
-              height: `${1000 * zoom}px`,
-              minWidth: '1600px',
-              minHeight: '1000px'
+              width: `${2400 * zoom}px`,
+              height: `${1400 * zoom}px`,
+              minWidth: '2400px',
+              minHeight: '1400px'
             }}
           >
             <svg 
-              width="1600" 
-              height="1000"
-              viewBox="0 0 1600 1000" 
+              width="2400" 
+              height="1400"
+              viewBox="0 0 2400 1400" 
               className="block"
               preserveAspectRatio="xMinYMin meet"
             >
@@ -214,13 +214,16 @@ const FlexibleSubwayMap: React.FC<FlexibleSubwayMapProps> = ({
             {scenario.nodes.map((node) => (
               <g
                 key={node.id}
-                className="cursor-pointer transition-transform hover:scale-105"
+                className="cursor-pointer"
                 onClick={() => {
                   setSelectedNode(node.id);
                   if (onNodeClick) {
                     onNodeClick(node);
                   }
                 }}
+                style={{ transition: 'opacity 0.2s' }}
+                onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.8'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.opacity = '1'; }}
               >
                 <rect
                   x={node.x}
