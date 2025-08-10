@@ -8,6 +8,7 @@ console.log('🔧 GITHUB_CLIENT_ID:', process.env.GITHUB_CLIENT_ID ? 'present' :
 console.log('🔧 GITHUB_CLIENT_SECRET:', process.env.GITHUB_CLIENT_SECRET ? 'present' : 'missing');
 console.log('🔧 NEXTAUTH_URL:', process.env.NEXTAUTH_URL);
 console.log('🔧 NEXTAUTH_SECRET:', process.env.NEXTAUTH_SECRET ? 'present' : 'missing');
+console.log('🔧 NEXTAUTH_URL for callbacks:', process.env.NEXTAUTH_URL);
 
 // Validate required environment variables
 const missingVars: string[] = [];
