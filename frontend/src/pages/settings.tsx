@@ -25,6 +25,54 @@ export default function Settings({ user }: SettingsProps) {
     }
   });
   const [theme, setTheme] = useState('dark');
+  const [saving, setSaving] = useState(false);
+
+  const handleThemeChange = (newTheme: string) => {
+    setTheme(newTheme);
+    
+    // Apply theme immediately to document
+    if (newTheme === 'light') {
+      document.documentElement.classList.remove('dark');
+      document.documentElement.classList.add('light');
+    } else {
+      document.documentElement.classList.remove('light');
+      document.documentElement.classList.add('dark');
+    }
+    
+    // Save to localStorage
+    localStorage.setItem('colooky_theme', newTheme);
+  };
+
+  const handleSaveSettings = async () => {
+    setSaving(true);
+    
+    try {
+      // TODO: Save to database via API
+      const settingsData = {
+        notifications,
+        theme,
+        privacy,
+        user_preferences: {
+          theme,
+          notifications_enabled: notifications.email.analysis_complete
+        }
+      };
+      
+      console.log('Saving settings:', settingsData);
+      
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Show success message
+      alert('Settings saved successfully!');
+      
+    } catch (error) {
+      console.error('Failed to save settings:', error);
+      alert('Failed to save settings. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
   const [privacy, setPrivacy] = useState({
     make_profile_public: false,
     show_activity: true,
@@ -159,8 +207,12 @@ export default function Settings({ user }: SettingsProps) {
                       </div>
 
                       <div className="flex gap-3">
-                        <button className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors">
-                          Save Changes
+                        <button 
+                          onClick={handleSaveSettings}
+                          disabled={saving}
+                          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-lg font-medium transition-colors"
+                        >
+                          {saving ? 'Saving...' : 'Save Changes'}
                         </button>
                         <button className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-medium transition-colors">
                           Cancel
@@ -315,7 +367,7 @@ export default function Settings({ user }: SettingsProps) {
                           {['dark', 'light', 'auto'].map((themeOption) => (
                             <button
                               key={themeOption}
-                              onClick={() => setTheme(themeOption)}
+                              onClick={() => handleThemeChange(themeOption)}
                               className={`p-4 border-2 rounded-lg transition-all ${
                                 theme === themeOption
                                   ? 'border-blue-500 bg-blue-600/10'

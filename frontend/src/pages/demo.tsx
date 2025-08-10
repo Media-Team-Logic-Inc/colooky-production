@@ -161,6 +161,169 @@ export default async function handler(req, res) {
     res.status(500).json({ error: 'Internal server error' });
   }
 }`
+  },
+  'password-hash': {
+    language: 'JavaScript',
+    highlightLine: 26,
+    content: `// bcrypt password hashing
+import bcrypt from 'bcryptjs';
+
+export async function hashPassword(password, saltRounds = 12) {
+  try {
+    // Generate salt
+    const salt = await bcrypt.genSalt(saltRounds);
+    
+    // Hash password with salt
+    const hashedPassword = await bcrypt.hash(password, salt);
+    
+    return hashedPassword;
+  } catch (error) {
+    throw new Error('Password hashing failed');
+  }
+}
+
+export async function verifyPassword(password, hashedPassword) {
+  try {
+    return await bcrypt.compare(password, hashedPassword);
+  } catch (error) {
+    throw new Error('Password verification failed');
+  }
+}
+
+// Usage in signup endpoint
+const saltRounds = 12;
+const hashedPassword = await bcrypt.hash(password, saltRounds);`
+  },
+  'db-insert': {
+    language: 'JavaScript', 
+    highlightLine: 78,
+    content: `// User model and database operations
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
+
+export class User {
+  static async create(userData) {
+    try {
+      const user = await prisma.user.create({
+        data: {
+          email: userData.email,
+          password: userData.password,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        }
+      });
+      
+      return user;
+    } catch (error) {
+      if (error.code === 'P2002') {
+        throw new Error('User already exists');
+      }
+      throw new Error('Database error: ' + error.message);
+    }
+  }
+  
+  static async findOne(query) {
+    return await prisma.user.findFirst({
+      where: query
+    });
+  }
+}
+
+// Alternative Mongoose version
+// const user = await User.create({
+//   email,
+//   password: hashedPassword,
+//   createdAt: new Date()
+// });`
+  },
+  'response': {
+    language: 'JavaScript',
+    highlightLine: 201,
+    content: `// API response handling
+export default async function handler(req, res) {
+  try {
+    // ... authentication logic ...
+    
+    const user = await User.create({
+      email,
+      password: hashedPassword
+    });
+
+    // Return success response
+    res.status(201).json({
+      success: true,
+      message: 'User created successfully',
+      user: {
+        id: user._id,
+        email: user.email,
+        createdAt: user.createdAt
+      }
+    });
+
+  } catch (error) {
+    console.error('Signup error:', error);
+    
+    if (error.message.includes('already exists')) {
+      return res.status(409).json({ 
+        success: false,
+        error: 'User already exists' 
+      });
+    }
+    
+    res.status(500).json({ 
+      success: false,
+      error: 'Internal server error' 
+    });
+  }
+}`
+  },
+  'fetch-data': {
+    language: 'JavaScript',
+    highlightLine: 128,
+    content: `// Frontend data fetching
+import { useState, useEffect } from 'react';
+
+export function useUserData(userId) {
+  const [userData, setUserData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const fetchUserData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const response = await fetch(\`/api/users/\${userId}\`, {
+        method: 'GET',
+        headers: {
+          'Authorization': \`Bearer \${getAuthToken()}\`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(\`HTTP error! status: \${response.status}\`);
+      }
+
+      const data = await response.json();
+      setUserData(data);
+      
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (userId) {
+      fetchUserData();
+    }
+  }, [userId]);
+
+  return { userData, loading, error, refetch: fetchUserData };
+}`
   }
 };
 
