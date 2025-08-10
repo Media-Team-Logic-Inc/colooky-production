@@ -1,7 +1,9 @@
 import Link from 'next/link';
 import { Github, ArrowRight, Code, Users, Shield, Zap } from 'lucide-react';
+import { useSession } from 'next-auth/react';
 
 export default function Home() {
+  const { data: session } = useSession();
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-800">
       {/* Header */}
@@ -66,14 +68,25 @@ export default function Home() {
             Track your development progress and share your coding story with the world.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link 
-              href="/auth/signin"
-              className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white px-8 py-4 rounded-xl font-semibold text-lg flex items-center justify-center gap-2 transition-all duration-300 shadow-xl hover:shadow-cyan-500/25 hover:scale-105"
-            >
-              <Github className="h-5 w-5" />
-              Start with GitHub
-              <ArrowRight className="h-5 w-5" />
-            </Link>
+            {session ? (
+              <Link 
+                href="/dashboard"
+                className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white px-8 py-4 rounded-xl font-semibold text-lg flex items-center justify-center gap-2 transition-all duration-300 shadow-xl hover:shadow-cyan-500/25 hover:scale-105"
+              >
+                <Code className="h-5 w-5" />
+                Go to Dashboard
+                <ArrowRight className="h-5 w-5" />
+              </Link>
+            ) : (
+              <Link 
+                href="/auth/signin"
+                className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white px-8 py-4 rounded-xl font-semibold text-lg flex items-center justify-center gap-2 transition-all duration-300 shadow-xl hover:shadow-cyan-500/25 hover:scale-105"
+              >
+                <Github className="h-5 w-5" />
+                Start with GitHub
+                <ArrowRight className="h-5 w-5" />
+              </Link>
+            )}
             <Link 
               href="/demo"
               className="border-2 border-purple-400/50 hover:border-purple-400 bg-purple-900/20 hover:bg-purple-800/30 text-purple-100 px-8 py-4 rounded-xl font-semibold text-lg transition-all duration-300 backdrop-blur-sm inline-block text-center"

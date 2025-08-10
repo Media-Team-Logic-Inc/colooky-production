@@ -37,7 +37,7 @@ export const authOptions: NextAuthOptions = {
       clientSecret: process.env.GITHUB_CLIENT_SECRET || 'missing-client-secret',
       authorization: {
         params: {
-          scope: 'read:user user:email',
+          scope: 'read:user user:email repo',
           redirect_uri: `${process.env.NEXTAUTH_URL || 'https://colooky.com'}/api/auth/callback/github`
         },
       },
