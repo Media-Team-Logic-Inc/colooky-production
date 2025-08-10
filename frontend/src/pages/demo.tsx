@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
-import SubwayMap from '../components/SubwayMap';
+import EnhancedSubwayMap from '../components/EnhancedSubwayMap';
 
 // Demo API types
 interface DemoSample {
@@ -274,13 +274,9 @@ export default function DemoPage() {
               </div>
             </div>
 
-            {/* Subway Map Visualization */}
+            {/* Enhanced Subway Map Visualization */}
             <div className="mb-8">
-              <SubwayMap 
-                entities={analysis.entities}
-                flows={analysis.flows}
-                selectedFlow={selectedFlow}
-              />
+              <EnhancedSubwayMap />
             </div>
 
             <div className="grid lg:grid-cols-3 gap-6">
