@@ -1,46 +1,13 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { v4 as uuidv4 } from 'uuid';
-
-// Global storage for analysis jobs (in production, use Redis or database)
-declare global {
-  var analysisJobs: Map<string, AnalysisJob>;
-}
+import { AnalysisJob, AnalysisResult } from '../../../types/analysis';
 
 // Initialize global storage if it doesn't exist
 if (!global.analysisJobs) {
-  global.analysisJobs = new Map();
+  global.analysisJobs = new Map<string, AnalysisJob>();
 }
 
 const analysisJobs = global.analysisJobs;
-
-interface AnalysisJob {
-  id: string;
-  repository: string;
-  files: string[];
-  status: 'pending' | 'analyzing' | 'completed' | 'error';
-  progress: number;
-  files_analyzed: number;
-  total_files: number;
-  error_message?: string;
-  result?: AnalysisResult;
-  created_at: Date;
-}
-
-interface AnalysisResult {
-  id: string;
-  repository: string;
-  visualization: any;
-  summary: {
-    total_files: number;
-    supported_files: number;
-    functions: number;
-    classes: number;
-    imports: number;
-    complexity_score: number;
-    main_language: string;
-    file_types: { [key: string]: number };
-  };
-}
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
@@ -199,7 +166,7 @@ function getLanguageFromExtension(ext: string): string {
 async function analyzeCodeStructure(
   fileContents: { path: string; content: string; language: string }[],
   onProgress: (progress: number) => void
-) {
+): Promise<any> {
   const analysis = {
     functions: 0,
     classes: 0,
@@ -322,7 +289,7 @@ function analyzeFile(file: { path: string; content: string; language: string }) 
   return analysis;
 }
 
-async function generateVisualization(analysis: any) {
+async function generateVisualization(analysis: any): Promise<any> {
   // Create a subway map visualization from the analysis
   // This is a simplified version - you could make this much more sophisticated
   
@@ -386,9 +353,9 @@ async function generateVisualization(analysis: any) {
 setInterval(() => {
   const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000); // 24 hours ago
   
-  for (const [id, job] of analysisJobs) {
+  analysisJobs.forEach((job, id) => {
     if (job.created_at < cutoff) {
       analysisJobs.delete(id);
     }
-  }
+  });
 }, 60 * 60 * 1000); // Run every hour

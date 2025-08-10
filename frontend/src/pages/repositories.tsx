@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { GetServerSideProps } from 'next';
 import { getSession } from 'next-auth/react';
 import Head from 'next/head';
+import Link from 'next/link';
 import Header from '../components/layout/Header';
 import { Github, Star, GitFork, ExternalLink, Clock } from 'lucide-react';
 
@@ -17,6 +18,9 @@ interface Repository {
   language: string | null;
   updated_at: string;
   size: number;
+  owner: {
+    login: string;
+  };
 }
 
 interface RepositoriesProps {
