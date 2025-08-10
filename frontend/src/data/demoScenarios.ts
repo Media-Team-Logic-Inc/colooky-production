@@ -22,10 +22,10 @@ export const demoScenarios: FlowScenario[] = [
         color: '#3b82f6', strokeColor: '#60a5fa',
         stepNumber: 1,
         details: [
-          'File: src/components/SignupButton.jsx',
+          'File: src/components/SignupButton.jsx:21',
           'Triggers onClick handler',
-          'Opens signup modal',
-          'Line 23: setShowModal(true)'
+          'Opens signup modal', 
+          'Line 21: setShowModal(true)'
         ]
       },
       {
@@ -35,7 +35,7 @@ export const demoScenarios: FlowScenario[] = [
         color: '#3b82f6', strokeColor: '#60a5fa',
         stepNumber: 2,
         details: [
-          'File: src/components/SignupModal.jsx',
+          'File: src/components/SignupModal.jsx:67',
           'Renders form with email/password fields',
           'Client-side validation',
           'Calls handleSubmit on form submission'
@@ -48,7 +48,7 @@ export const demoScenarios: FlowScenario[] = [
         color: '#10b981', strokeColor: '#34d399',
         stepNumber: 3,
         details: [
-          'File: src/pages/api/auth/signup.js',
+          'File: src/pages/api/auth/signup.js:137',
           'HTTP POST endpoint',
           'Validates request body',
           'Calls authentication service'

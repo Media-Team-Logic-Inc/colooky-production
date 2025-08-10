@@ -8,6 +8,7 @@ import { File } from 'lucide-react';
 const mockCodeContent = {
   'signup-btn': {
     language: 'JavaScript',
+    highlightLine: 21,
     content: `import React, { useState } from 'react';
 import { Button } from './ui/Button';
 import SignupModal from './SignupModal';
@@ -40,6 +41,7 @@ export default function SignupButton() {
   },
   'form-modal': {
     language: 'JavaScript', 
+    highlightLine: 67,
     content: `import React, { useState } from 'react';
 import { validateEmail, validatePassword } from '../utils/validation';
 
@@ -108,6 +110,7 @@ export default function SignupModal({ onClose }) {
   },
   'api-call': {
     language: 'JavaScript',
+    highlightLine: 137,
     content: `// pages/api/auth/signup.js
 import bcrypt from 'bcryptjs';
 import { User } from '../../models/User';
@@ -225,10 +228,25 @@ export default function DemoPage() {
               availableScenarios={demoScenarios}
               onNodeClick={(node) => {
                 if (showCodeViewer && mockCodeContent[node.id]) {
+                  // Extract line number from node details (format: "File: path:line")
+                  const fileDetail = node.details?.find((detail: string) => detail.startsWith('File: '));
+                  let highlightLine = mockCodeContent[node.id].highlightLine;
+                  
+                  if (fileDetail && fileDetail.includes(':')) {
+                    const parts = fileDetail.split(':');
+                    if (parts.length >= 3) {
+                      const lineNum = parseInt(parts[parts.length - 1]);
+                      if (!isNaN(lineNum)) {
+                        highlightLine = lineNum;
+                      }
+                    }
+                  }
+                  
                   setSelectedCode({
                     id: node.id,
                     title: node.title,
-                    ...mockCodeContent[node.id]
+                    ...mockCodeContent[node.id],
+                    highlightLine
                   });
                 }
               }}
@@ -256,16 +274,23 @@ export default function DemoPage() {
               <div className="h-[500px] overflow-auto">
                 {selectedCode ? (
                   <div className="text-sm">
-                    {selectedCode.content.split('\n').map((line, index) => (
-                      <div key={index} className="flex">
-                        <span className="text-slate-500 text-right pr-4 py-1 w-12 flex-shrink-0 select-none border-r border-slate-700">
-                          {index + 1}
-                        </span>
-                        <pre className="text-slate-300 pl-4 py-1 flex-1 whitespace-pre-wrap">
-                          <code>{line || ' '}</code>
-                        </pre>
-                      </div>
-                    ))}
+                    {selectedCode.content.split('\n').map((line, index) => {
+                      const lineNumber = index + 1;
+                      const isHighlighted = selectedCode.highlightLine === lineNumber;
+                      return (
+                        <div
+                          key={index}
+                          className={`flex ${isHighlighted ? 'bg-yellow-900/30 border-l-4 border-yellow-400' : ''}`}
+                        >
+                          <span className="text-slate-500 text-right pr-4 py-1 w-12 flex-shrink-0 select-none border-r border-slate-700">
+                            {lineNumber}
+                          </span>
+                          <pre className="text-slate-300 pl-4 py-1 flex-1 whitespace-pre-wrap">
+                            <code>{line || ' '}</code>
+                          </pre>
+                        </div>
+                      );
+                    })}
                   </div>
                 ) : (
                   <div className="flex items-center justify-center h-full text-slate-400">

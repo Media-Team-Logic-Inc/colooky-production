@@ -12,7 +12,8 @@ import {
   FileText, 
   Clock,
   Download,
-  Eye
+  Eye,
+  File
 } from 'lucide-react';
 
 interface AnalyticsProps {
