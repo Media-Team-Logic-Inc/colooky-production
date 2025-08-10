@@ -88,6 +88,16 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
 
   useEffect(() => {
     loadRepositoryStructure();
+    // Load persisted file selections
+    const persistedSelections = localStorage.getItem(`colooky_selections_${repository.owner}_${repository.name}`);
+    if (persistedSelections) {
+      try {
+        const parsedSelections = JSON.parse(persistedSelections);
+        setSelectedFiles(parsedSelections);
+      } catch (error) {
+        console.warn('Failed to parse persisted selections:', error);
+      }
+    }
   }, []);
 
   const loadRepositoryStructure = async () => {
@@ -217,11 +227,15 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
   };
 
   const toggleFileSelection = (path: string) => {
-    setSelectedFiles(prev => 
-      prev.includes(path) 
+    setSelectedFiles(prev => {
+      const newSelection = prev.includes(path) 
         ? prev.filter(p => p !== path)
-        : [...prev, path]
-    );
+        : [...prev, path];
+      
+      // Persist selections to localStorage
+      localStorage.setItem(`colooky_selections_${repository.owner}_${repository.name}`, JSON.stringify(newSelection));
+      return newSelection;
+    });
   };
 
   const toggleDirectory = (path: string) => {
@@ -252,10 +266,14 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
     
     traverse(fileTree);
     setSelectedFiles(supported);
+    // Persist selections to localStorage
+    localStorage.setItem(`colooky_selections_${repository.owner}_${repository.name}`, JSON.stringify(supported));
   };
 
   const unselectAllFiles = () => {
     setSelectedFiles([]);
+    // Clear persisted selections
+    localStorage.removeItem(`colooky_selections_${repository.owner}_${repository.name}`);
   };
 
   const viewFileContent = async (filePath: string, highlightLine?: number) => {
@@ -610,44 +628,73 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
                 </div>
                 
                 {analysis.summary && (
-                  <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-6">
-                    <div className="bg-slate-800 border border-slate-700 rounded-lg p-4 text-center">
-                      <div className="text-2xl font-bold text-blue-400">
-                        {analysis.summary.supported_files}
+                  <>
+                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-6">
+                      <div className="bg-slate-800 border border-slate-700 rounded-lg p-4 text-center">
+                        <div className="text-2xl font-bold text-blue-400">
+                          {analysis.summary.supported_files}
+                        </div>
+                        <div className="text-sm text-slate-400">Analyzed Files</div>
                       </div>
-                      <div className="text-sm text-slate-400">Analyzed Files</div>
-                    </div>
-                    <div className="bg-slate-800 border border-slate-700 rounded-lg p-4 text-center">
-                      <div className="text-2xl font-bold text-green-400">
-                        {analysis.summary.functions}
+                      <div className="bg-slate-800 border border-slate-700 rounded-lg p-4 text-center">
+                        <div className="text-2xl font-bold text-green-400">
+                          {analysis.summary.functions}
+                        </div>
+                        <div className="text-sm text-slate-400">Functions</div>
                       </div>
-                      <div className="text-sm text-slate-400">Functions</div>
-                    </div>
-                    <div className="bg-slate-800 border border-slate-700 rounded-lg p-4 text-center">
-                      <div className="text-2xl font-bold text-purple-400">
-                        {analysis.summary.classes}
+                      <div className="bg-slate-800 border border-slate-700 rounded-lg p-4 text-center">
+                        <div className="text-2xl font-bold text-purple-400">
+                          {analysis.summary.classes}
+                        </div>
+                        <div className="text-sm text-slate-400">Classes</div>
                       </div>
-                      <div className="text-sm text-slate-400">Classes</div>
-                    </div>
-                    <div className="bg-slate-800 border border-slate-700 rounded-lg p-4 text-center">
-                      <div className="text-2xl font-bold text-orange-400">
-                        {analysis.summary.imports}
+                      <div className="bg-slate-800 border border-slate-700 rounded-lg p-4 text-center">
+                        <div className="text-2xl font-bold text-orange-400">
+                          {analysis.summary.imports}
+                        </div>
+                        <div className="text-sm text-slate-400">Imports</div>
                       </div>
-                      <div className="text-sm text-slate-400">Imports</div>
-                    </div>
-                    <div className="bg-slate-800 border border-slate-700 rounded-lg p-4 text-center">
-                      <div className="text-2xl font-bold text-yellow-400">
-                        {analysis.summary.complexity_score}
+                      <div className="bg-slate-800 border border-slate-700 rounded-lg p-4 text-center">
+                        <div className="text-2xl font-bold text-yellow-400">
+                          {analysis.summary.complexity_score}
+                        </div>
+                        <div className="text-sm text-slate-400">Complexity</div>
                       </div>
-                      <div className="text-sm text-slate-400">Complexity</div>
-                    </div>
-                    <div className="bg-slate-800 border border-slate-700 rounded-lg p-4 text-center">
-                      <div className="text-lg font-bold text-slate-300">
-                        {analysis.summary.main_language}
+                      <div className="bg-slate-800 border border-slate-700 rounded-lg p-4 text-center">
+                        <div className="text-lg font-bold text-slate-300">
+                          {analysis.summary.main_language}
+                        </div>
+                        <div className="text-sm text-slate-400">Language</div>
                       </div>
-                      <div className="text-sm text-slate-400">Language</div>
                     </div>
-                  </div>
+
+                    {/* Enhanced insights panel */}
+                    <div className="bg-slate-800 border border-slate-700 rounded-lg p-6 mb-6">
+                      <h3 className="text-lg font-semibold text-white mb-4">🔍 Code Insights</h3>
+                      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
+                        <div className="bg-slate-700 rounded-lg p-3">
+                          <div className="text-blue-400 font-medium">Architecture Pattern</div>
+                          <div className="text-slate-300">
+                            {analysis.summary.functions > analysis.summary.classes * 3 ? 'Functional-oriented' : 
+                             analysis.summary.classes > analysis.summary.functions ? 'Object-oriented' : 'Hybrid approach'}
+                          </div>
+                        </div>
+                        <div className="bg-slate-700 rounded-lg p-3">
+                          <div className="text-green-400 font-medium">Code Density</div>
+                          <div className="text-slate-300">
+                            {Math.round((analysis.summary.functions + analysis.summary.classes) / analysis.summary.supported_files)} elements/file
+                          </div>
+                        </div>
+                        <div className="bg-slate-700 rounded-lg p-3">
+                          <div className="text-purple-400 font-medium">Dependency Style</div>
+                          <div className="text-slate-300">
+                            {analysis.summary.imports > analysis.summary.supported_files * 2 ? 'Highly modular' : 
+                             analysis.summary.imports < analysis.summary.supported_files ? 'Self-contained' : 'Balanced imports'}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </>
                 )}
               </div>
 

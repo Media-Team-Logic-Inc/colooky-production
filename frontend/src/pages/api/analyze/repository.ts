@@ -317,6 +317,32 @@ function analyzeFile(file: { path: string; content: string; language: string }) 
         break;
       }
     }
+
+    // Extract exports with detailed information
+    const exportPatterns = [
+      /^export\s+(?:default\s+)?(?:class|function|const|let|var)\s+(\w+)/,
+      /^export\s+\{\s*([^}]+)\s*\}/,
+      /^export\s+default\s+(\w+)/,
+      /^module\.exports\s*=\s*(\w+)/,
+      /^exports\.(\w+)\s*=/
+    ];
+    
+    for (const pattern of exportPatterns) {
+      const exportMatch = trimmed.match(pattern);
+      if (exportMatch) {
+        const exportName = exportMatch[1].includes(',') ? 'Multiple' : exportMatch[1];
+        analysis.elements.push({
+          id: `${file.path}_export_${exportName.replace(/[^a-zA-Z0-9]/g, '_')}_${lineNumber}`,
+          name: `📤 ${exportName}`,
+          type: 'export',
+          file: file.path,
+          line: lineNumber,
+          language: file.language,
+          details: [`Export: ${exportName}`, `File: ${file.path}:${lineNumber}`, `Type: ${file.language} export`]
+        });
+        break;
+      }
+    }
     
     // Extract function calls
     const functionCallMatch = trimmed.match(/(\w+)\s*\(/);
@@ -347,8 +373,9 @@ async function generateVisualization(analysis: any): Promise<any> {
     { color: '#3b82f6', label: 'Functions' },
     { color: '#10b981', label: 'Classes' },
     { color: '#f59e0b', label: 'Imports' },
+    { color: '#e11d48', label: 'Exports' },
     { color: '#8b5cf6', label: 'Function Calls' },
-    { color: '#ef4444', label: 'Dependencies' }
+    { color: '#ef4444', label: 'Cross-file Dependencies' }
   ];
 
   // Group elements by file for better layout
@@ -363,27 +390,29 @@ async function generateVisualization(analysis: any): Promise<any> {
   let globalIndex = 0;
   const filePositions: { [key: string]: { x: number; y: number } } = {};
   
-  // Create file-based layout with wider spacing
+  // Create file-based layout with better spacing
   Object.keys(fileGroups).forEach((filePath, fileIndex) => {
     const fileElements = fileGroups[filePath];
-    const fileX = 80 + (fileIndex % 4) * 350; // Wider spacing, 4 columns
-    const fileY = 80 + Math.floor(fileIndex / 4) * 180;
+    const fileX = 100 + (fileIndex % 3) * 450; // Wider columns, 3 per row
+    const fileY = 100 + Math.floor(fileIndex / 3) * 250; // More vertical space
     filePositions[filePath] = { x: fileX, y: fileY };
     
-    // Create nodes for each element within the file
+    // Create nodes for each element within the file with better spacing
     fileElements.forEach((element: any, elementIndex: number) => {
-      const nodeX = fileX + (elementIndex % 3) * 110; // 3 elements per row
-      const nodeY = fileY + Math.floor(elementIndex / 3) * 55;
+      const nodeX = fileX + (elementIndex % 2) * 180; // 2 elements per row for better spacing
+      const nodeY = fileY + Math.floor(elementIndex / 2) * 70; // More vertical spacing
       
       const nodeColor = 
         element.type === 'function' ? '#3b82f6' :
         element.type === 'class' ? '#10b981' :
-        element.type === 'import' ? '#f59e0b' : '#8b5cf6';
+        element.type === 'import' ? '#f59e0b' :
+        element.type === 'export' ? '#e11d48' : '#8b5cf6';
         
       const strokeColor = 
         element.type === 'function' ? '#60a5fa' :
         element.type === 'class' ? '#34d399' :
-        element.type === 'import' ? '#fbbf24' : '#a78bfa';
+        element.type === 'import' ? '#fbbf24' :
+        element.type === 'export' ? '#f87171' : '#a78bfa';
 
       nodes.push({
         id: element.id,
@@ -432,22 +461,46 @@ async function generateVisualization(analysis: any): Promise<any> {
     }
   });
 
-  // Add basic sequential connections between functions in the same file for visual flow
+  // Add basic sequential connections between elements in the same file for visual flow
   Object.keys(fileGroups).forEach(filePath => {
-    const fileElements = fileGroups[filePath].filter(el => el.type === 'function');
+    const fileElements = fileGroups[filePath];
     for (let i = 0; i < fileElements.length - 1; i++) {
       const currentNode = nodes.find(n => n.id === fileElements[i].id);
       const nextNode = nodes.find(n => n.id === fileElements[i + 1].id);
       
       if (currentNode && nextNode) {
+        const connectionColor = 
+          currentNode.title.includes('📥') || nextNode.title.includes('📥') ? '#f59e0b' :
+          currentNode.title.includes('📤') || nextNode.title.includes('📤') ? '#e11d48' : '#64b5f6';
+          
         connections.push({
           from: { x: currentNode.x + currentNode.width, y: currentNode.y + currentNode.height / 2 },
           to: { x: nextNode.x, y: nextNode.y + nextNode.height / 2 },
-          color: '#64b5f6',
+          color: connectionColor,
           label: 'Flow',
-          detail: `Function flow in ${filePath}`
+          detail: `Code flow in ${filePath}: ${currentNode.title} → ${nextNode.title}`
         });
       }
+    }
+  });
+
+  // Add cross-file connections for imports/exports
+  nodes.forEach(importNode => {
+    if (importNode.title.includes('📥')) {
+      // Find potential export matches in other files
+      nodes.forEach(exportNode => {
+        if (exportNode.title.includes('📤') && 
+            exportNode.details[0].includes(importNode.details[0].split(': ')[1]?.split('/').pop() || '')) {
+          connections.push({
+            from: { x: importNode.x + importNode.width, y: importNode.y + importNode.height / 2 },
+            to: { x: exportNode.x, y: exportNode.y + exportNode.height / 2 },
+            color: '#ef4444',
+            label: 'Cross-file',
+            detail: `Cross-file dependency: ${importNode.title} connects to ${exportNode.title}`,
+            animated: true
+          });
+        }
+      });
     }
   });
 
