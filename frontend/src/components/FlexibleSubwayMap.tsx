@@ -183,12 +183,24 @@ const FlexibleSubwayMap: React.FC<FlexibleSubwayMapProps> = ({
 
         {/* SVG Flow Diagram */}
         <div className="relative w-full h-[600px] overflow-auto border border-slate-600 rounded-lg bg-slate-900">
-          <svg 
-            viewBox="0 0 1200 800" 
-            className="w-full min-w-[1200px] h-full min-h-[800px] transition-transform duration-200"
-            style={{ transform: `scale(${zoom})` }}
-            preserveAspectRatio="xMidYMid meet"
+          <div 
+            className="transition-transform duration-200"
+            style={{ 
+              transform: `scale(${zoom})`,
+              transformOrigin: 'top left',
+              width: `${1600 * zoom}px`,
+              height: `${1000 * zoom}px`,
+              minWidth: '1600px',
+              minHeight: '1000px'
+            }}
           >
+            <svg 
+              width="1600" 
+              height="1000"
+              viewBox="0 0 1600 1000" 
+              className="block"
+              preserveAspectRatio="xMinYMin meet"
+            >
             <defs>
               <marker id="arrowhead" markerWidth="10" markerHeight="7" 
                       refX="9" refY="3.5" orient="auto">
@@ -298,7 +310,8 @@ const FlexibleSubwayMap: React.FC<FlexibleSubwayMapProps> = ({
                 )}
               </g>
             ))}
-          </svg>
+            </svg>
+          </div>
         </div>
 
         {/* Movable Node Information Panel */}

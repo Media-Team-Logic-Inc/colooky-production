@@ -356,17 +356,17 @@ async function generateVisualization(analysis: any): Promise<any> {
   let globalIndex = 0;
   const filePositions: { [key: string]: { x: number; y: number } } = {};
   
-  // Create file-based layout
+  // Create file-based layout with wider spacing
   Object.keys(fileGroups).forEach((filePath, fileIndex) => {
     const fileElements = fileGroups[filePath];
-    const fileX = 100 + (fileIndex % 3) * 300;
-    const fileY = 100 + Math.floor(fileIndex / 3) * 200;
+    const fileX = 80 + (fileIndex % 4) * 350; // Wider spacing, 4 columns
+    const fileY = 80 + Math.floor(fileIndex / 4) * 180;
     filePositions[filePath] = { x: fileX, y: fileY };
     
     // Create nodes for each element within the file
     fileElements.forEach((element: any, elementIndex: number) => {
-      const nodeX = fileX + (elementIndex % 2) * 140;
-      const nodeY = fileY + Math.floor(elementIndex / 2) * 60;
+      const nodeX = fileX + (elementIndex % 3) * 110; // 3 elements per row
+      const nodeY = fileY + Math.floor(elementIndex / 3) * 55;
       
       const nodeColor = 
         element.type === 'function' ? '#3b82f6' :
@@ -380,11 +380,11 @@ async function generateVisualization(analysis: any): Promise<any> {
 
       nodes.push({
         id: element.id,
-        title: element.name,
+        title: element.name.length > 15 ? element.name.substring(0, 15) + '...' : element.name,
         x: nodeX,
         y: nodeY,
-        width: 130,
-        height: 45,
+        width: 105, // Slightly smaller
+        height: 40,
         color: nodeColor,
         strokeColor: strokeColor,
         stepNumber: globalIndex + 1,
