@@ -4,7 +4,9 @@ export const useAuth = () => {
   const { data: session, status } = useSession();
 
   const login = () => {
-    signIn('github');
+    signIn('github', { 
+      callbackUrl: window.location.origin + '/dashboard'
+    });
   };
 
   const logout = async () => {

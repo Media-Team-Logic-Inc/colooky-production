@@ -40,7 +40,11 @@ const queryClient = new QueryClient({
 
 export default function App({ Component, pageProps: { session, ...pageProps } }: AppProps) {
   return (
-    <SessionProvider session={session}>
+    <SessionProvider 
+      session={session}
+      basePath="/api/auth"
+      baseUrl={typeof window !== 'undefined' ? window.location.origin : 'https://colooky.com'}
+    >
       <QueryClientProvider client={queryClient}>
         <ToastProvider />
         <Component {...pageProps} />
