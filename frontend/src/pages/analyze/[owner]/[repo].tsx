@@ -107,8 +107,7 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
       const tree = await buildFileTree(contents, '');
       setFileTree(tree);
       
-      // Auto-select supported files
-      autoSelectSupportedFiles(tree);
+      // Don't auto-select files - let user choose
       
     } catch (err) {
       console.error('Error loading repository structure:', err);
@@ -220,6 +219,28 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
       }
       return newSet;
     });
+  };
+
+  const selectAllSupportedFiles = () => {
+    const supported: string[] = [];
+    
+    const traverse = (nodes: FileTreeNode[]) => {
+      nodes.forEach(node => {
+        if (node.type === 'file' && node.supported) {
+          supported.push(node.path);
+        }
+        if (node.children) {
+          traverse(node.children);
+        }
+      });
+    };
+    
+    traverse(fileTree);
+    setSelectedFiles(supported);
+  };
+
+  const unselectAllFiles = () => {
+    setSelectedFiles([]);
   };
 
   const startAnalysis = async () => {
@@ -403,13 +424,30 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
             <div className="grid lg:grid-cols-3 gap-8">
               <div className="lg:col-span-2">
                 <div className="bg-slate-800 border border-slate-700 rounded-lg p-6">
-                  <h2 className="text-xl font-semibold text-white mb-4">
-                    Select Files to Analyze
-                  </h2>
-                  <p className="text-slate-400 mb-4">
-                    Choose the files you want to include in the code flow analysis. 
-                    Supported files are automatically selected.
-                  </p>
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h2 className="text-xl font-semibold text-white">
+                        Select Files to Analyze
+                      </h2>
+                      <p className="text-slate-400 text-sm">
+                        Choose specific files for focused analysis and visualization
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={selectAllSupportedFiles}
+                        className="px-3 py-2 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors"
+                      >
+                        Select All
+                      </button>
+                      <button
+                        onClick={unselectAllFiles}
+                        className="px-3 py-2 text-xs bg-slate-600 hover:bg-slate-500 text-white rounded transition-colors"
+                      >
+                        Clear All
+                      </button>
+                    </div>
+                  </div>
                   
                   {loading ? (
                     <div className="flex items-center justify-center py-8">

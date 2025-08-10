@@ -28,6 +28,8 @@ interface FlowConnection {
   to: { x: number; y: number };
   color: string;
   animated?: boolean;
+  label?: string;
+  detail?: string;
 }
 
 interface LegendItem {
@@ -194,18 +196,51 @@ const FlexibleSubwayMap: React.FC<FlexibleSubwayMapProps> = ({
             </defs>
             
             {/* Render connections */}
-            {scenario.connections.map((conn, index) => (
-              <path
-                key={index}
-                d={`M ${conn.from.x} ${conn.from.y} L ${conn.to.x} ${conn.to.y}`}
-                stroke={conn.color}
-                strokeWidth="3"
-                fill="none"
-                opacity="0.8"
-                markerEnd="url(#arrowhead)"
-                className={conn.animated ? "animate-pulse" : ""}
-              />
-            ))}
+            {scenario.connections.map((conn, index) => {
+              const midX = (conn.from.x + conn.to.x) / 2;
+              const midY = (conn.from.y + conn.to.y) / 2;
+              
+              return (
+                <g key={index}>
+                  <path
+                    d={`M ${conn.from.x} ${conn.from.y} L ${conn.to.x} ${conn.to.y}`}
+                    stroke={conn.color}
+                    strokeWidth="3"
+                    fill="none"
+                    opacity="0.8"
+                    markerEnd="url(#arrowhead)"
+                    className={conn.animated ? "animate-pulse" : ""}
+                  />
+                  {conn.label && (
+                    <g>
+                      <rect
+                        x={midX - 25}
+                        y={midY - 10}
+                        width="50"
+                        height="20"
+                        fill="rgba(0, 0, 0, 0.8)"
+                        rx="10"
+                        ry="10"
+                      />
+                      <text
+                        x={midX}
+                        y={midY + 3}
+                        textAnchor="middle"
+                        dominantBaseline="middle"
+                        fill="#fff"
+                        fontSize="10"
+                        fontWeight="500"
+                      >
+                        {conn.label}
+                      </text>
+                      {conn.detail && (
+                        <title>{conn.detail}</title>
+                      )}
+                    </g>
+                  )}
+                </g>
+              );
+            })}
             
             {/* Render nodes */}
             {scenario.nodes.map((node) => (

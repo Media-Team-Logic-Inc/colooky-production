@@ -225,124 +225,231 @@ function analyzeFile(file: { path: string; content: string; language: string }) 
     classes: 0,
     imports: 0,
     complexity: 0,
-    dependencies: [] as { from: string; to: string; type: string }[],
-    elements: [] as any[]
+    dependencies: [] as { from: string; to: string; type: string; line: number; detail: string }[],
+    elements: [] as any[],
+    functionCalls: [] as { function: string; line: number; calledFrom: string }[]
   };
 
   const lines = file.content.split('\n');
   
-  for (const line of lines) {
+  for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+    const line = lines[lineIndex];
     const trimmed = line.trim();
+    const lineNumber = lineIndex + 1;
     
-    // Count functions (simplified regex)
-    if (/^(function|const\s+\w+\s*=|async\s+function|\w+\s*\(|\s*\w+\s*:\s*\([^)]*\)\s*=>)/.test(trimmed)) {
-      analysis.functions++;
+    // Extract function definitions with names and line numbers
+    const functionMatches = [
+      /^(?:export\s+)?(?:async\s+)?function\s+(\w+)\s*\(/,
+      /^(?:export\s+)?const\s+(\w+)\s*=\s*(?:async\s+)?\(/,
+      /^(?:export\s+)?const\s+(\w+)\s*=\s*(?:async\s+)?[\w\s]*=>/,
+      /(\w+)\s*:\s*(?:async\s+)?\([^)]*\)\s*=>/
+    ];
+    
+    for (const pattern of functionMatches) {
+      const match = trimmed.match(pattern);
+      if (match) {
+        analysis.functions++;
+        analysis.elements.push({
+          id: `${file.path}_func_${match[1]}_${lineNumber}`,
+          name: match[1],
+          type: 'function',
+          file: file.path,
+          line: lineNumber,
+          language: file.language,
+          details: [`Function: ${match[1]}`, `File: ${file.path}:${lineNumber}`, `Language: ${file.language}`]
+        });
+        break;
+      }
     }
     
-    // Count classes
-    if (/^(class\s+|export\s+class\s+|interface\s+|type\s+)/.test(trimmed)) {
+    // Extract class definitions
+    const classMatch = trimmed.match(/^(?:export\s+)?class\s+(\w+)/);
+    if (classMatch) {
       analysis.classes++;
+      analysis.elements.push({
+        id: `${file.path}_class_${classMatch[1]}_${lineNumber}`,
+        name: classMatch[1],
+        type: 'class',
+        file: file.path,
+        line: lineNumber,
+        language: file.language,
+        details: [`Class: ${classMatch[1]}`, `File: ${file.path}:${lineNumber}`, `Language: ${file.language}`]
+      });
     }
     
-    // Count imports
-    if (/^(import|from|require\s*\(|#include)/.test(trimmed)) {
-      analysis.imports++;
-      
-      // Extract import dependencies
-      const importMatch = trimmed.match(/import.*from\s+['"]([^'"]+)['"]/);
+    // Extract imports with detailed information
+    const importPatterns = [
+      /import\s+.*\s+from\s+['"]([^'"]+)['"]/,
+      /import\s+['"]([^'"]+)['"]/,
+      /require\s*\(\s*['"]([^'"]+)['"]\s*\)/
+    ];
+    
+    for (const pattern of importPatterns) {
+      const importMatch = trimmed.match(pattern);
       if (importMatch) {
+        analysis.imports++;
         analysis.dependencies.push({
           from: file.path,
           to: importMatch[1],
-          type: 'import'
+          type: 'import',
+          line: lineNumber,
+          detail: `Imports from ${importMatch[1]} at line ${lineNumber}`
+        });
+        
+        // Create import element
+        analysis.elements.push({
+          id: `${file.path}_import_${importMatch[1].replace(/[^a-zA-Z0-9]/g, '_')}_${lineNumber}`,
+          name: `📥 ${importMatch[1]}`,
+          type: 'import',
+          file: file.path,
+          line: lineNumber,
+          language: file.language,
+          target: importMatch[1],
+          details: [`Import: ${importMatch[1]}`, `File: ${file.path}:${lineNumber}`, `Type: ${file.language} import`]
+        });
+        break;
+      }
+    }
+    
+    // Extract function calls
+    const functionCallMatch = trimmed.match(/(\w+)\s*\(/);
+    if (functionCallMatch && !trimmed.includes('function') && !trimmed.includes('=')) {
+      const functionName = functionCallMatch[1];
+      if (!['if', 'while', 'for', 'switch', 'catch', 'return'].includes(functionName)) {
+        analysis.functionCalls.push({
+          function: functionName,
+          line: lineNumber,
+          calledFrom: file.path
         });
       }
     }
     
-    // Simple complexity calculation
+    // Complexity calculation
     if (/\b(if|else|while|for|switch|catch|&&|\|\|)\b/.test(trimmed)) {
       analysis.complexity += 1;
     }
-  }
-
-  // Create code elements for visualization
-  if (analysis.functions > 0) {
-    analysis.elements.push({
-      id: `${file.path}_functions`,
-      name: `Functions (${analysis.functions})`,
-      type: 'function',
-      file: file.path,
-      language: file.language
-    });
-  }
-
-  if (analysis.classes > 0) {
-    analysis.elements.push({
-      id: `${file.path}_classes`,
-      name: `Classes (${analysis.classes})`,
-      type: 'class',
-      file: file.path,
-      language: file.language
-    });
   }
 
   return analysis;
 }
 
 async function generateVisualization(analysis: any): Promise<any> {
-  // Create a subway map visualization from the analysis
-  // This is a simplified version - you could make this much more sophisticated
-  
-  const nodes = [];
-  const connections = [];
+  const nodes: any[] = [];
+  const connections: any[] = [];
   const legendItems = [
     { color: '#3b82f6', label: 'Functions' },
     { color: '#10b981', label: 'Classes' },
     { color: '#f59e0b', label: 'Imports' },
-    { color: '#8b5cf6', label: 'Files' }
+    { color: '#8b5cf6', label: 'Function Calls' },
+    { color: '#ef4444', label: 'Dependencies' }
   ];
 
-  // Generate nodes from code elements
-  analysis.elements.forEach((element: any, index: number) => {
-    const x = 100 + (index % 6) * 100;
-    const y = 100 + Math.floor(index / 6) * 80;
+  // Group elements by file for better layout
+  const fileGroups: { [key: string]: any[] } = {};
+  analysis.elements.forEach((element: any) => {
+    if (!fileGroups[element.file]) {
+      fileGroups[element.file] = [];
+    }
+    fileGroups[element.file].push(element);
+  });
+
+  let globalIndex = 0;
+  const filePositions: { [key: string]: { x: number; y: number } } = {};
+  
+  // Create file-based layout
+  Object.keys(fileGroups).forEach((filePath, fileIndex) => {
+    const fileElements = fileGroups[filePath];
+    const fileX = 100 + (fileIndex % 3) * 300;
+    const fileY = 100 + Math.floor(fileIndex / 3) * 200;
+    filePositions[filePath] = { x: fileX, y: fileY };
     
-    nodes.push({
-      id: element.id,
-      title: element.name,
-      x,
-      y,
-      width: 120,
-      height: 40,
-      color: element.type === 'function' ? '#3b82f6' : '#10b981',
-      strokeColor: element.type === 'function' ? '#60a5fa' : '#34d399',
-      stepNumber: index + 1,
-      details: [
-        `File: ${element.file}`,
-        `Type: ${element.type}`,
-        `Language: ${element.language}`
-      ]
+    // Create nodes for each element within the file
+    fileElements.forEach((element: any, elementIndex: number) => {
+      const nodeX = fileX + (elementIndex % 2) * 140;
+      const nodeY = fileY + Math.floor(elementIndex / 2) * 60;
+      
+      const nodeColor = 
+        element.type === 'function' ? '#3b82f6' :
+        element.type === 'class' ? '#10b981' :
+        element.type === 'import' ? '#f59e0b' : '#8b5cf6';
+        
+      const strokeColor = 
+        element.type === 'function' ? '#60a5fa' :
+        element.type === 'class' ? '#34d399' :
+        element.type === 'import' ? '#fbbf24' : '#a78bfa';
+
+      nodes.push({
+        id: element.id,
+        title: element.name,
+        x: nodeX,
+        y: nodeY,
+        width: 130,
+        height: 45,
+        color: nodeColor,
+        strokeColor: strokeColor,
+        stepNumber: globalIndex + 1,
+        details: element.details || [
+          `${element.type}: ${element.name}`,
+          `File: ${element.file}:${element.line}`,
+          `Language: ${element.language}`
+        ]
+      });
+      globalIndex++;
     });
   });
 
-  // Generate connections from dependencies
-  analysis.dependencies.forEach((dep: any, index: number) => {
-    const fromNode = nodes.find(n => n.id.includes(dep.from));
-    const toNode = nodes.find(n => n.id.includes(dep.to));
+  // Create connections based on dependencies with detailed labels
+  analysis.dependencies.forEach((dep: any) => {
+    // Find source and target nodes
+    const sourceNodes = nodes.filter(n => n.id.includes(dep.from.replace(/[^a-zA-Z0-9]/g, '_')));
+    const targetPath = dep.to;
     
-    if (fromNode && toNode && index < 10) { // Limit connections to avoid clutter
+    // Look for target file or related imports
+    const targetNodes = nodes.filter(n => 
+      n.id.includes(targetPath.replace(/[^a-zA-Z0-9]/g, '_')) ||
+      (n.details && n.details.some((d: string) => d.includes(targetPath)))
+    );
+
+    if (sourceNodes.length > 0 && targetNodes.length > 0) {
+      const sourceNode = sourceNodes[0];
+      const targetNode = targetNodes[0];
+      
       connections.push({
-        from: { x: fromNode.x + fromNode.width, y: fromNode.y + fromNode.height / 2 },
-        to: { x: toNode.x, y: toNode.y + toNode.height / 2 },
-        color: '#f59e0b'
+        from: { x: sourceNode.x + sourceNode.width, y: sourceNode.y + sourceNode.height / 2 },
+        to: { x: targetNode.x, y: targetNode.y + targetNode.height / 2 },
+        color: '#ef4444',
+        label: `Line ${dep.line}`,
+        detail: dep.detail,
+        animated: true
       });
     }
   });
 
+  // Add function call connections if we have function call data
+  if (analysis.functionCalls && analysis.functionCalls.length > 0) {
+    analysis.functionCalls.forEach((call: any) => {
+      const callerNodes = nodes.filter(n => n.id.includes(call.calledFrom.replace(/[^a-zA-Z0-9]/g, '_')));
+      const targetNodes = nodes.filter(n => n.title === call.function);
+      
+      if (callerNodes.length > 0 && targetNodes.length > 0) {
+        const callerNode = callerNodes[0];
+        const targetNode = targetNodes[0];
+        
+        connections.push({
+          from: { x: callerNode.x + callerNode.width, y: callerNode.y + callerNode.height / 2 },
+          to: { x: targetNode.x, y: targetNode.y + targetNode.height / 2 },
+          color: '#8b5cf6',
+          label: `Calls at line ${call.line}`,
+          detail: `Function ${call.function} called from ${call.calledFrom} at line ${call.line}`
+        });
+      }
+    });
+  }
+
   return {
     id: 'repository-analysis',
-    title: `Repository Analysis - ${analysis.summary.main_language}`,
-    description: `Analysis of ${analysis.summary.total_files} files with ${analysis.summary.functions} functions and ${analysis.summary.classes} classes`,
+    title: `Code Flow Analysis - ${analysis.summary.main_language}`,
+    description: `Detailed analysis showing ${analysis.summary.functions} functions, ${analysis.summary.classes} classes, and ${analysis.dependencies.length} dependencies with line-level connections`,
     nodes,
     connections,
     legendItems
