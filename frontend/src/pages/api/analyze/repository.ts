@@ -242,7 +242,14 @@ function analyzeFile(file: { path: string; content: string; language: string }) 
       /^(?:export\s+)?(?:async\s+)?function\s+(\w+)\s*\(/,
       /^(?:export\s+)?const\s+(\w+)\s*=\s*(?:async\s+)?\(/,
       /^(?:export\s+)?const\s+(\w+)\s*=\s*(?:async\s+)?[\w\s]*=>/,
-      /(\w+)\s*:\s*(?:async\s+)?\([^)]*\)\s*=>/
+      /(\w+)\s*:\s*(?:async\s+)?\([^)]*\)\s*=>/,
+      // TypeScript interface method signatures
+      /^\s*(\w+)\?\s*:\s*\([^)]*\)\s*=>\s*\w+;?$/,
+      /^\s*(\w+)\s*:\s*\([^)]*\)\s*=>\s*\w+;?$/,
+      // Regular method definitions in classes/interfaces
+      /^\s*(?:public|private|protected)?\s*(\w+)\s*\([^)]*\)\s*(?::\s*\w+)?\s*\{?$/,
+      // Arrow function properties
+      /^\s*(\w+)\s*=\s*(?:async\s+)?\([^)]*\)\s*=>/
     ];
     
     for (const pattern of functionMatches) {
