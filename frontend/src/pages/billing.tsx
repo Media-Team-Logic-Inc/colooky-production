@@ -18,43 +18,26 @@ interface BillingHistory {
   invoice_url?: string;
 }
 
-// Mock data for demonstration
-const mockBillingHistory: BillingHistory[] = [
-  {
-    id: 'inv_001',
-    date: '2024-01-15',
-    amount: 49.00,
-    status: 'paid',
-    plan: 'Team Plan',
-    invoice_url: '#'
-  },
-  {
-    id: 'inv_002',
-    date: '2023-12-15',
-    amount: 49.00,
-    status: 'paid',
-    plan: 'Team Plan',
-    invoice_url: '#'
-  },
-  {
-    id: 'inv_003',
-    date: '2023-11-15',
-    amount: 19.00,
-    status: 'paid',
-    plan: 'Individual Plan',
-    invoice_url: '#'
-  }
-];
+// Billing history - in production, fetch from Stripe/database
+const mockBillingHistory: BillingHistory[] = [];
 
 export default function Billing({ user }: BillingProps) {
-  const [currentPlan] = useState('team'); // team, individual, or enterprise
+  const [currentPlan] = useState('free'); // free, individual, team, or enterprise
   const [billingCycle] = useState('monthly'); // monthly or yearly
-  const [paymentMethod] = useState({
-    type: 'card',
-    last4: '4242',
-    brand: 'visa',
-    expires: '12/25'
-  });
+  const [paymentMethod] = useState(null); // No payment method initially
+
+  // Stripe integration placeholder
+  const handleUpgrade = async (planType: string) => {
+    // TODO: Integrate with Stripe Checkout
+    console.log('Upgrade to:', planType);
+    // window.location.href = '/api/stripe/checkout?plan=' + planType;
+  };
+
+  const handleManageSubscription = () => {
+    // TODO: Redirect to Stripe Customer Portal
+    console.log('Manage subscription via Stripe');
+    // window.location.href = '/api/stripe/portal';
+  };
 
   const plans = {
     individual: {

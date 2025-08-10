@@ -232,15 +232,21 @@ export default function DemoPage() {
                   const fileDetail = node.details?.find((detail: string) => detail.startsWith('File: '));
                   let highlightLine = mockCodeContent[node.id].highlightLine;
                   
+                  // Debug logging
+                  console.log('Node clicked:', node.id, 'File detail:', fileDetail);
+                  
                   if (fileDetail && fileDetail.includes(':')) {
                     const parts = fileDetail.split(':');
                     if (parts.length >= 3) {
                       const lineNum = parseInt(parts[parts.length - 1]);
                       if (!isNaN(lineNum)) {
                         highlightLine = lineNum;
+                        console.log('Extracted line number:', lineNum);
                       }
                     }
                   }
+                  
+                  console.log('Setting highlightLine to:', highlightLine);
                   
                   setSelectedCode({
                     id: node.id,

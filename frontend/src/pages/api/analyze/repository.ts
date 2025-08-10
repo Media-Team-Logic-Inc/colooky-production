@@ -373,7 +373,7 @@ async function generateVisualization(analysis: any): Promise<any> {
     { color: '#3b82f6', label: 'Functions' },
     { color: '#10b981', label: 'Classes' },
     { color: '#f59e0b', label: 'Imports' },
-    { color: '#87ceeb', label: 'Exports' }, // Baby blue for exports
+    { color: '#87CEEB', label: 'Exports' }, // Baby blue for exports
     { color: '#8b5cf6', label: 'Function Calls' },
     { color: '#ef4444', label: 'Cross-file Dependencies' }
   ];
@@ -398,23 +398,23 @@ async function generateVisualization(analysis: any): Promise<any> {
   let columnsPerFile, elementSpacing, fileSpacing, verticalSpacing;
   
   if (totalElements <= 5) {
-    // Small analysis: spread elements out more
-    columnsPerFile = 1;
-    elementSpacing = 200;
-    fileSpacing = 300;
-    verticalSpacing = 80;
+    // Small analysis: horizontal spread like demo
+    columnsPerFile = totalElements; // All in one row
+    elementSpacing = 300;
+    fileSpacing = 500; 
+    verticalSpacing = 150;
   } else if (totalElements <= 15) {
-    // Medium analysis: balanced layout
-    columnsPerFile = 2;
-    elementSpacing = 150;
-    fileSpacing = 350;
-    verticalSpacing = 70;
-  } else {
-    // Large analysis: compact but readable
-    columnsPerFile = 3;
-    elementSpacing = 120;
+    // Medium analysis: horizontal focus with 2 rows max
+    columnsPerFile = Math.ceil(totalElements / 2);
+    elementSpacing = 250;
     fileSpacing = 400;
-    verticalSpacing = 60;
+    verticalSpacing = 120;
+  } else {
+    // Large analysis: more compact but still horizontal
+    columnsPerFile = Math.ceil(totalElements / 3);
+    elementSpacing = 180;
+    fileSpacing = 350;
+    verticalSpacing = 90;
   }
 
   Object.keys(fileGroups).forEach((filePath, fileIndex) => {
@@ -432,13 +432,13 @@ async function generateVisualization(analysis: any): Promise<any> {
         element.type === 'function' ? '#3b82f6' :
         element.type === 'class' ? '#10b981' :
         element.type === 'import' ? '#f59e0b' :
-        element.type === 'export' ? '#87ceeb' : '#8b5cf6'; // Baby blue for exports
+        element.type === 'export' ? '#87CEEB' : '#8b5cf6'; // Baby blue for exports
         
       const strokeColor = 
         element.type === 'function' ? '#60a5fa' :
         element.type === 'class' ? '#34d399' :
         element.type === 'import' ? '#fbbf24' :
-        element.type === 'export' ? '#b0e0e6' : '#a78bfa'; // Light baby blue stroke
+        element.type === 'export' ? '#B0E0E6' : '#a78bfa'; // Light baby blue stroke
 
       // Adjust node size based on analysis size
       const nodeWidth = totalElements <= 5 ? 180 : totalElements <= 15 ? 140 : 105;

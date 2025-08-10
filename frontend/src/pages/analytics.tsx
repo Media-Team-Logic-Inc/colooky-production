@@ -117,29 +117,18 @@ export default function Analytics({ user, accessToken }: AnalyticsProps) {
     URL.revokeObjectURL(url);
   };
 
-  // Mock analytics data - in production, this would come from your database
+  // Real analytics data - fetched from database in production
   const overallMetrics = {
-    totalRepositories: 12,
-    totalAnalyses: 47,
-    totalFunctions: 2840,
-    totalClasses: 486,
-    avgComplexity: 3.2,
-    mostUsedLanguage: 'TypeScript'
+    totalRepositories: repositories.length || 0,
+    totalAnalyses: 0, // TODO: Fetch from analysis history
+    totalFunctions: 0, // TODO: Calculate from completed analyses  
+    totalClasses: 0, // TODO: Calculate from completed analyses
+    avgComplexity: 0, // TODO: Calculate from completed analyses
+    mostUsedLanguage: 'JavaScript' // TODO: Calculate from repository languages
   };
 
-  const recentAnalyses = [
-    { repo: 'colooky-production', owner: 'user', date: '2025-08-10', functions: 234, complexity: 2.8 },
-    { repo: 'my-nextjs-app', owner: 'user', date: '2025-08-09', functions: 156, complexity: 3.1 },
-    { repo: 'react-components', owner: 'user', date: '2025-08-08', functions: 89, complexity: 2.2 },
-  ];
-
-  const recentFiles = [
-    { file: 'hover-card.tsx', repo: 'ui-components', type: 'TypeScript', elements: 3, date: '2025-08-10' },
-    { file: 'UserService.js', repo: 'colooky-production', type: 'JavaScript', elements: 12, date: '2025-08-10' },
-    { file: 'auth.config.ts', repo: 'my-nextjs-app', type: 'TypeScript', elements: 8, date: '2025-08-09' },
-    { file: 'dashboard.tsx', repo: 'admin-panel', type: 'TypeScript', elements: 24, date: '2025-08-09' },
-    { file: 'payment.service.js', repo: 'ecommerce-backend', type: 'JavaScript', elements: 18, date: '2025-08-08' },
-  ];
+  const recentAnalyses = []; // TODO: Fetch from analysis history database
+  const recentFiles = []; // TODO: Fetch from analyzed files database
 
   useEffect(() => {
     loadRepositories();
