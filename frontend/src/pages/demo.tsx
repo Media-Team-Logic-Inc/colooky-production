@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
-import EnhancedSubwayMap from '../components/EnhancedSubwayMap';
+import FlexibleSubwayMap from '../components/FlexibleSubwayMap';
+import { demoScenarios, getScenarioById } from '../data/demoScenarios';
 
 // Demo API types
 interface DemoSample {
@@ -61,6 +62,7 @@ export default function DemoPage() {
   const [analysis, setAnalysis] = useState<DemoAnalysis | null>(null);
   const [selectedFlow, setSelectedFlow] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [currentScenario, setCurrentScenario] = useState('signup');
   const [error, setError] = useState<string | null>(null);
 
   // Load demo samples on mount
@@ -274,9 +276,13 @@ export default function DemoPage() {
               </div>
             </div>
 
-            {/* Enhanced Subway Map Visualization */}
+            {/* Interactive Code Flow Visualization */}
             <div className="mb-8">
-              <EnhancedSubwayMap />
+              <FlexibleSubwayMap 
+                scenario={getScenarioById(currentScenario) || demoScenarios[0]}
+                onScenarioChange={setCurrentScenario}
+                availableScenarios={demoScenarios}
+              />
             </div>
 
             <div className="grid lg:grid-cols-3 gap-6">
