@@ -276,6 +276,86 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
     localStorage.removeItem(`colooky_selections_${repository.owner}_${repository.name}`);
   };
 
+  const exportAnalysis = (format: 'json' | 'csv') => {
+    if (!analysis || !analysis.summary) return;
+
+    const timestamp = new Date().toISOString().split('T')[0];
+    const fileName = `${repository.name}_analysis_${timestamp}`;
+
+    if (format === 'json') {
+      // Export as JSON
+      const exportData = {
+        repository: repository.full_name,
+        analysis_date: new Date().toISOString(),
+        summary: analysis.summary,
+        visualization: {
+          total_nodes: analysis.visualization?.nodes?.length || 0,
+          total_connections: analysis.visualization?.connections?.length || 0,
+          node_types: analysis.visualization?.nodes?.reduce((acc: any, node: any) => {
+            const type = node.details?.[0]?.split(':')[0] || 'Unknown';
+            acc[type] = (acc[type] || 0) + 1;
+            return acc;
+          }, {}) || {}
+        },
+        files_analyzed: selectedFiles,
+        export_timestamp: new Date().toISOString()
+      };
+
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${fileName}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } else if (format === 'csv') {
+      // Export as CSV
+      const csvRows = [
+        ['Repository', 'Functions', 'Classes', 'Imports', 'Complexity', 'Language', 'Files Analyzed', 'Analysis Date'],
+        [
+          repository.full_name,
+          analysis.summary.functions.toString(),
+          analysis.summary.classes.toString(),
+          analysis.summary.imports.toString(),
+          analysis.summary.complexity_score.toString(),
+          analysis.summary.main_language,
+          analysis.summary.supported_files.toString(),
+          new Date().toLocaleDateString()
+        ]
+      ];
+
+      // Add node details if available
+      if (analysis.visualization?.nodes) {
+        csvRows.push([]);
+        csvRows.push(['Node Details']);
+        csvRows.push(['Type', 'Name', 'File', 'Line']);
+        
+        analysis.visualization.nodes.forEach((node: any) => {
+          const details = node.details || [];
+          const type = details[0]?.split(':')[1]?.trim() || 'Unknown';
+          const file = details[1]?.replace('File: ', '') || 'Unknown';
+          csvRows.push([type, node.title, file, '']);
+        });
+      }
+
+      const csvContent = csvRows.map(row => 
+        row.map(field => `"${field.toString().replace(/"/g, '""')}"`).join(',')
+      ).join('\n');
+
+      const blob = new Blob([csvContent], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${fileName}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+  };
+
   const viewFileContent = async (filePath: string, highlightLine?: number) => {
     try {
       const response = await fetch(
@@ -623,6 +703,18 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
                       className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm font-medium transition-colors"
                     >
                       {showCodeViewer ? 'Hide Code' : 'Show Code'}
+                    </button>
+                    <button
+                      onClick={() => exportAnalysis('json')}
+                      className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors"
+                    >
+                      Export JSON
+                    </button>
+                    <button
+                      onClick={() => exportAnalysis('csv')}
+                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
+                    >
+                      Export CSV
                     </button>
                   </div>
                 </div>
