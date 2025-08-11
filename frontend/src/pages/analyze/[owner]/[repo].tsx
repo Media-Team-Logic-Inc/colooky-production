@@ -421,6 +421,17 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
     }
   };
 
+  const cancelAnalysis = () => {
+    setAnalyzing(false);
+    setCurrentStep('select');
+    setAnalysis(null);
+    setError('Analysis cancelled by user');
+    
+    // Clear any pending timeouts or polling
+    // Note: In a real implementation, you would also want to send a cancel request to the server
+    setTimeout(() => setError(null), 3000); // Clear error message after 3 seconds
+  };
+
   const startAnalysis = async () => {
     if (selectedFiles.length === 0) {
       setError('Please select at least one file to analyze');
@@ -777,6 +788,16 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
                     </div>
                   </div>
                 )}
+                
+                {/* Cancel button */}
+                <div className="mt-6">
+                  <button
+                    onClick={cancelAnalysis}
+                    className="px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors"
+                  >
+                    Cancel Analysis
+                  </button>
+                </div>
               </div>
             </div>
           )}

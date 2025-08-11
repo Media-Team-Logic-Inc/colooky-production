@@ -120,6 +120,66 @@ export default function Settings({ user }: SettingsProps) {
     }
   };
 
+  const handleCancelChanges = () => {
+    // Reset all form values to their original state
+    setProfileData({
+      displayName: user?.name || '',
+      githubUsername: user?.login || '',
+      bio: ''
+    });
+    
+    // Reset theme
+    const savedTheme = localStorage.getItem('colooky_theme');
+    if (savedTheme) {
+      setTheme(savedTheme);
+      handleThemeChange(savedTheme, false);
+    } else {
+      setTheme('dark');
+      handleThemeChange('dark', false);
+    }
+    
+    // Reset notifications to saved values
+    try {
+      const savedNotifications = localStorage.getItem('colooky_notifications');
+      if (savedNotifications) {
+        setNotifications(JSON.parse(savedNotifications));
+      }
+    } catch (error) {
+      // Reset to defaults if parsing fails
+      setNotifications({
+        email: {
+          analysis_complete: true,
+          weekly_summary: true,
+          product_updates: false,
+          marketing: false,
+        },
+        push: {
+          analysis_complete: true,
+          team_invites: true,
+          comments: true,
+        }
+      });
+    }
+    
+    // Reset privacy to saved values
+    try {
+      const savedPrivacy = localStorage.getItem('colooky_privacy');
+      if (savedPrivacy) {
+        setPrivacy(JSON.parse(savedPrivacy));
+      }
+    } catch (error) {
+      // Reset to defaults
+      setPrivacy({
+        make_profile_public: false,
+        show_activity: true,
+        allow_indexing: false,
+      });
+    }
+    
+    // Show confirmation
+    alert('Changes cancelled. Settings have been reset to their saved values.');
+  };
+
   const handleSaveSettings = async () => {
     setSaving(true);
     
@@ -334,7 +394,10 @@ export default function Settings({ user }: SettingsProps) {
                         >
                           {saving ? 'Saving...' : 'Save Changes'}
                         </button>
-                        <button className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-medium transition-colors">
+                        <button 
+                          onClick={handleCancelChanges}
+                          className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-medium transition-colors"
+                        >
                           Cancel
                         </button>
                       </div>
