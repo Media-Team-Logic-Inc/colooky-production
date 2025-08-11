@@ -44,13 +44,19 @@ interface FlexibleSubwayMapProps {
   onScenarioChange?: (scenarioId: string) => void;
   availableScenarios?: FlowScenario[];
   onNodeClick?: (nodeDetails: any) => void;
+  repositoryInfo?: {
+    owner: string;
+    name: string;
+    full_name: string;
+  };
 }
 
 const FlexibleSubwayMap: React.FC<FlexibleSubwayMapProps> = ({ 
   scenario, 
   onScenarioChange,
   availableScenarios = [],
-  onNodeClick
+  onNodeClick,
+  repositoryInfo
 }) => {
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
   const [legendCollapsed, setLegendCollapsed] = useState(false);
@@ -144,7 +150,49 @@ const FlexibleSubwayMap: React.FC<FlexibleSubwayMapProps> = ({
     }
   };
 
-  const bounds = getCanvasBounds();
+  const bounds = getCanvasBounds();\n  const optimizedBounds = getCanvasBounds(optimizedScenario.nodes);
+
+  // Advanced layout algorithm to reduce node overlap
+  const optimizeNodeLayout = (nodes: FlowNode[]) => {
+    if (nodes.length < 10) return nodes; // Skip for small layouts
+    
+    const optimizedNodes = [...nodes];
+    const minDistance = 150; // Minimum distance between nodes
+    const iterations = 3; // Number of optimization passes
+    
+    for (let iter = 0; iter < iterations; iter++) {
+      for (let i = 0; i < optimizedNodes.length; i++) {
+        for (let j = i + 1; j < optimizedNodes.length; j++) {
+          const nodeA = optimizedNodes[i];
+          const nodeB = optimizedNodes[j];
+          
+          const dx = nodeB.x - nodeA.x;
+          const dy = nodeB.y - nodeA.y;
+          const distance = Math.sqrt(dx * dx + dy * dy);
+          
+          if (distance < minDistance && distance > 0) {
+            // Calculate push vector
+            const pushX = (dx / distance) * (minDistance - distance) * 0.5;
+            const pushY = (dy / distance) * (minDistance - distance) * 0.5;
+            
+            // Apply push (half to each node)
+            nodeA.x -= pushX;
+            nodeA.y -= pushY;
+            nodeB.x += pushX;
+            nodeB.y += pushY;
+          }
+        }
+      }
+    }
+    
+    return optimizedNodes;
+  };
+  
+  // Apply layout optimization for better visualization
+  const optimizedScenario = {
+    ...scenario,
+    nodes: scenario.nodes.length > 15 ? optimizeNodeLayout(scenario.nodes) : scenario.nodes
+  };
 
   // Get dynamic line color based on connection type and nodes
   const getConnectionColor = (connection: FlowConnection, index: number) => {
@@ -200,7 +248,8 @@ const FlexibleSubwayMap: React.FC<FlexibleSubwayMapProps> = ({
       
       // Add title and metadata
       const titleElement = document.createElement('h1');
-      titleElement.textContent = scenario.title;
+      const repoName = repositoryInfo ? repositoryInfo.full_name : 'Repository';
+      titleElement.textContent = `${scenario.title} - ${repoName}`;
       titleElement.style.color = '#000';
       titleElement.style.fontSize = '24px';
       titleElement.style.marginBottom = '10px';
@@ -221,13 +270,35 @@ const FlexibleSubwayMap: React.FC<FlexibleSubwayMapProps> = ({
       // Clone the entire visualization div
       const vizClone = visualizationDiv.cloneNode(true) as HTMLElement;
       
+      // Determine if this is a large analysis (many nodes)
+      const nodeCount = optimizedScenario.nodes.length;
+      const isLargeAnalysis = nodeCount > 20;
+      
+      // Adjust scale based on analysis size for better PDF readability
+      const pdfScale = isLargeAnalysis ? 0.6 : 0.8;
+      
       // Reset transform and ensure proper sizing for export
-      vizClone.style.transform = 'scale(0.8)';
+      vizClone.style.transform = `scale(${pdfScale})`;
       vizClone.style.transformOrigin = 'top center';
       vizClone.style.background = '#ffffff';
       vizClone.style.width = '100%';
       vizClone.style.height = 'auto';
       vizClone.style.overflow = 'visible';
+      
+      // For large analyses, try to expand node spacing for better visibility
+      if (isLargeAnalysis) {
+        const svgElement = vizClone.querySelector('svg');
+        if (svgElement) {
+          // Increase the viewBox to give more space between nodes
+          const currentViewBox = svgElement.getAttribute('viewBox');
+          if (currentViewBox) {
+            const [x, y, width, height] = currentViewBox.split(' ').map(Number);
+            const expandedWidth = width * 1.5;
+            const expandedHeight = height * 1.5;
+            svgElement.setAttribute('viewBox', `${x} ${y} ${expandedWidth} ${expandedHeight}`);
+          }
+        }
+      }
       
       // Update SVG background and text colors
       const svgElement = vizClone.querySelector('svg');
@@ -276,12 +347,13 @@ const FlexibleSubwayMap: React.FC<FlexibleSubwayMapProps> = ({
         scrollY: 0
       });
 
-      // Create PDF
+      // Create PDF with format based on analysis size
       const imgData = canvas.toDataURL('image/png', 0.95);
+      const pdfFormat = isLargeAnalysis ? 'a2' : 'a3'; // Even larger format for big analyses
       const pdf = new jsPDF({
         orientation: 'landscape',
         unit: 'mm',
-        format: 'a3' // Larger format to accommodate the visualization
+        format: pdfFormat
       });
 
       // Calculate dimensions to fit the page
@@ -306,7 +378,8 @@ const FlexibleSubwayMap: React.FC<FlexibleSubwayMapProps> = ({
       
       // Generate filename with timestamp
       const timestamp = new Date().toISOString().split('T')[0];
-      const filename = `${scenario.title.replace(/[^a-z0-9]/gi, '_')}_${timestamp}.pdf`;
+      const repoNameForFile = repositoryInfo ? repositoryInfo.name : 'analysis';
+      const filename = `${repoNameForFile}_${scenario.title.replace(/[^a-z0-9]/gi, '_')}_${timestamp}.pdf`;
       
       pdf.save(filename);
       
@@ -427,29 +500,28 @@ const FlexibleSubwayMap: React.FC<FlexibleSubwayMapProps> = ({
         {/* SVG Flow Diagram */}
         <div 
           className="relative w-full h-[600px] overflow-auto border border-slate-600 rounded-lg bg-slate-900"
-          onWheel={handleWheelZoom}
         >
           <div 
             className="transition-transform duration-200"
             style={{ 
               transform: `scale(${zoom}) translate(${panOffset.x}px, ${panOffset.y}px)`,
               transformOrigin: 'center center',
-              width: `${bounds.width * zoom}px`,
-              height: `${bounds.height * zoom}px`,
-              minWidth: `${bounds.width}px`,
-              minHeight: `${bounds.height}px`
+              width: `${optimizedBounds.width * zoom}px`,
+              height: `${optimizedBounds.height * zoom}px`,
+              minWidth: `${optimizedBounds.width}px`,
+              minHeight: `${optimizedBounds.height}px`
             }}
           >
             <svg 
-              width={bounds.width} 
-              height={bounds.height}
-              viewBox={`${bounds.minX} ${bounds.minY} ${bounds.width} ${bounds.height}`} 
+              width={optimizedBounds.width} 
+              height={optimizedBounds.height}
+              viewBox={`${optimizedBounds.minX} ${optimizedBounds.minY} ${optimizedBounds.width} ${optimizedBounds.height}`} 
               className="block"
               preserveAspectRatio="xMinYMin meet"
             >
             <defs>
               {/* Create arrow markers for each unique color */}
-              {Array.from(new Set(scenario.connections.map((conn, index) => getConnectionColor(conn, index)))).map(color => (
+              {Array.from(new Set(optimizedScenario.connections.map((conn, index) => getConnectionColor(conn, index)))).map(color => (
                 <marker 
                   key={color}
                   id={getArrowMarkerId(color)} 
@@ -470,7 +542,7 @@ const FlexibleSubwayMap: React.FC<FlexibleSubwayMapProps> = ({
             </defs>
             
             {/* Render nodes first */}
-            {scenario.nodes.map((node) => (
+            {optimizedScenario.nodes.map((node) => (
               <g
                 key={node.id}
                 className="cursor-pointer"
@@ -534,7 +606,7 @@ const FlexibleSubwayMap: React.FC<FlexibleSubwayMapProps> = ({
             ))}
             
             {/* Render connections on top of nodes */}
-            {scenario.connections.map((conn, index) => {
+            {optimizedScenario.connections.map((conn, index) => {
               const midX = (conn.from.x + conn.to.x) / 2;
               const midY = (conn.from.y + conn.to.y) / 2;
               const connectionColor = getConnectionColor(conn, index);
@@ -628,7 +700,7 @@ const FlexibleSubwayMap: React.FC<FlexibleSubwayMapProps> = ({
                 <>
                   <h4 className="text-blue-400 font-semibold mb-2">Click any node to see details</h4>
                   <p className="text-xs text-slate-300 mb-1">
-                    This diagram shows {scenario.description.toLowerCase()}.
+                    This diagram shows {optimizedScenario.description.toLowerCase()}.
                   </p>
                   <p className="text-xs text-slate-300">
                     <strong>Colors represent different layers:</strong> Each color represents a different system component or responsibility.

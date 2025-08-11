@@ -911,6 +911,11 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
                     scenario={analysis.visualization}
                     onScenarioChange={() => {}}
                     availableScenarios={[analysis.visualization]}
+                    repositoryInfo={{
+                      owner: repository.owner,
+                      name: repository.name,
+                      full_name: repository.full_name
+                    }}
                     onNodeClick={(node) => {
                       // Extract file path and line number from node details
                       const fileDetail = node.details?.find((detail: string) => detail.startsWith('File: '));
