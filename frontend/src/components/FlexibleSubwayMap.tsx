@@ -49,6 +49,11 @@ interface FlexibleSubwayMapProps {
     name: string;
     full_name: string;
   };
+  analysisInfo?: {
+    selectedFiles?: string[];
+    fileCount?: number;
+    analysisType?: string;
+  };
 }
 
 const FlexibleSubwayMap: React.FC<FlexibleSubwayMapProps> = ({ 
@@ -56,7 +61,8 @@ const FlexibleSubwayMap: React.FC<FlexibleSubwayMapProps> = ({
   onScenarioChange,
   availableScenarios = [],
   onNodeClick,
-  repositoryInfo
+  repositoryInfo,
+  analysisInfo
 }) => {
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
   const [legendCollapsed, setLegendCollapsed] = useState(false);
@@ -244,13 +250,23 @@ const FlexibleSubwayMap: React.FC<FlexibleSubwayMapProps> = ({
       exportContainer.style.top = '0';
       exportContainer.style.background = '#ffffff';
       exportContainer.style.padding = '20px';
-      exportContainer.style.width = '1200px';
+      exportContainer.style.width = 'auto'; // Will be set dynamically based on content
       exportContainer.style.height = 'auto';
       
       // Add title and metadata
       const titleElement = document.createElement('h1');
       const repoName = repositoryInfo ? repositoryInfo.full_name : 'Repository';
-      titleElement.textContent = `${scenario.title} - ${repoName}`;
+      
+      // Create comprehensive title with file info
+      let titleText = `${scenario.title} - ${repoName}`;
+      if (analysisInfo?.fileCount) {
+        const fileInfo = analysisInfo.fileCount > 1 
+          ? `${analysisInfo.fileCount} files` 
+          : analysisInfo.selectedFiles?.[0] || '1 file';
+        titleText += ` (${fileInfo})`;
+      }
+      
+      titleElement.textContent = titleText;
       titleElement.style.color = '#000';
       titleElement.style.fontSize = '24px';
       titleElement.style.marginBottom = '10px';
@@ -258,7 +274,13 @@ const FlexibleSubwayMap: React.FC<FlexibleSubwayMapProps> = ({
       titleElement.style.textAlign = 'center';
       
       const descElement = document.createElement('p');
-      descElement.textContent = scenario.description;
+      let description = scenario.description;
+      if (analysisInfo?.selectedFiles && analysisInfo.selectedFiles.length <= 3) {
+        // Show individual filenames for small selections
+        const fileNames = analysisInfo.selectedFiles.map(f => f.split('/').pop()).join(', ');
+        description += ` - Files: ${fileNames}`;
+      }
+      descElement.textContent = description;
       descElement.style.color = '#666';
       descElement.style.fontSize = '14px';
       descElement.style.marginBottom = '20px';
@@ -286,19 +308,41 @@ const FlexibleSubwayMap: React.FC<FlexibleSubwayMapProps> = ({
       vizClone.style.height = 'auto';
       vizClone.style.overflow = 'visible';
       
-      // For large analyses, try to expand node spacing for better visibility
-      if (isLargeAnalysis) {
-        const svgElement = vizClone.querySelector('svg');
-        if (svgElement) {
-          // Increase the viewBox to give more space between nodes
-          const currentViewBox = svgElement.getAttribute('viewBox');
-          if (currentViewBox) {
-            const [x, y, width, height] = currentViewBox.split(' ').map(Number);
-            const expandedWidth = width * 1.5;
-            const expandedHeight = height * 1.5;
-            svgElement.setAttribute('viewBox', `${x} ${y} ${expandedWidth} ${expandedHeight}`);
+      // Fix clipping issues by ensuring full visualization is captured
+      const svgElement = vizClone.querySelector('svg');
+      if (svgElement) {
+        // Get the actual bounds of all content
+        const allNodes = vizClone.querySelectorAll('.node, circle, text, path');
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+        
+        // Calculate true bounds of all SVG elements
+        allNodes.forEach((element: any) => {
+          try {
+            const bbox = element.getBBox();
+            minX = Math.min(minX, bbox.x);
+            minY = Math.min(minY, bbox.y);
+            maxX = Math.max(maxX, bbox.x + bbox.width);
+            maxY = Math.max(maxY, bbox.y + bbox.height);
+          } catch (e) {
+            // Some elements might not have getBBox, skip them
           }
-        }
+        });
+        
+        // Add significant padding to prevent clipping
+        const padding = isLargeAnalysis ? 100 : 50;
+        const finalMinX = minX - padding;
+        const finalMinY = minY - padding;
+        const finalWidth = (maxX - minX) + (padding * 2);
+        const finalHeight = (maxY - minY) + (padding * 2);
+        
+        // Set expanded viewBox to prevent clipping
+        svgElement.setAttribute('viewBox', `${finalMinX} ${finalMinY} ${finalWidth} ${finalHeight}`);
+        svgElement.setAttribute('width', finalWidth.toString());
+        svgElement.setAttribute('height', finalHeight.toString());
+        
+        // Ensure container is large enough
+        exportContainer.style.width = Math.max(1400, finalWidth + 100) + 'px';
+        exportContainer.style.height = 'auto';
       }
       
       // Update SVG background and text colors
@@ -498,6 +542,14 @@ const FlexibleSubwayMap: React.FC<FlexibleSubwayMapProps> = ({
           )}
         </div>
 
+        {/* CSS animations for sophisticated effects */}
+        <style>{`
+          @keyframes connectionFlow {
+            0% { stroke-dashoffset: 12; }
+            100% { stroke-dashoffset: 0; }
+          }
+        `}</style>
+        
         {/* SVG Flow Diagram */}
         <div 
           className="relative w-full h-[600px] overflow-auto border border-slate-600 rounded-lg bg-slate-900"
@@ -542,21 +594,54 @@ const FlexibleSubwayMap: React.FC<FlexibleSubwayMapProps> = ({
               </marker>
             </defs>
             
-            {/* Render nodes first */}
-            {optimizedScenario.nodes.map((node) => (
-              <g
-                key={node.id}
-                className="cursor-pointer"
-                onClick={() => {
-                  setSelectedNode(node.id);
-                  if (onNodeClick) {
-                    onNodeClick(node);
-                  }
-                }}
-                style={{ transition: 'opacity 0.2s' }}
-                onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.8'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.opacity = '1'; }}
-              >
+            {/* Render nodes first with step numbers and enhanced animations */}
+            {optimizedScenario.nodes.map((node, nodeIndex) => {
+              const stepNumber = nodeIndex + 1;
+              return (
+                <g key={node.id}>
+                  {/* Step number circle */}
+                  <circle
+                    cx={node.x - 15}
+                    cy={node.y + node.height / 2}
+                    r="12"
+                    fill={node.color}
+                    stroke="rgba(255,255,255,0.8)"
+                    strokeWidth="2"
+                  />
+                  <text
+                    x={node.x - 15}
+                    y={node.y + node.height / 2 + 1}
+                    textAnchor="middle"
+                    dominantBaseline="middle"
+                    fill="#fff"
+                    fontSize="10"
+                    fontWeight="bold"
+                  >
+                    {stepNumber}
+                  </text>
+                  
+                  {/* Enhanced node with sophisticated hover effects */}
+                  <g
+                    className="cursor-pointer"
+                    onClick={() => {
+                      setSelectedNode(node.id);
+                      if (onNodeClick) {
+                        onNodeClick(node);
+                      }
+                    }}
+                    style={{ 
+                      transformOrigin: `${node.x + node.width/2}px ${node.y + node.height/2}px`,
+                      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+                    }}
+                    onMouseEnter={(e) => { 
+                      e.currentTarget.style.transform = 'scale(1.05)';
+                      e.currentTarget.style.filter = 'brightness(1.2) drop-shadow(0 4px 8px rgba(0,0,0,0.3))';
+                    }}
+                    onMouseLeave={(e) => { 
+                      e.currentTarget.style.transform = 'scale(1)';
+                      e.currentTarget.style.filter = 'brightness(1)';
+                    }}
+                  >
                 <rect
                   x={node.x}
                   y={node.y}
@@ -603,28 +688,48 @@ const FlexibleSubwayMap: React.FC<FlexibleSubwayMapProps> = ({
                     </text>
                   </>
                 )}
-              </g>
-            ))}
+                  </g>
+                </g>
+              );
+            })}
             
-            {/* Render connections on top of nodes */}
+            {/* Render elegant curved connections */}
             {optimizedScenario.connections.map((conn, index) => {
+              const connectionColor = getConnectionColor(conn, index);
+              
+              // Create smooth curved paths
+              const dx = conn.to.x - conn.from.x;
+              const dy = conn.to.y - conn.from.y;
+              const distance = Math.sqrt(dx * dx + dy * dy);
+              
+              // Control points for natural curves
+              const curvature = Math.min(distance * 0.25, 80);
               const midX = (conn.from.x + conn.to.x) / 2;
               const midY = (conn.from.y + conn.to.y) / 2;
-              const connectionColor = getConnectionColor(conn, index);
+              
+              // Perpendicular offset for elegant curve
+              const perpX = -dy / distance * curvature;
+              const perpY = dx / distance * curvature;
+              
+              const controlX = midX + perpX;
+              const controlY = midY + perpY;
+              
+              const curvePath = `M ${conn.from.x} ${conn.from.y} Q ${controlX} ${controlY} ${conn.to.x} ${conn.to.y}`;
               
               return (
                 <g key={index}>
                   <path
-                    d={`M ${conn.from.x} ${conn.from.y} L ${conn.to.x} ${conn.to.y}`}
+                    d={curvePath}
                     stroke={connectionColor}
-                    strokeWidth="4"
+                    strokeWidth="3"
                     fill="none"
-                    opacity="0.7"
+                    opacity="0.8"
                     markerEnd={`url(#${getArrowMarkerId(connectionColor)})`}
-                    className={conn.animated ? "animate-pulse" : ""}
                     style={{
-                      filter: 'drop-shadow(0px 1px 2px rgba(0,0,0,0.3))',
-                      transition: 'all 0.3s ease'
+                      filter: 'drop-shadow(0px 2px 4px rgba(0,0,0,0.2))',
+                      transition: 'all 0.3s ease',
+                      strokeDasharray: conn.animated ? '8 4' : 'none',
+                      animation: conn.animated ? 'connectionFlow 2s linear infinite' : 'none'
                     }}
                   />
                   {conn.label && (

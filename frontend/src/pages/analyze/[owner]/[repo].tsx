@@ -812,12 +812,7 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
                     <h2 className="text-2xl font-bold text-white">Analysis Complete!</h2>
                   </div>
                   <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => setShowCodeViewer(!showCodeViewer)}
-                      className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm font-medium transition-colors"
-                    >
-                      {showCodeViewer ? 'Hide Code' : 'Show Code'}
-                    </button>
+                    {/* Hide Code button moved to code viewer header */
                     <button
                       onClick={() => exportAnalysis('json')}
                       className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors"
@@ -916,6 +911,11 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
                       name: repository.name,
                       full_name: repository.full_name
                     }}
+                    analysisInfo={{
+                      selectedFiles: selectedFiles,
+                      fileCount: selectedFiles.length,
+                      analysisType: selectedFiles.length === 1 ? 'single-file' : 'multi-file'
+                    }}
                     onNodeClick={(node) => {
                       // Extract file path and line number from node details
                       const fileDetail = node.details?.find((detail: string) => detail.startsWith('File: '));
@@ -939,11 +939,20 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
                             {selectedFileContent ? selectedFileContent.path : 'Select a node to view code'}
                           </span>
                         </div>
-                        {selectedFileContent && (
-                          <span className="text-xs text-slate-400 bg-slate-600 px-2 py-1 rounded">
-                            {selectedFileContent.language}
-                          </span>
-                        )}
+                        <div className="flex items-center gap-2">
+                          {selectedFileContent && (
+                            <span className="text-xs text-slate-400 bg-slate-600 px-2 py-1 rounded">
+                              {selectedFileContent.language}
+                            </span>
+                          )}
+                          <button
+                            onClick={() => setShowCodeViewer(false)}
+                            className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-xs font-medium transition-colors"
+                            title="Hide Code Viewer"
+                          >
+                            Hide Code
+                          </button>
+                        </div>
                       </div>
                     </div>
                     
