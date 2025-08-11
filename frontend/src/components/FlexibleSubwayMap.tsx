@@ -345,8 +345,7 @@ const FlexibleSubwayMap: React.FC<FlexibleSubwayMapProps> = ({
         exportContainer.style.height = 'auto';
       }
       
-      // Update SVG background and text colors
-      const svgElement = vizClone.querySelector('svg');
+      // Update SVG background and text colors (reuse existing svgElement)
       if (svgElement) {
         svgElement.style.background = '#ffffff';
         
