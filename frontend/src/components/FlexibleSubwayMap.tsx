@@ -302,11 +302,11 @@ const FlexibleSubwayMap: React.FC<FlexibleSubwayMapProps> = ({
       
       // Scale for better readability
       const pdfScale = isLargeAnalysis ? 0.7 : 0.9;
-      const finalWidth = originalWidth * pdfScale;
-      const finalHeight = originalHeight * pdfScale;
+      const scaledWidth = originalWidth * pdfScale;
+      const scaledHeight = originalHeight * pdfScale;
       
-      svgClone.setAttribute('width', finalWidth.toString());
-      svgClone.setAttribute('height', finalHeight.toString());
+      svgClone.setAttribute('width', scaledWidth.toString());
+      svgClone.setAttribute('height', scaledHeight.toString());
       svgClone.style.background = '#ffffff';
       
       // Ensure all text and paths are visible on white background
