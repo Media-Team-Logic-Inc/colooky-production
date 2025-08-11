@@ -54,7 +54,9 @@ const FlexibleSubwayMap: React.FC<FlexibleSubwayMapProps> = ({
 }) => {
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
   const [legendCollapsed, setLegendCollapsed] = useState(false);
+  const [infoPanelCollapsed, setInfoPanelCollapsed] = useState(false);
   const [zoom, setZoom] = useState(1);
+  const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
   const [legendPosition, setLegendPosition] = useState({ top: 24, right: 24 });
   const [infoPanelPosition, setInfoPanelPosition] = useState({ bottom: 24, left: 24 });
   const [isDragging, setIsDragging] = useState<'legend' | 'info' | null>(null);
@@ -115,13 +117,31 @@ const FlexibleSubwayMap: React.FC<FlexibleSubwayMapProps> = ({
     };
   };
 
-  // Handle mouse wheel zoom
+  // Handle mouse wheel zoom with center-based zooming
   const handleWheelZoom = (event: React.WheelEvent) => {
     event.preventDefault();
+    if (!mapRef.current) return;
+    
+    const rect = mapRef.current.getBoundingClientRect();
+    const centerX = rect.width / 2;
+    const centerY = rect.height / 2;
+    
     const delta = event.deltaY;
     const zoomSpeed = 0.001;
+    const oldZoom = zoom;
     const newZoom = Math.max(0.1, Math.min(3, zoom - delta * zoomSpeed));
-    setZoom(newZoom);
+    
+    if (newZoom !== oldZoom) {
+      // Zoom towards center
+      const zoomRatio = newZoom / oldZoom;
+      const newPanOffset = {
+        x: panOffset.x + (centerX - centerX * zoomRatio),
+        y: panOffset.y + (centerY - centerY * zoomRatio)
+      };
+      
+      setPanOffset(newPanOffset);
+      setZoom(newZoom);
+    }
   };
 
   const bounds = getCanvasBounds();
@@ -161,9 +181,12 @@ const FlexibleSubwayMap: React.FC<FlexibleSubwayMapProps> = ({
   // Export visualization as PDF
   const exportToPDF = async () => {
     try {
-      // Find the SVG element
-      const svgElement = mapRef.current?.querySelector('svg');
-      if (!svgElement) return;
+      // Find the main visualization container (the div containing the SVG)
+      const visualizationDiv = mapRef.current?.querySelector('div[style*="transform"]');
+      if (!visualizationDiv) {
+        console.error('Visualization container not found');
+        return;
+      }
 
       // Create a temporary container with white background for the export
       const exportContainer = document.createElement('div');
@@ -172,18 +195,8 @@ const FlexibleSubwayMap: React.FC<FlexibleSubwayMapProps> = ({
       exportContainer.style.top = '0';
       exportContainer.style.background = '#ffffff';
       exportContainer.style.padding = '20px';
-      
-      // Clone the SVG and adjust styling for print
-      const svgClone = svgElement.cloneNode(true) as SVGElement;
-      svgClone.style.background = '#ffffff';
-      
-      // Update text colors for better visibility on white background
-      const textElements = svgClone.querySelectorAll('text');
-      textElements.forEach(text => {
-        if (text.getAttribute('fill') === '#fff' || text.getAttribute('fill') === 'white') {
-          text.setAttribute('fill', '#000000');
-        }
-      });
+      exportContainer.style.width = '1200px';
+      exportContainer.style.height = 'auto';
       
       // Add title and metadata
       const titleElement = document.createElement('h1');
@@ -192,6 +205,7 @@ const FlexibleSubwayMap: React.FC<FlexibleSubwayMapProps> = ({
       titleElement.style.fontSize = '24px';
       titleElement.style.marginBottom = '10px';
       titleElement.style.fontFamily = 'Arial, sans-serif';
+      titleElement.style.textAlign = 'center';
       
       const descElement = document.createElement('p');
       descElement.textContent = scenario.description;
@@ -199,29 +213,96 @@ const FlexibleSubwayMap: React.FC<FlexibleSubwayMapProps> = ({
       descElement.style.fontSize = '14px';
       descElement.style.marginBottom = '20px';
       descElement.style.fontFamily = 'Arial, sans-serif';
+      descElement.style.textAlign = 'center';
       
       exportContainer.appendChild(titleElement);
       exportContainer.appendChild(descElement);
-      exportContainer.appendChild(svgClone);
+      
+      // Clone the entire visualization div
+      const vizClone = visualizationDiv.cloneNode(true) as HTMLElement;
+      
+      // Reset transform and ensure proper sizing for export
+      vizClone.style.transform = 'scale(0.8)';
+      vizClone.style.transformOrigin = 'top center';
+      vizClone.style.background = '#ffffff';
+      vizClone.style.width = '100%';
+      vizClone.style.height = 'auto';
+      vizClone.style.overflow = 'visible';
+      
+      // Update SVG background and text colors
+      const svgElement = vizClone.querySelector('svg');
+      if (svgElement) {
+        svgElement.style.background = '#ffffff';
+        
+        // Update text colors for better visibility on white background
+        const textElements = svgElement.querySelectorAll('text');
+        textElements.forEach(text => {
+          const currentFill = text.getAttribute('fill');
+          if (currentFill === '#fff' || currentFill === 'white' || currentFill === '#ffffff') {
+            text.setAttribute('fill', '#000000');
+          } else if (currentFill && currentFill.includes('#')) {
+            // Keep colored text as is for better visualization
+          } else {
+            // Default dark text for readability
+            text.setAttribute('fill', '#333333');
+          }
+        });
+        
+        // Ensure connections are visible
+        const pathElements = svgElement.querySelectorAll('path');
+        pathElements.forEach(path => {
+          const currentStroke = path.getAttribute('stroke');
+          if (currentStroke === 'white' || currentStroke === '#fff') {
+            path.setAttribute('stroke', '#333333');
+          }
+        });
+      }
+      
+      exportContainer.appendChild(vizClone);
       document.body.appendChild(exportContainer);
 
-      // Capture as canvas
+      // Wait a moment for styles to apply
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // Capture as canvas with better settings
       const canvas = await html2canvas(exportContainer, {
         backgroundColor: '#ffffff',
-        scale: 2, // Higher quality
+        scale: 1.5, // Good quality without being too large
         useCORS: true,
-        allowTaint: true
+        allowTaint: true,
+        width: 1200,
+        height: exportContainer.scrollHeight,
+        scrollX: 0,
+        scrollY: 0
       });
 
       // Create PDF
-      const imgData = canvas.toDataURL('image/png');
+      const imgData = canvas.toDataURL('image/png', 0.95);
       const pdf = new jsPDF({
-        orientation: canvas.width > canvas.height ? 'landscape' : 'portrait',
-        unit: 'px',
-        format: [canvas.width, canvas.height]
+        orientation: 'landscape',
+        unit: 'mm',
+        format: 'a3' // Larger format to accommodate the visualization
       });
 
-      pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+      // Calculate dimensions to fit the page
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      const imgAspectRatio = canvas.width / canvas.height;
+      
+      let finalWidth = pdfWidth - 20; // 10mm margin on each side
+      let finalHeight = finalWidth / imgAspectRatio;
+      
+      // If height is too big, scale based on height instead
+      if (finalHeight > pdfHeight - 20) {
+        finalHeight = pdfHeight - 20;
+        finalWidth = finalHeight * imgAspectRatio;
+      }
+      
+      // Center the image
+      const xOffset = (pdfWidth - finalWidth) / 2;
+      const yOffset = (pdfHeight - finalHeight) / 2;
+
+      pdf.addImage(imgData, 'PNG', xOffset, yOffset, finalWidth, finalHeight);
       
       // Generate filename with timestamp
       const timestamp = new Date().toISOString().split('T')[0];
@@ -351,8 +432,8 @@ const FlexibleSubwayMap: React.FC<FlexibleSubwayMapProps> = ({
           <div 
             className="transition-transform duration-200"
             style={{ 
-              transform: `scale(${zoom})`,
-              transformOrigin: 'top left',
+              transform: `scale(${zoom}) translate(${panOffset.x}px, ${panOffset.y}px)`,
+              transformOrigin: 'center center',
               width: `${bounds.width * zoom}px`,
               height: `${bounds.height * zoom}px`,
               minWidth: `${bounds.width}px`,
@@ -512,7 +593,8 @@ const FlexibleSubwayMap: React.FC<FlexibleSubwayMapProps> = ({
           className="absolute bg-slate-800/95 border border-slate-600 rounded-lg z-10 max-w-sm cursor-move"
           style={{ 
             bottom: `${infoPanelPosition.bottom}px`, 
-            left: `${infoPanelPosition.left}px` 
+            left: `${infoPanelPosition.left}px`,
+            minWidth: infoPanelCollapsed ? 'auto' : '200px'
           }}
         >
           <div 
@@ -520,28 +602,41 @@ const FlexibleSubwayMap: React.FC<FlexibleSubwayMapProps> = ({
             onMouseDown={() => handleMouseDown('info')}
           >
             <h3 className="text-sm font-semibold text-white">Node Info</h3>
-            <Move className="w-3 h-3 text-slate-400" />
+            <div className="flex items-center gap-1">
+              <Move className="w-3 h-3 text-slate-400" />
+              <button
+                onClick={() => setInfoPanelCollapsed(!infoPanelCollapsed)}
+                className="p-1 hover:bg-slate-700 rounded"
+              >
+                {infoPanelCollapsed ? 
+                  <ChevronUp className="w-3 h-3 text-slate-400" /> : 
+                  <ChevronDown className="w-3 h-3 text-slate-400" />
+                }
+              </button>
+            </div>
           </div>
-          <div className="p-3">
-            {selectedNodeInfo ? (
-              <>
-                <h4 className="text-blue-400 font-semibold mb-2">{selectedNodeInfo.title}</h4>
-                {selectedNodeInfo.details.map((detail, index) => (
-                  <p key={index} className="text-xs text-slate-300 mb-1">• {detail}</p>
-                ))}
-              </>
-            ) : (
-              <>
-                <h4 className="text-blue-400 font-semibold mb-2">Click any node to see details</h4>
-                <p className="text-xs text-slate-300 mb-1">
-                  This diagram shows {scenario.description.toLowerCase()}.
-                </p>
-                <p className="text-xs text-slate-300">
-                  <strong>Colors represent different layers:</strong> Each color represents a different system component or responsibility.
-                </p>
-              </>
-            )}
-          </div>
+          {!infoPanelCollapsed && (
+            <div className="p-3">
+              {selectedNodeInfo ? (
+                <>
+                  <h4 className="text-blue-400 font-semibold mb-2">{selectedNodeInfo.title}</h4>
+                  {selectedNodeInfo.details.map((detail, index) => (
+                    <p key={index} className="text-xs text-slate-300 mb-1">• {detail}</p>
+                  ))}
+                </>
+              ) : (
+                <>
+                  <h4 className="text-blue-400 font-semibold mb-2">Click any node to see details</h4>
+                  <p className="text-xs text-slate-300 mb-1">
+                    This diagram shows {scenario.description.toLowerCase()}.
+                  </p>
+                  <p className="text-xs text-slate-300">
+                    <strong>Colors represent different layers:</strong> Each color represents a different system component or responsibility.
+                  </p>
+                </>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -762,7 +762,7 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
                     <div className="bg-slate-700 rounded-lg p-4">
                       <div className="flex justify-between text-sm text-slate-300 mb-2">
                         <span>Progress</span>
-                        <span>{analysis.progress}%</span>
+                        <span>{Math.round(analysis.progress)}%</span>
                       </div>
                       <div className="w-full bg-slate-600 rounded-full h-2">
                         <div 
