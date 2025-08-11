@@ -100,10 +100,10 @@ const FlexibleSubwayMap: React.FC<FlexibleSubwayMapProps> = ({
   const handleMouseUp = () => setIsDragging(null);
 
   // Calculate dynamic canvas bounds based on actual node positions
-  const getCanvasBounds = () => {
-    if (!scenario.nodes.length) return { width: 2400, height: 1400, minX: 0, minY: 0 };
+  const getCanvasBounds = (nodes = scenario.nodes) => {
+    if (!nodes.length) return { width: 2400, height: 1400, minX: 0, minY: 0 };
     
-    const positions = scenario.nodes.map(node => ({
+    const positions = nodes.map(node => ({
       x: node.x,
       y: node.y,
       width: node.width,
@@ -150,8 +150,6 @@ const FlexibleSubwayMap: React.FC<FlexibleSubwayMapProps> = ({
     }
   };
 
-  const bounds = getCanvasBounds();\n  const optimizedBounds = getCanvasBounds(optimizedScenario.nodes);
-
   // Advanced layout algorithm to reduce node overlap
   const optimizeNodeLayout = (nodes: FlowNode[]) => {
     if (nodes.length < 10) return nodes; // Skip for small layouts
@@ -193,6 +191,9 @@ const FlexibleSubwayMap: React.FC<FlexibleSubwayMapProps> = ({
     ...scenario,
     nodes: scenario.nodes.length > 15 ? optimizeNodeLayout(scenario.nodes) : scenario.nodes
   };
+  
+  const bounds = getCanvasBounds();
+  const optimizedBounds = getCanvasBounds(optimizedScenario.nodes);
 
   // Get dynamic line color based on connection type and nodes
   const getConnectionColor = (connection: FlowConnection, index: number) => {
