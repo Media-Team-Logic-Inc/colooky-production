@@ -4,7 +4,7 @@ import { getSession } from 'next-auth/react';
 import Head from 'next/head';
 import Link from 'next/link';
 import Header from '../components/layout/Header';
-import { Github, Star, GitFork, ExternalLink, Clock } from 'lucide-react';
+import { Github, Star, GitFork, ExternalLink, Clock, Zap, BarChart3, Trash2 } from 'lucide-react';
 
 interface Repository {
   id: number;
@@ -28,12 +28,42 @@ interface RepositoriesProps {
   accessToken: string;
 }
 
+interface RecentAnalysis {
+  owner: string;
+  name: string;
+  full_name: string;
+  timestamp: string;
+  summary?: {
+    functions: number;
+    classes: number;
+    imports: number;
+    complexity_score: number;
+    main_language: string;
+    supported_files: number;
+  };
+}
+
 export default function Repositories({ user, accessToken }: RepositoriesProps) {
   const [repositories, setRepositories] = useState<Repository[]>([]);
+  const [recentAnalyses, setRecentAnalyses] = useState<RecentAnalysis[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    // Load recent analyses from localStorage
+    const loadRecentAnalyses = () => {
+      try {
+        const recent = localStorage.getItem('colooky_recent_analyses');
+        if (recent) {
+          setRecentAnalyses(JSON.parse(recent));
+        }
+      } catch (error) {
+        console.warn('Failed to load recent analyses:', error);
+      }
+    };
+    
+    loadRecentAnalyses();
+    
     const fetchRepositories = async () => {
       try {
         const response = await fetch('https://api.github.com/user/repos?sort=updated&per_page=50', {
@@ -90,6 +120,28 @@ export default function Repositories({ user, accessToken }: RepositoriesProps) {
     };
     return colors[language || ''] || '#6b7280';
   };
+  
+  const removeRecentAnalysis = (fullName: string) => {
+    const updated = recentAnalyses.filter(analysis => analysis.full_name !== fullName);
+    setRecentAnalyses(updated);
+    localStorage.setItem('colooky_recent_analyses', JSON.stringify(updated));
+    
+    // Also remove the cached analysis
+    const [owner, name] = fullName.split('/');
+    localStorage.removeItem(`colooky_analysis_${owner}_${name}`);
+  };
+  
+  const clearAllRecentAnalyses = () => {
+    // Clear all cached analyses
+    recentAnalyses.forEach(analysis => {
+      const [owner, name] = analysis.full_name.split('/');
+      localStorage.removeItem(`colooky_analysis_${owner}_${name}`);
+    });
+    
+    // Clear the recent analyses list
+    setRecentAnalyses([]);
+    localStorage.removeItem('colooky_recent_analyses');
+  };
 
   return (
     <>
@@ -112,6 +164,84 @@ export default function Repositories({ user, accessToken }: RepositoriesProps) {
               Select a repository to analyze its code structure
             </p>
           </div>
+          
+          {/* Recent Analyses Section */}
+          {recentAnalyses.length > 0 && (
+            <div className="mb-8">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-semibold text-white flex items-center gap-2">
+                  <Zap className="w-5 h-5 text-yellow-400" />
+                  Recent Analyses
+                </h2>
+                <button
+                  onClick={clearAllRecentAnalyses}
+                  className="text-sm text-slate-400 hover:text-red-400 transition-colors"
+                  title="Clear all cached analyses"
+                >
+                  Clear All
+                </button>
+              </div>
+              
+              <div className="grid gap-3">
+                {recentAnalyses.map((analysis) => (
+                  <div
+                    key={analysis.full_name}
+                    className="bg-gradient-to-r from-blue-900/20 to-purple-900/20 border border-blue-800/50 rounded-lg p-4 hover:border-blue-700 transition-all duration-200 group"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <h3 className="text-lg font-semibold text-white group-hover:text-blue-400 transition-colors">
+                            {analysis.full_name}
+                          </h3>
+                          <span className="text-xs bg-green-600/20 text-green-400 px-2 py-1 rounded-full flex items-center gap-1">
+                            <BarChart3 className="w-3 h-3" />
+                            Analyzed
+                          </span>
+                        </div>
+                        
+                        <div className="flex items-center gap-4 text-sm text-slate-400">
+                          <span>{new Date(analysis.timestamp).toLocaleDateString()}</span>
+                          {analysis.summary && (
+                            <>
+                              <span>{analysis.summary.functions} functions</span>
+                              <span>{analysis.summary.classes} classes</span>
+                              <span>{analysis.summary.supported_files} files</span>
+                              {analysis.summary.main_language && (
+                                <div className="flex items-center gap-1">
+                                  <div 
+                                    className="w-3 h-3 rounded-full"
+                                    style={{ backgroundColor: getLanguageColor(analysis.summary.main_language) }}
+                                  />
+                                  <span>{analysis.summary.main_language}</span>
+                                </div>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center gap-2 ml-4">
+                        <button
+                          onClick={() => removeRecentAnalysis(analysis.full_name)}
+                          className="p-2 text-slate-400 hover:text-red-400 transition-colors"
+                          title="Remove from recent analyses"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                        <Link
+                          href={`/analyze/${analysis.owner}/${analysis.name}`}
+                          className="inline-block px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors"
+                        >
+                          View Analysis
+                        </Link>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {loading && (
             <div className="flex items-center justify-center py-12">
@@ -141,7 +271,12 @@ export default function Repositories({ user, accessToken }: RepositoriesProps) {
           )}
 
           {!loading && !error && repositories.length > 0 && (
-            <div className="grid gap-4">
+            <div>
+              <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
+                <Github className="w-5 h-5 text-blue-400" />
+                All Repositories
+              </h2>
+              <div className="grid gap-4">
               {repositories.map((repo) => (
                 <div
                   key={repo.id}

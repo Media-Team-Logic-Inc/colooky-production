@@ -88,6 +88,7 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
 
   useEffect(() => {
     loadRepositoryStructure();
+    
     // Load persisted file selections
     const persistedSelections = localStorage.getItem(`colooky_selections_${repository.owner}_${repository.name}`);
     if (persistedSelections) {
@@ -96,6 +97,29 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
         setSelectedFiles(parsedSelections);
       } catch (error) {
         console.warn('Failed to parse persisted selections:', error);
+      }
+    }
+    
+    // Load persisted analysis results
+    const persistedAnalysis = localStorage.getItem(`colooky_analysis_${repository.owner}_${repository.name}`);
+    if (persistedAnalysis) {
+      try {
+        const parsedAnalysis = JSON.parse(persistedAnalysis);
+        // Only use cached analysis if it's less than 1 hour old
+        const analysisAge = Date.now() - new Date(parsedAnalysis.timestamp).getTime();
+        const oneHour = 60 * 60 * 1000;
+        
+        if (analysisAge < oneHour && parsedAnalysis.status === 'completed') {
+          setAnalysis(parsedAnalysis);
+          setCurrentStep('results');
+          console.log('Loaded cached analysis results');
+        } else {
+          // Clean up old analysis
+          localStorage.removeItem(`colooky_analysis_${repository.owner}_${repository.name}`);
+        }
+      } catch (error) {
+        console.warn('Failed to parse persisted analysis:', error);
+        localStorage.removeItem(`colooky_analysis_${repository.owner}_${repository.name}`);
       }
     }
   }, []);
@@ -447,6 +471,41 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
         if (result.status === 'completed') {
           setAnalyzing(false);
           setCurrentStep('results');
+          
+          // Persist analysis results with timestamp
+          const analysisWithTimestamp = {
+            ...result,
+            timestamp: new Date().toISOString(),
+            repository_info: {
+              owner: repository.owner,
+              name: repository.name,
+              full_name: repository.full_name
+            }
+          };
+          
+          localStorage.setItem(
+            `colooky_analysis_${repository.owner}_${repository.name}`, 
+            JSON.stringify(analysisWithTimestamp)
+          );
+          
+          // Also maintain a list of recently analyzed repositories
+          const recentAnalyses = JSON.parse(localStorage.getItem('colooky_recent_analyses') || '[]');
+          const newEntry = {
+            owner: repository.owner,
+            name: repository.name,
+            full_name: repository.full_name,
+            timestamp: new Date().toISOString(),
+            summary: result.summary
+          };
+          
+          // Remove duplicate entry if exists
+          const filteredAnalyses = recentAnalyses.filter(
+            (item: any) => item.full_name !== repository.full_name
+          );
+          
+          // Add new entry at the beginning and limit to 10 recent analyses
+          const updatedAnalyses = [newEntry, ...filteredAnalyses].slice(0, 10);
+          localStorage.setItem('colooky_recent_analyses', JSON.stringify(updatedAnalyses));
         } else if (result.status === 'error') {
           setError(result.error_message || 'Analysis failed');
           setAnalyzing(false);
@@ -533,6 +592,34 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
         <Header />
         
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          {/* Analysis Status Banner */}
+          {analysis && currentStep === 'results' && (
+            <div className="mb-6 bg-green-900/20 border border-green-800 rounded-lg p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <CheckCircle className="w-5 h-5 text-green-400" />
+                  <div>
+                    <p className="text-green-300 font-medium">
+                      Analysis cached and ready to view!
+                    </p>
+                    <p className="text-green-400 text-sm">
+                      Analyzed {new Date(analysis.timestamp || '').toLocaleString()}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    setCurrentStep('select');
+                    setAnalysis(null);
+                    localStorage.removeItem(`colooky_analysis_${repository.owner}_${repository.name}`);
+                  }}
+                  className="text-sm text-green-400 hover:text-green-300 underline"
+                >
+                  Start New Analysis
+                </button>
+              </div>
+            </div>
+          )}
           {/* Header */}
           <div className="mb-8">
             <div className="flex items-center gap-4 mb-4">

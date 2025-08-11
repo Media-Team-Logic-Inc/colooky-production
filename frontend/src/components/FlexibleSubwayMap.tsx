@@ -1,5 +1,7 @@
 import React, { useState, useRef } from 'react';
-import { ChevronUp, ChevronDown, Move, ZoomIn, ZoomOut } from 'lucide-react';
+import { ChevronUp, ChevronDown, Move, ZoomIn, ZoomOut, Download } from 'lucide-react';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 export interface FlowScenario {
   id: string;
@@ -61,7 +63,7 @@ const FlexibleSubwayMap: React.FC<FlexibleSubwayMapProps> = ({
   const selectedNodeInfo = scenario.nodes.find(node => node.id === selectedNode);
 
   const handleZoomIn = () => setZoom(prev => Math.min(prev + 0.2, 3));
-  const handleZoomOut = () => setZoom(prev => Math.max(prev - 0.2, 0.5));
+  const handleZoomOut = () => setZoom(prev => Math.max(prev - 0.2, 0.1));
 
   const handleMouseDown = (panel: 'legend' | 'info') => {
     setIsDragging(panel);
@@ -88,6 +90,153 @@ const FlexibleSubwayMap: React.FC<FlexibleSubwayMapProps> = ({
   };
 
   const handleMouseUp = () => setIsDragging(null);
+
+  // Calculate dynamic canvas bounds based on actual node positions
+  const getCanvasBounds = () => {
+    if (!scenario.nodes.length) return { width: 2400, height: 1400, minX: 0, minY: 0 };
+    
+    const positions = scenario.nodes.map(node => ({
+      x: node.x,
+      y: node.y,
+      width: node.width,
+      height: node.height
+    }));
+    
+    const minX = Math.min(...positions.map(p => p.x)) - 100;
+    const minY = Math.min(...positions.map(p => p.y)) - 100;
+    const maxX = Math.max(...positions.map(p => p.x + p.width)) + 100;
+    const maxY = Math.max(...positions.map(p => p.y + p.height)) + 100;
+    
+    return {
+      width: Math.max(maxX - minX, 2400),
+      height: Math.max(maxY - minY, 1400),
+      minX,
+      minY
+    };
+  };
+
+  // Handle mouse wheel zoom
+  const handleWheelZoom = (event: React.WheelEvent) => {
+    event.preventDefault();
+    const delta = event.deltaY;
+    const zoomSpeed = 0.001;
+    const newZoom = Math.max(0.1, Math.min(3, zoom - delta * zoomSpeed));
+    setZoom(newZoom);
+  };
+
+  const bounds = getCanvasBounds();
+
+  // Get dynamic line color based on connection type and nodes
+  const getConnectionColor = (connection: FlowConnection, index: number) => {
+    // Try to find the source node to match its color
+    const fromNode = scenario.nodes.find(node => 
+      connection.from.x >= node.x - 10 && connection.from.x <= node.x + node.width + 10 &&
+      connection.from.y >= node.y - 10 && connection.from.y <= node.y + node.height + 10
+    );
+    
+    const toNode = scenario.nodes.find(node => 
+      connection.to.x >= node.x - 10 && connection.to.x <= node.x + node.width + 10 &&
+      connection.to.y >= node.y - 10 && connection.to.y <= node.y + node.height + 10
+    );
+    
+    // If we have a source node, use its color with some transparency
+    if (fromNode) {
+      return fromNode.color;
+    }
+    
+    // If we have a target node, use its color
+    if (toNode) {
+      return toNode.color;
+    }
+    
+    // Fallback to connection's existing color or default
+    return connection.color || '#64b5f6';
+  };
+
+  // Get arrow marker ID for different colors
+  const getArrowMarkerId = (color: string) => {
+    return `arrowhead-${color.replace('#', '')}`;
+  };
+
+  // Export visualization as PDF
+  const exportToPDF = async () => {
+    try {
+      // Find the SVG element
+      const svgElement = mapRef.current?.querySelector('svg');
+      if (!svgElement) return;
+
+      // Create a temporary container with white background for the export
+      const exportContainer = document.createElement('div');
+      exportContainer.style.position = 'absolute';
+      exportContainer.style.left = '-9999px';
+      exportContainer.style.top = '0';
+      exportContainer.style.background = '#ffffff';
+      exportContainer.style.padding = '20px';
+      
+      // Clone the SVG and adjust styling for print
+      const svgClone = svgElement.cloneNode(true) as SVGElement;
+      svgClone.style.background = '#ffffff';
+      
+      // Update text colors for better visibility on white background
+      const textElements = svgClone.querySelectorAll('text');
+      textElements.forEach(text => {
+        if (text.getAttribute('fill') === '#fff' || text.getAttribute('fill') === 'white') {
+          text.setAttribute('fill', '#000000');
+        }
+      });
+      
+      // Add title and metadata
+      const titleElement = document.createElement('h1');
+      titleElement.textContent = scenario.title;
+      titleElement.style.color = '#000';
+      titleElement.style.fontSize = '24px';
+      titleElement.style.marginBottom = '10px';
+      titleElement.style.fontFamily = 'Arial, sans-serif';
+      
+      const descElement = document.createElement('p');
+      descElement.textContent = scenario.description;
+      descElement.style.color = '#666';
+      descElement.style.fontSize = '14px';
+      descElement.style.marginBottom = '20px';
+      descElement.style.fontFamily = 'Arial, sans-serif';
+      
+      exportContainer.appendChild(titleElement);
+      exportContainer.appendChild(descElement);
+      exportContainer.appendChild(svgClone);
+      document.body.appendChild(exportContainer);
+
+      // Capture as canvas
+      const canvas = await html2canvas(exportContainer, {
+        backgroundColor: '#ffffff',
+        scale: 2, // Higher quality
+        useCORS: true,
+        allowTaint: true
+      });
+
+      // Create PDF
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF({
+        orientation: canvas.width > canvas.height ? 'landscape' : 'portrait',
+        unit: 'px',
+        format: [canvas.width, canvas.height]
+      });
+
+      pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+      
+      // Generate filename with timestamp
+      const timestamp = new Date().toISOString().split('T')[0];
+      const filename = `${scenario.title.replace(/[^a-z0-9]/gi, '_')}_${timestamp}.pdf`;
+      
+      pdf.save(filename);
+      
+      // Clean up
+      document.body.removeChild(exportContainer);
+      
+    } catch (error) {
+      console.error('Error exporting to PDF:', error);
+      alert('Failed to export PDF. Please try again.');
+    }
+  };
 
   return (
     <div className="w-full bg-slate-900 rounded-lg border border-slate-700">
@@ -122,8 +271,19 @@ const FlexibleSubwayMap: React.FC<FlexibleSubwayMapProps> = ({
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
       >
-        {/* Zoom Controls */}
+        {/* Controls */}
         <div className="absolute top-6 left-6 flex flex-col gap-2 z-20">
+          {/* PDF Export Button */}
+          <button
+            onClick={exportToPDF}
+            className="p-2 bg-green-600 hover:bg-green-700 border border-green-500 rounded-lg transition-colors group"
+            title="Export as PDF"
+          >
+            <Download className="w-4 h-4 text-white" />
+          </button>
+          
+          {/* Divider */}
+          <div className="w-full h-px bg-slate-600 my-1" />
           <button
             onClick={handleZoomIn}
             className="p-2 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-lg transition-colors"
@@ -184,26 +344,44 @@ const FlexibleSubwayMap: React.FC<FlexibleSubwayMapProps> = ({
         </div>
 
         {/* SVG Flow Diagram */}
-        <div className="relative w-full h-[600px] overflow-auto border border-slate-600 rounded-lg bg-slate-900">
+        <div 
+          className="relative w-full h-[600px] overflow-auto border border-slate-600 rounded-lg bg-slate-900"
+          onWheel={handleWheelZoom}
+        >
           <div 
             className="transition-transform duration-200"
             style={{ 
               transform: `scale(${zoom})`,
               transformOrigin: 'top left',
-              width: `${2400 * zoom}px`,
-              height: `${1400 * zoom}px`,
-              minWidth: '2400px',
-              minHeight: '1400px'
+              width: `${bounds.width * zoom}px`,
+              height: `${bounds.height * zoom}px`,
+              minWidth: `${bounds.width}px`,
+              minHeight: `${bounds.height}px`
             }}
           >
             <svg 
-              width="2400" 
-              height="1400"
-              viewBox="0 0 2400 1400" 
+              width={bounds.width} 
+              height={bounds.height}
+              viewBox={`${bounds.minX} ${bounds.minY} ${bounds.width} ${bounds.height}`} 
               className="block"
               preserveAspectRatio="xMinYMin meet"
             >
             <defs>
+              {/* Create arrow markers for each unique color */}
+              {Array.from(new Set(scenario.connections.map((conn, index) => getConnectionColor(conn, index)))).map(color => (
+                <marker 
+                  key={color}
+                  id={getArrowMarkerId(color)} 
+                  markerWidth="10" 
+                  markerHeight="7" 
+                  refX="9" 
+                  refY="3.5" 
+                  orient="auto"
+                >
+                  <polygon points="0 0, 10 3.5, 0 7" fill={color} />
+                </marker>
+              ))}
+              {/* Fallback default arrow */}
               <marker id="arrowhead" markerWidth="10" markerHeight="7" 
                       refX="9" refY="3.5" orient="auto">
                 <polygon points="0 0, 10 3.5, 0 7" fill="#64b5f6" />
@@ -278,17 +456,22 @@ const FlexibleSubwayMap: React.FC<FlexibleSubwayMapProps> = ({
             {scenario.connections.map((conn, index) => {
               const midX = (conn.from.x + conn.to.x) / 2;
               const midY = (conn.from.y + conn.to.y) / 2;
+              const connectionColor = getConnectionColor(conn, index);
               
               return (
                 <g key={index}>
                   <path
                     d={`M ${conn.from.x} ${conn.from.y} L ${conn.to.x} ${conn.to.y}`}
-                    stroke={conn.color}
-                    strokeWidth="3"
+                    stroke={connectionColor}
+                    strokeWidth="4"
                     fill="none"
-                    opacity="0.8"
-                    markerEnd="url(#arrowhead)"
+                    opacity="0.7"
+                    markerEnd={`url(#${getArrowMarkerId(connectionColor)})`}
                     className={conn.animated ? "animate-pulse" : ""}
+                    style={{
+                      filter: 'drop-shadow(0px 1px 2px rgba(0,0,0,0.3))',
+                      transition: 'all 0.3s ease'
+                    }}
                   />
                   {conn.label && (
                     <g>
