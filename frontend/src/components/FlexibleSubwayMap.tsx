@@ -233,25 +233,24 @@ const FlexibleSubwayMap: React.FC<FlexibleSubwayMapProps> = ({
     return `arrowhead-${color.replace('#', '')}`;
   };
 
-  // Export visualization as PDF
+  // Export visualization as PDF with improved SVG handling
   const exportToPDF = async () => {
     try {
-      // Find the main visualization container (the div containing the SVG)
-      const visualizationDiv = mapRef.current?.querySelector('div[style*="transform"]');
-      if (!visualizationDiv) {
-        console.error('Visualization container not found');
+      // Find the SVG element directly
+      const svgElement = mapRef.current?.querySelector('svg');
+      if (!svgElement) {
+        console.error('SVG element not found');
         return;
       }
 
-      // Create a temporary container with white background for the export
+      // Create a temporary container for proper PDF generation
       const exportContainer = document.createElement('div');
       exportContainer.style.position = 'absolute';
       exportContainer.style.left = '-9999px';
       exportContainer.style.top = '0';
       exportContainer.style.background = '#ffffff';
       exportContainer.style.padding = '20px';
-      exportContainer.style.width = 'auto'; // Will be set dynamically based on content
-      exportContainer.style.height = 'auto';
+      exportContainer.style.fontFamily = 'Arial, sans-serif';
       
       // Add title and metadata
       const titleElement = document.createElement('h1');
@@ -290,103 +289,65 @@ const FlexibleSubwayMap: React.FC<FlexibleSubwayMapProps> = ({
       exportContainer.appendChild(titleElement);
       exportContainer.appendChild(descElement);
       
-      // Clone the entire visualization div
-      const vizClone = visualizationDiv.cloneNode(true) as HTMLElement;
+      // Clone and prepare SVG for export
+      const svgClone = svgElement.cloneNode(true) as SVGElement;
       
-      // Determine if this is a large analysis (many nodes)
+      // Determine if this is a large analysis
       const nodeCount = optimizedScenario.nodes.length;
       const isLargeAnalysis = nodeCount > 20;
       
-      // Adjust scale based on analysis size for better PDF readability
-      const pdfScale = isLargeAnalysis ? 0.6 : 0.8;
+      // Set proper dimensions for PDF
+      const originalWidth = parseFloat(svgClone.getAttribute('width') || '1000');
+      const originalHeight = parseFloat(svgClone.getAttribute('height') || '600');
       
-      // Reset transform and ensure proper sizing for export
-      vizClone.style.transform = `scale(${pdfScale})`;
-      vizClone.style.transformOrigin = 'top center';
-      vizClone.style.background = '#ffffff';
-      vizClone.style.width = '100%';
-      vizClone.style.height = 'auto';
-      vizClone.style.overflow = 'visible';
+      // Scale for better readability
+      const pdfScale = isLargeAnalysis ? 0.7 : 0.9;
+      const finalWidth = originalWidth * pdfScale;
+      const finalHeight = originalHeight * pdfScale;
       
-      // Fix clipping issues by ensuring full visualization is captured
-      const svgElement = vizClone.querySelector('svg');
-      if (svgElement) {
-        // Get the actual bounds of all content
-        const allNodes = vizClone.querySelectorAll('.node, circle, text, path');
-        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-        
-        // Calculate true bounds of all SVG elements
-        allNodes.forEach((element: any) => {
-          try {
-            const bbox = element.getBBox();
-            minX = Math.min(minX, bbox.x);
-            minY = Math.min(minY, bbox.y);
-            maxX = Math.max(maxX, bbox.x + bbox.width);
-            maxY = Math.max(maxY, bbox.y + bbox.height);
-          } catch (e) {
-            // Some elements might not have getBBox, skip them
-          }
-        });
-        
-        // Add significant padding to prevent clipping
-        const padding = isLargeAnalysis ? 100 : 50;
-        const finalMinX = minX - padding;
-        const finalMinY = minY - padding;
-        const finalWidth = (maxX - minX) + (padding * 2);
-        const finalHeight = (maxY - minY) + (padding * 2);
-        
-        // Set expanded viewBox to prevent clipping
-        svgElement.setAttribute('viewBox', `${finalMinX} ${finalMinY} ${finalWidth} ${finalHeight}`);
-        svgElement.setAttribute('width', finalWidth.toString());
-        svgElement.setAttribute('height', finalHeight.toString());
-        
-        // Ensure container is large enough
-        exportContainer.style.width = Math.max(1400, finalWidth + 100) + 'px';
-        exportContainer.style.height = 'auto';
-      }
+      svgClone.setAttribute('width', finalWidth.toString());
+      svgClone.setAttribute('height', finalHeight.toString());
+      svgClone.style.background = '#ffffff';
       
-      // Update SVG background and text colors (reuse existing svgElement)
-      if (svgElement) {
-        svgElement.style.background = '#ffffff';
-        
-        // Update text colors for better visibility on white background
-        const textElements = svgElement.querySelectorAll('text');
-        textElements.forEach(text => {
-          const currentFill = text.getAttribute('fill');
-          if (currentFill === '#fff' || currentFill === 'white' || currentFill === '#ffffff') {
-            text.setAttribute('fill', '#000000');
-          } else if (currentFill && currentFill.includes('#')) {
-            // Keep colored text as is for better visualization
-          } else {
-            // Default dark text for readability
-            text.setAttribute('fill', '#333333');
-          }
-        });
-        
-        // Ensure connections are visible
-        const pathElements = svgElement.querySelectorAll('path');
-        pathElements.forEach(path => {
-          const currentStroke = path.getAttribute('stroke');
-          if (currentStroke === 'white' || currentStroke === '#fff') {
-            path.setAttribute('stroke', '#333333');
-          }
-        });
-      }
+      // Ensure all text and paths are visible on white background
+      const textElements = svgClone.querySelectorAll('text');
+      textElements.forEach(text => {
+        const currentFill = text.getAttribute('fill');
+        if (currentFill === '#fff' || currentFill === 'white' || currentFill === '#ffffff' || !currentFill) {
+          text.setAttribute('fill', '#000000');
+        }
+      });
       
-      exportContainer.appendChild(vizClone);
+      // Make sure connection lines are visible
+      const pathElements = svgClone.querySelectorAll('path');
+      pathElements.forEach(path => {
+        const currentStroke = path.getAttribute('stroke');
+        if (currentStroke === 'white' || currentStroke === '#fff' || currentStroke === '#ffffff') {
+          path.setAttribute('stroke', '#333333');
+        }
+      });
+      
+      // Create wrapper div for the SVG
+      const svgWrapper = document.createElement('div');
+      svgWrapper.style.display = 'flex';
+      svgWrapper.style.justifyContent = 'center';
+      svgWrapper.style.marginTop = '20px';
+      svgWrapper.appendChild(svgClone);
+      
+      exportContainer.appendChild(svgWrapper);
       document.body.appendChild(exportContainer);
 
       // Wait a moment for styles to apply
       await new Promise(resolve => setTimeout(resolve, 100));
 
-      // Capture as canvas with better settings
+      // Capture as canvas with optimized settings for SVG
       const canvas = await html2canvas(exportContainer, {
         backgroundColor: '#ffffff',
-        scale: 1.5, // Good quality without being too large
+        scale: 2, // Higher quality for crisp output
         useCORS: true,
         allowTaint: true,
-        width: 1200,
-        height: exportContainer.scrollHeight,
+        logging: false,
+        removeContainer: true,
         scrollX: 0,
         scrollY: 0
       });
@@ -541,11 +502,39 @@ const FlexibleSubwayMap: React.FC<FlexibleSubwayMapProps> = ({
           )}
         </div>
 
-        {/* CSS animations for sophisticated effects */}
+        {/* Enhanced CSS animations for maximum visual impact */}
         <style>{`
           @keyframes connectionFlow {
             0% { stroke-dashoffset: 12; }
             100% { stroke-dashoffset: 0; }
+          }
+          
+          @keyframes marchingAnts {
+            0% { stroke-dashoffset: 0; }
+            100% { stroke-dashoffset: -20; }
+          }
+          
+          @keyframes pulseGlow {
+            0% { filter: drop-shadow(0 0 5px currentColor) brightness(1); }
+            50% { filter: drop-shadow(0 0 15px currentColor) brightness(1.3); }
+            100% { filter: drop-shadow(0 0 5px currentColor) brightness(1); }
+          }
+          
+          @keyframes nodeAppear {
+            0% { opacity: 0; transform: scale(0.8); }
+            100% { opacity: 1; transform: scale(1); }
+          }
+          
+          .error-connection {
+            animation: marchingAnts 1s linear infinite;
+          }
+          
+          .pulsing-node {
+            animation: pulseGlow 2s ease-in-out infinite;
+          }
+          
+          .appearing-node {
+            animation: nodeAppear 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
           }
         `}</style>
         
@@ -619,9 +608,9 @@ const FlexibleSubwayMap: React.FC<FlexibleSubwayMapProps> = ({
                     {stepNumber}
                   </text>
                   
-                  {/* Enhanced node with sophisticated hover effects */}
+                  {/* Enhanced node with stunning hover effects */}
                   <g
-                    className="cursor-pointer"
+                    className={`cursor-pointer appearing-node ${selectedNode === node.id ? 'pulsing-node' : ''}`}
                     onClick={() => {
                       setSelectedNode(node.id);
                       if (onNodeClick) {
@@ -630,15 +619,18 @@ const FlexibleSubwayMap: React.FC<FlexibleSubwayMapProps> = ({
                     }}
                     style={{ 
                       transformOrigin: `${node.x + node.width/2}px ${node.y + node.height/2}px`,
-                      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+                      transition: 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+                      animationDelay: `${nodeIndex * 0.1}s`
                     }}
                     onMouseEnter={(e) => { 
-                      e.currentTarget.style.transform = 'scale(1.05)';
-                      e.currentTarget.style.filter = 'brightness(1.2) drop-shadow(0 4px 8px rgba(0,0,0,0.3))';
+                      e.currentTarget.style.transform = 'scale(1.08)';
+                      e.currentTarget.style.filter = `brightness(1.25) drop-shadow(0 6px 20px ${node.color}40)`;
+                      e.currentTarget.style.zIndex = '100';
                     }}
                     onMouseLeave={(e) => { 
                       e.currentTarget.style.transform = 'scale(1)';
                       e.currentTarget.style.filter = 'brightness(1)';
+                      e.currentTarget.style.zIndex = 'auto';
                     }}
                   >
                 <rect
@@ -715,20 +707,31 @@ const FlexibleSubwayMap: React.FC<FlexibleSubwayMapProps> = ({
               
               const curvePath = `M ${conn.from.x} ${conn.from.y} Q ${controlX} ${controlY} ${conn.to.x} ${conn.to.y}`;
               
+              // Determine connection type and animation
+              const isErrorConnection = connectionColor === '#ef4444' || connectionColor === '#f87171';
+              const isAnimated = conn.animated || isErrorConnection;
+              
               return (
                 <g key={index}>
                   <path
                     d={curvePath}
                     stroke={connectionColor}
-                    strokeWidth="3"
+                    strokeWidth={isErrorConnection ? "4" : "3"}
                     fill="none"
-                    opacity="0.8"
+                    opacity={isErrorConnection ? "0.9" : "0.8"}
                     markerEnd={`url(#${getArrowMarkerId(connectionColor)})`}
+                    className={isErrorConnection ? 'error-connection' : ''}
                     style={{
-                      filter: 'drop-shadow(0px 2px 4px rgba(0,0,0,0.2))',
+                      filter: isErrorConnection 
+                        ? 'drop-shadow(0px 3px 6px rgba(239, 68, 68, 0.4))' 
+                        : 'drop-shadow(0px 2px 4px rgba(0,0,0,0.2))',
                       transition: 'all 0.3s ease',
-                      strokeDasharray: conn.animated ? '8 4' : 'none',
-                      animation: conn.animated ? 'connectionFlow 2s linear infinite' : 'none'
+                      strokeDasharray: isErrorConnection 
+                        ? '10 5' 
+                        : (conn.animated ? '8 4' : 'none'),
+                      animation: isErrorConnection 
+                        ? 'marchingAnts 1s linear infinite' 
+                        : (conn.animated ? 'connectionFlow 2s linear infinite' : 'none')
                     }}
                   />
                   {conn.label && (
