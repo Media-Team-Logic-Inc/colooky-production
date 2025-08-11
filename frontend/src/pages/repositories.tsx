@@ -347,6 +347,7 @@ export default function Repositories({ user, accessToken }: RepositoriesProps) {
                   </div>
                 </div>
               ))}
+              </div>
             </div>
           )}
         </main>

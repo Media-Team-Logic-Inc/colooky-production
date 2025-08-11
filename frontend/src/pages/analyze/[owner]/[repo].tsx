@@ -47,6 +47,12 @@ interface AnalysisResult {
   total_files: number;
   error_message?: string;
   visualization?: any;
+  timestamp?: string;
+  repository_info?: {
+    owner: string;
+    name: string;
+    full_name: string;
+  };
   summary?: {
     total_files: number;
     supported_files: number;
