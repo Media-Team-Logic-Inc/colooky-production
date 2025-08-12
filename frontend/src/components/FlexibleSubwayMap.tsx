@@ -368,6 +368,7 @@ const FlexibleSubwayMap: React.FC<FlexibleSubwayMapProps> = ({
 
       // Create PDF with format based on analysis size
       const imgData = canvas.toDataURL('image/png', 0.95);
+      const isLargeAnalysis = scenario.nodes.length > 15;
       const pdfFormat = isLargeAnalysis ? 'a2' : 'a3'; // Even larger format for big analyses
       const pdf = new jsPDF({
         orientation: 'landscape',

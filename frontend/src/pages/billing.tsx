@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { GetServerSideProps } from 'next';
 import { getSession } from 'next-auth/react';
 import Head from 'next/head';
@@ -18,26 +18,100 @@ interface BillingHistory {
   invoice_url?: string;
 }
 
-// Billing history - in production, fetch from Stripe/database
-const mockBillingHistory: BillingHistory[] = [];
+interface SubscriptionData {
+  plan_type: string;
+  status: string;
+  billing_period: string | null;
+  current_period_end: string | null;
+  cancel_at_period_end: boolean;
+  payment_method: any;
+}
 
 export default function Billing({ user }: BillingProps) {
-  const [currentPlan] = useState('free'); // free, individual, team, or enterprise
-  const [billingCycle] = useState('monthly'); // monthly or yearly
-  const [paymentMethod] = useState(null); // No payment method initially
+  const [subscription, setSubscription] = useState<SubscriptionData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [billingHistory] = useState<BillingHistory[]>([]); // TODO: Fetch from Stripe/database
 
-  // Stripe integration placeholder
-  const handleUpgrade = async (planType: string) => {
-    // TODO: Integrate with Stripe Checkout
-    console.log('Upgrade to:', planType);
-    // window.location.href = '/api/stripe/checkout?plan=' + planType;
+  // Load subscription data
+  useEffect(() => {
+    const loadSubscription = async () => {
+      try {
+        const response = await fetch('/api/user/subscription');
+        if (response.ok) {
+          const data = await response.json();
+          setSubscription(data);
+        } else {
+          console.error('Failed to load subscription data');
+        }
+      } catch (error) {
+        console.error('Error loading subscription:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadSubscription();
+  }, []);
+
+  // Real Stripe integration
+  const handleUpgrade = async (planType: string, billingPeriod: string = 'monthly') => {
+    setActionLoading(true);
+    try {
+      const response = await fetch('/api/stripe/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          plan: planType,
+          billing_period: billingPeriod
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        window.location.href = data.checkout_url;
+      } else {
+        const error = await response.json();
+        alert(`Error: ${error.message || 'Failed to create checkout session'}`);
+      }
+    } catch (error) {
+      console.error('Checkout error:', error);
+      alert('Failed to start checkout process');
+    } finally {
+      setActionLoading(false);
+    }
   };
 
-  const handleManageSubscription = () => {
-    // TODO: Redirect to Stripe Customer Portal
-    console.log('Manage subscription via Stripe');
-    // window.location.href = '/api/stripe/portal';
+  const handleManageSubscription = async () => {
+    setActionLoading(true);
+    try {
+      const response = await fetch('/api/stripe/portal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        window.location.href = data.portal_url;
+      } else {
+        const error = await response.json();
+        alert(`Error: ${error.message || 'Failed to access customer portal'}`);
+      }
+    } catch (error) {
+      console.error('Portal error:', error);
+      alert('Failed to access customer portal');
+    } finally {
+      setActionLoading(false);
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+        <div className="text-white">Loading subscription data...</div>
+      </div>
+    );
+  }
 
   const plans = {
     free: {
@@ -131,16 +205,24 @@ export default function Billing({ user }: BillingProps) {
                 <div className="flex items-center justify-between mb-4">
                   <div>
                     <h3 className="text-lg font-semibold text-blue-400">
-                      {plans[currentPlan as keyof typeof plans].name} Plan
+                      {plans[subscription?.plan_type as keyof typeof plans]?.name || 'Free'} Plan
                     </h3>
                     <p className="text-slate-400">
-                      ${plans[currentPlan as keyof typeof plans].price}/{billingCycle === 'monthly' ? 'month' : 'year'}
+                      ${plans[subscription?.plan_type as keyof typeof plans]?.price || 0}/{subscription?.billing_period === 'yearly' ? 'year' : 'month'}
                     </p>
+                    {subscription?.status && subscription.status !== 'active' && (
+                      <p className="text-red-400 text-sm mt-1">Status: {subscription.status}</p>
+                    )}
                   </div>
                   <div className="text-right">
                     <p className="text-sm text-slate-400">Next billing date</p>
                     <p className="text-white font-semibold">
-                      {currentPlan === 'free' ? 'N/A - Free Plan' : 'TBD - Set up billing'}
+                      {subscription?.plan_type === 'free' 
+                        ? 'N/A - Free Plan' 
+                        : subscription?.current_period_end 
+                          ? new Date(subscription.current_period_end).toLocaleDateString()
+                          : 'Not available'
+                      }
                     </p>
                   </div>
                 </div>
@@ -148,7 +230,7 @@ export default function Billing({ user }: BillingProps) {
                 <div className="border-t border-slate-600 pt-4">
                   <h4 className="text-sm font-semibold text-white mb-2">Plan includes:</h4>
                   <ul className="space-y-1">
-                    {plans[currentPlan as keyof typeof plans].features.map((feature, index) => (
+                    {(plans[subscription?.plan_type as keyof typeof plans]?.features || plans.free.features).map((feature, index) => (
                       <li key={index} className="text-sm text-slate-300 flex items-center gap-2">
                         <CheckCircle className="w-3 h-3 text-green-400 flex-shrink-0" />
                         {feature}
@@ -158,24 +240,39 @@ export default function Billing({ user }: BillingProps) {
                 </div>
 
                 <div className="flex gap-3 mt-6">
-                  {currentPlan === 'free' ? (
+                  {subscription?.plan_type === 'free' ? (
                     <button 
                       onClick={() => handleUpgrade('individual')}
-                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
+                      disabled={actionLoading}
+                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-lg text-sm font-medium transition-colors"
                     >
-                      Upgrade to Individual
+                      {actionLoading ? 'Processing...' : 'Upgrade to Individual'}
                     </button>
                   ) : (
                     <>
                       <button 
                         onClick={handleManageSubscription}
-                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
+                        disabled={actionLoading}
+                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-lg text-sm font-medium transition-colors"
                       >
-                        Manage Subscription
+                        {actionLoading ? 'Loading...' : 'Manage Subscription'}
                       </button>
-                      <button className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm font-medium transition-colors">
-                        Cancel Subscription
-                      </button>
+                      <div className="flex gap-2">
+                        <button 
+                          onClick={() => handleUpgrade('team')}
+                          disabled={actionLoading}
+                          className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white rounded-lg text-sm font-medium transition-colors"
+                        >
+                          Upgrade to Team
+                        </button>
+                        <button 
+                          onClick={() => handleUpgrade('enterprise')}
+                          disabled={actionLoading}
+                          className="px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-400 text-white rounded-lg text-sm font-medium transition-colors"
+                        >
+                          Upgrade to Enterprise
+                        </button>
+                      </div>
                     </>
                   )}
                 </div>
@@ -185,7 +282,7 @@ export default function Billing({ user }: BillingProps) {
               <div className="bg-slate-800 border border-slate-700 rounded-lg p-6">
                 <h2 className="text-xl font-semibold text-white mb-4">Billing History</h2>
                 <div className="space-y-4">
-                  {mockBillingHistory.length > 0 ? mockBillingHistory.map((invoice) => (
+                  {billingHistory.length > 0 ? billingHistory.map((invoice) => (
                     <div 
                       key={invoice.id}
                       className="flex items-center justify-between p-4 bg-slate-700/50 rounded-lg"
@@ -228,23 +325,27 @@ export default function Billing({ user }: BillingProps) {
             <div className="lg:col-span-1">
               <div className="bg-slate-800 border border-slate-700 rounded-lg p-6 mb-6">
                 <h2 className="text-xl font-semibold text-white mb-4">Payment Method</h2>
-                {paymentMethod ? (
+                {subscription?.payment_method ? (
                   <>
                     <div className="flex items-center gap-3 mb-4">
                       <div className="w-10 h-6 bg-gradient-to-r from-blue-600 to-purple-600 rounded flex items-center justify-center">
                         <span className="text-xs font-bold text-white uppercase">
-                          {paymentMethod.brand}
+                          {subscription.payment_method.brand}
                         </span>
                       </div>
                       <div>
                         <p className="text-white font-medium">
-                          •••• •••• •••• {paymentMethod.last4}
+                          •••• •••• •••• {subscription.payment_method.last4}
                         </p>
-                        <p className="text-sm text-slate-400">Expires {paymentMethod.expires}</p>
+                        <p className="text-sm text-slate-400">Expires {subscription.payment_method.expires}</p>
                       </div>
                     </div>
-                    <button className="w-full px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm font-medium transition-colors">
-                      Update Payment Method
+                    <button 
+                      onClick={handleManageSubscription}
+                      disabled={actionLoading}
+                      className="w-full px-4 py-2 bg-slate-700 hover:bg-slate-600 disabled:bg-slate-500 text-white rounded-lg text-sm font-medium transition-colors"
+                    >
+                      {actionLoading ? 'Loading...' : 'Update Payment Method'}
                     </button>
                   </>
                 ) : (

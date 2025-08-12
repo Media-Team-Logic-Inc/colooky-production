@@ -36,36 +36,74 @@ export default function Settings({ user }: SettingsProps) {
     bio: ''
   });
   
-  // Load settings from localStorage on component mount
+  // Load settings from Supabase with localStorage fallback
   useEffect(() => {
-    const loadSettings = () => {
+    const loadSettings = async () => {
       try {
-        // Load theme
+        // Try to load from Supabase first
+        const response = await fetch('/api/user/settings');
+        if (response.ok) {
+          const settings = await response.json();
+          
+          if (settings) {
+            // Apply settings from database
+            setTheme(settings.theme || 'dark');
+            handleThemeChange(settings.theme || 'dark', false);
+            
+            setNotifications({
+              email: settings.email_notifications || {
+                analysis_complete: true,
+                weekly_summary: true,
+                product_updates: false,
+                marketing: false,
+              },
+              push: settings.push_notifications || {
+                analysis_complete: true,
+                team_invites: true,
+                comments: true,
+              }
+            });
+            
+            setPrivacy(settings.privacy_settings || {
+              make_profile_public: false,
+              show_activity: true,
+              allow_indexing: false,
+            });
+            
+            setVisualPrefs(settings.visual_preferences || {
+              animations: true,
+              high_contrast: false,
+            });
+            
+            console.log('✅ Loaded settings from Supabase');
+            return; // Success, no need for localStorage fallback
+          }
+        }
+        
+        // Fallback to localStorage if Supabase fails
+        console.log('📦 Falling back to localStorage');
+        
         const savedTheme = localStorage.getItem('colooky_theme');
         if (savedTheme) {
           setTheme(savedTheme);
-          handleThemeChange(savedTheme, false); // Don't save again
+          handleThemeChange(savedTheme, false);
         }
         
-        // Load notifications
         const savedNotifications = localStorage.getItem('colooky_notifications');
         if (savedNotifications) {
           setNotifications(JSON.parse(savedNotifications));
         }
         
-        // Load privacy settings
         const savedPrivacy = localStorage.getItem('colooky_privacy');
         if (savedPrivacy) {
           setPrivacy(JSON.parse(savedPrivacy));
         }
         
-        // Load visual preferences
         const savedVisualPrefs = localStorage.getItem('colooky_visual_prefs');
         if (savedVisualPrefs) {
           setVisualPrefs(JSON.parse(savedVisualPrefs));
         }
         
-        // Load profile data
         const savedProfile = localStorage.getItem('colooky_profile');
         if (savedProfile) {
           const parsed = JSON.parse(savedProfile);
@@ -81,7 +119,9 @@ export default function Settings({ user }: SettingsProps) {
       }
     };
     
-    loadSettings();
+    if (user) {
+      loadSettings();
+    }
   }, [user]);
 
   const handleThemeChange = (newTheme: string, shouldSave: boolean = true) => {
@@ -198,17 +238,7 @@ export default function Settings({ user }: SettingsProps) {
         }
       };
       
-      // Save to localStorage for immediate persistence
-      localStorage.setItem('colooky_notifications', JSON.stringify(notifications));
-      localStorage.setItem('colooky_privacy', JSON.stringify(privacy));
-      localStorage.setItem('colooky_visual_prefs', JSON.stringify(visualPrefs));
-      localStorage.setItem('colooky_profile', JSON.stringify(profileData));
-      localStorage.setItem('colooky_theme', theme);
-      
-      console.log('Settings saved locally:', settingsData);
-      
-      // TODO: Implement API call to save to backend when ready
-      /*
+      // Save to Supabase via API
       const response = await fetch('/api/user/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -218,17 +248,31 @@ export default function Settings({ user }: SettingsProps) {
       if (!response.ok) {
         throw new Error('Failed to save to server');
       }
-      */
       
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 800));
+      const result = await response.json();
+      console.log('✅ Settings saved to Supabase:', result);
+      
+      // Also save to localStorage as backup
+      localStorage.setItem('colooky_notifications', JSON.stringify(notifications));
+      localStorage.setItem('colooky_privacy', JSON.stringify(privacy));
+      localStorage.setItem('colooky_visual_prefs', JSON.stringify(visualPrefs));
+      localStorage.setItem('colooky_profile', JSON.stringify(profileData));
+      localStorage.setItem('colooky_theme', theme);
       
       // Show success message
       alert('Settings saved successfully! 🎉');
       
     } catch (error) {
       console.error('Failed to save settings:', error);
-      alert('Settings saved locally, but server sync failed. Your changes are still saved!');
+      
+      // Fallback to localStorage only
+      localStorage.setItem('colooky_notifications', JSON.stringify(notifications));
+      localStorage.setItem('colooky_privacy', JSON.stringify(privacy));
+      localStorage.setItem('colooky_visual_prefs', JSON.stringify(visualPrefs));
+      localStorage.setItem('colooky_profile', JSON.stringify(profileData));
+      localStorage.setItem('colooky_theme', theme);
+      
+      alert('Settings saved locally! Database sync failed but your preferences are preserved.');
     } finally {
       setSaving(false);
     }

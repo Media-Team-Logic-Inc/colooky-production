@@ -1,5 +1,6 @@
 import { NextAuthOptions } from 'next-auth';
 import GitHubProvider from 'next-auth/providers/github';
+import { createUserProfile, getUserProfile, UserProfile } from './supabase';
 
 // Debug environment variables
 console.log('🔧 NextAuth config loading...');
@@ -9,6 +10,7 @@ console.log('🔧 GITHUB_CLIENT_SECRET:', process.env.GITHUB_CLIENT_SECRET ? 'pr
 console.log('🔧 NEXTAUTH_URL:', process.env.NEXTAUTH_URL);
 console.log('🔧 NEXTAUTH_SECRET:', process.env.NEXTAUTH_SECRET ? 'present' : 'missing');
 console.log('🔧 NEXTAUTH_URL for callbacks:', process.env.NEXTAUTH_URL);
+console.log('🔧 SUPABASE_URL:', process.env.SUPABASE_URL ? 'present' : 'missing');
 
 // Validate required environment variables
 const missingVars: string[] = [];
@@ -44,15 +46,53 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   callbacks: {
-    async jwt({ token, account }) {
-      if (account) {
+    async jwt({ token, account, profile }) {
+      if (account && profile) {
         token.accessToken = account.access_token;
+        token.githubId = (profile as any).id;
+        token.username = (profile as any).login;
       }
       return token;
     },
     async session({ session, token }) {
       session.accessToken = token.accessToken as string;
+      session.user.githubId = token.githubId as string;
+      session.user.username = token.username as string;
       return session;
+    },
+    async signIn({ user, account, profile }) {
+      try {
+        if (account?.provider === 'github' && profile) {
+          // Check if user already exists in Supabase
+          const existingUser = await getUserProfile((profile as any).id as string);
+          
+          if (!existingUser) {
+            // Create new user profile in Supabase
+            const userData: Partial<UserProfile> = {
+              github_id: (profile as any).id as string,
+              email: profile.email || user.email || '',
+              name: profile.name || user.name || '',
+              username: (profile as any).login as string,
+              avatar_url: (profile as any).avatar_url as string,
+              github_access_token: account.access_token,
+            };
+            
+            const newUser = await createUserProfile(userData);
+            console.log('✅ Created new user in Supabase:', newUser?.id);
+          } else {
+            console.log('✅ User already exists in Supabase:', existingUser.id);
+            // Optionally update access token if needed
+            // await updateUserProfile(existingUser.id, { 
+            //   github_access_token: account.access_token 
+            // });
+          }
+        }
+        return true;
+      } catch (error) {
+        console.error('❌ Error during sign in:', error);
+        // Still allow sign in even if Supabase fails
+        return true;
+      }
     },
   },
   pages: {
