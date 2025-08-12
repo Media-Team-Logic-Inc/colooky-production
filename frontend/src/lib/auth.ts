@@ -61,38 +61,48 @@ export const authOptions: NextAuthOptions = {
       return session;
     },
     async signIn({ user, account, profile }) {
-      try {
-        if (account?.provider === 'github' && profile) {
-          // Check if user already exists in Supabase
-          const existingUser = await getUserProfile((profile as any).id as string);
-          
-          if (!existingUser) {
-            // Create new user profile in Supabase
-            const userData: Partial<UserProfile> = {
-              github_id: (profile as any).id as string,
-              email: profile.email || user.email || '',
-              name: profile.name || user.name || '',
-              username: (profile as any).login as string,
-              avatar_url: (profile as any).avatar_url as string,
-              github_access_token: account.access_token,
-            };
-            
-            const newUser = await createUserProfile(userData);
-            console.log('✅ Created new user in Supabase:', newUser?.id);
-          } else {
-            console.log('✅ User already exists in Supabase:', existingUser.id);
-            // Optionally update access token if needed
-            // await updateUserProfile(existingUser.id, { 
-            //   github_access_token: account.access_token 
-            // });
-          }
-        }
-        return true;
-      } catch (error) {
-        console.error('❌ Error during sign in:', error);
-        // Still allow sign in even if Supabase fails
+      // Always allow sign-in to proceed first, handle Supabase integration separately
+      if (account?.provider !== 'github' || !profile) {
         return true;
       }
+
+      // Handle Supabase integration in background - don't block sign-in
+      try {
+        // Only attempt Supabase integration if environment variables are present
+        if (!process.env.SUPABASE_URL || !process.env.SUPABASE_ANON_KEY) {
+          console.log('⚠️  Supabase not configured, skipping user profile creation');
+          return true;
+        }
+
+        // Check if user already exists in Supabase
+        const existingUser = await getUserProfile((profile as any).id as string);
+        
+        if (!existingUser) {
+          // Create new user profile in Supabase
+          const userData: Partial<UserProfile> = {
+            github_id: (profile as any).id as string,
+            email: profile.email || user.email || '',
+            name: profile.name || user.name || '',
+            username: (profile as any).login as string,
+            avatar_url: (profile as any).avatar_url as string,
+            github_access_token: account.access_token,
+          };
+          
+          const newUser = await createUserProfile(userData);
+          if (newUser) {
+            console.log('✅ Created new user in Supabase:', newUser.id);
+          } else {
+            console.log('⚠️  Failed to create user in Supabase, but allowing sign-in');
+          }
+        } else {
+          console.log('✅ User already exists in Supabase:', existingUser.id);
+        }
+      } catch (error) {
+        console.error('❌ Error during Supabase integration:', error);
+        console.log('⚠️  Supabase integration failed, but allowing sign-in to proceed');
+      }
+      
+      return true;
     },
   },
   pages: {

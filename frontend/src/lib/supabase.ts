@@ -1,23 +1,23 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Validate environment variables
-if (!process.env.SUPABASE_URL) {
-  throw new Error('Missing env.SUPABASE_URL');
-}
-if (!process.env.SUPABASE_ANON_KEY) {
-  throw new Error('Missing env.SUPABASE_ANON_KEY');
+// Validate environment variables with fallbacks for development
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  console.warn('⚠️  Supabase environment variables not configured. Database features will be disabled.');
 }
 
-export const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_ANON_KEY
-);
+export const supabase = supabaseUrl && supabaseAnonKey ? createClient(
+  supabaseUrl,
+  supabaseAnonKey
+) : null;
 
 // Service role client for server-side operations
-export const supabaseAdmin = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY
-);
+export const supabaseAdmin = supabaseUrl && (process.env.SUPABASE_SERVICE_ROLE_KEY || supabaseAnonKey) ? createClient(
+  supabaseUrl,
+  process.env.SUPABASE_SERVICE_ROLE_KEY || supabaseAnonKey
+) : null;
 
 // Database schema types
 export interface UserProfile {
@@ -76,6 +76,11 @@ export interface AnalysisHistory {
 
 // Helper functions
 export const getUserProfile = async (githubId: string): Promise<UserProfile | null> => {
+  if (!supabase) {
+    console.warn('Supabase not configured, cannot fetch user profile');
+    return null;
+  }
+
   const { data, error } = await supabase
     .from('user_profiles')
     .select('*')
@@ -91,6 +96,11 @@ export const getUserProfile = async (githubId: string): Promise<UserProfile | nu
 };
 
 export const createUserProfile = async (userData: Partial<UserProfile>): Promise<UserProfile | null> => {
+  if (!supabaseAdmin) {
+    console.warn('Supabase admin client not configured, cannot create user profile');
+    return null;
+  }
+
   const { data, error } = await supabaseAdmin
     .from('user_profiles')
     .insert([userData])
@@ -106,6 +116,11 @@ export const createUserProfile = async (userData: Partial<UserProfile>): Promise
 };
 
 export const updateUserProfile = async (userId: string, updates: Partial<UserProfile>): Promise<UserProfile | null> => {
+  if (!supabase) {
+    console.warn('Supabase not configured, cannot update user profile');
+    return null;
+  }
+
   const { data, error } = await supabase
     .from('user_profiles')
     .update({ ...updates, updated_at: new Date().toISOString() })
@@ -122,6 +137,11 @@ export const updateUserProfile = async (userId: string, updates: Partial<UserPro
 };
 
 export const getUserSettings = async (userId: string): Promise<UserSettings | null> => {
+  if (!supabase) {
+    console.warn('Supabase not configured, cannot fetch user settings');
+    return null;
+  }
+
   const { data, error } = await supabase
     .from('user_settings')
     .select('*')
@@ -163,6 +183,11 @@ export const createUserSettings = async (userId: string, settings: Partial<UserS
     },
     ...settings
   };
+
+  if (!supabaseAdmin) {
+    console.warn('Supabase admin client not configured, cannot create user settings');
+    return null;
+  }
 
   const { data, error } = await supabaseAdmin
     .from('user_settings')
