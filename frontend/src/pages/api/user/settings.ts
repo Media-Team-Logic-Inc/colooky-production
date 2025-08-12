@@ -1,11 +1,12 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { getSession } from 'next-auth/react';
+import { getServerSession } from 'next-auth/next';
 import { getUserProfile, getUserSettings, updateUserSettings, createUserSettings } from '../../../lib/supabase';
+import { authOptions } from '../../../lib/auth';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     // Check authentication
-    const session = await getSession({ req });
+    const session = await getServerSession(req, res, authOptions);
     if (!session?.user?.githubId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
