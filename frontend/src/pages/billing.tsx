@@ -37,12 +37,16 @@ export default function Billing({ user }: BillingProps) {
   useEffect(() => {
     const loadSubscription = async () => {
       try {
-        const response = await fetch('/api/user/subscription');
+        // Try simplified endpoint first for debugging
+        const response = await fetch('/api/user/subscription-simple');
         if (response.ok) {
           const data = await response.json();
+          console.log('Subscription data loaded:', data);
           setSubscription(data);
         } else {
-          console.error('Failed to load subscription data');
+          console.error('Failed to load subscription data, status:', response.status);
+          const errorText = await response.text();
+          console.error('Error response:', errorText);
         }
       } catch (error) {
         console.error('Error loading subscription:', error);
