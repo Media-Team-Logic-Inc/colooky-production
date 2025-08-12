@@ -233,24 +233,28 @@ const FlexibleSubwayMap: React.FC<FlexibleSubwayMapProps> = ({
     return `arrowhead-${color.replace('#', '')}`;
   };
 
-  // Export visualization as PDF with improved SVG handling
+  // Export visualization as PDF - COMPLETELY REWRITTEN for reliability
   const exportToPDF = async () => {
     try {
-      // Find the SVG element directly
-      const svgElement = mapRef.current?.querySelector('svg');
-      if (!svgElement) {
-        console.error('SVG element not found');
+      // Get the entire SVG container
+      const svgContainer = mapRef.current;
+      if (!svgContainer) {
+        console.error('SVG container not found');
+        alert('Visualization not ready for export. Please try again.');
         return;
       }
 
-      // Create a temporary container for proper PDF generation
+      // Create export container
       const exportContainer = document.createElement('div');
-      exportContainer.style.position = 'absolute';
+      exportContainer.style.position = 'fixed';
       exportContainer.style.left = '-9999px';
       exportContainer.style.top = '0';
+      exportContainer.style.width = '1200px';
+      exportContainer.style.height = 'auto';
       exportContainer.style.background = '#ffffff';
-      exportContainer.style.padding = '20px';
+      exportContainer.style.padding = '30px';
       exportContainer.style.fontFamily = 'Arial, sans-serif';
+      exportContainer.style.zIndex = '-1000';
       
       // Add title and metadata
       const titleElement = document.createElement('h1');
@@ -289,67 +293,77 @@ const FlexibleSubwayMap: React.FC<FlexibleSubwayMapProps> = ({
       exportContainer.appendChild(titleElement);
       exportContainer.appendChild(descElement);
       
-      // Clone and prepare SVG for export
-      const svgClone = svgElement.cloneNode(true) as SVGElement;
+      // Clone the ENTIRE visualization container
+      const containerClone = svgContainer.cloneNode(true) as HTMLElement;
       
-      // Determine if this is a large analysis
-      const nodeCount = optimizedScenario.nodes.length;
-      const isLargeAnalysis = nodeCount > 20;
+      // Reset all transforms and positioning for export
+      containerClone.style.transform = 'none';
+      containerClone.style.position = 'static';
+      containerClone.style.width = '100%';
+      containerClone.style.height = 'auto';
+      containerClone.style.overflow = 'visible';
       
-      // Set proper dimensions for PDF
-      const originalWidth = parseFloat(svgClone.getAttribute('width') || '1000');
-      const originalHeight = parseFloat(svgClone.getAttribute('height') || '600');
+      // Find SVG within the cloned container
+      const svgInClone = containerClone.querySelector('svg');
+      if (svgInClone) {
+        // Make SVG export-ready
+        svgInClone.style.background = '#ffffff';
+        svgInClone.style.width = '100%';
+        svgInClone.style.height = 'auto';
+        svgInClone.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+        
+        // Ensure proper dimensions
+        const viewBox = svgInClone.getAttribute('viewBox');
+        if (!viewBox) {
+          svgInClone.setAttribute('viewBox', '0 0 1000 600');
+        }
+      }
       
-      // Scale for better readability
-      const pdfScale = isLargeAnalysis ? 0.7 : 0.9;
-      const scaledWidth = originalWidth * pdfScale;
-      const scaledHeight = originalHeight * pdfScale;
-      
-      svgClone.setAttribute('width', scaledWidth.toString());
-      svgClone.setAttribute('height', scaledHeight.toString());
-      svgClone.style.background = '#ffffff';
-      
-      // Ensure all text and paths are visible on white background
-      const textElements = svgClone.querySelectorAll('text');
-      textElements.forEach(text => {
-        const currentFill = text.getAttribute('fill');
-        if (currentFill === '#fff' || currentFill === 'white' || currentFill === '#ffffff' || !currentFill) {
+      // Fix colors for white background
+      containerClone.querySelectorAll('text').forEach((text: any) => {
+        const fill = text.getAttribute('fill');
+        if (!fill || fill === '#fff' || fill === 'white' || fill === '#ffffff') {
           text.setAttribute('fill', '#000000');
         }
       });
       
-      // Make sure connection lines are visible
-      const pathElements = svgClone.querySelectorAll('path');
-      pathElements.forEach(path => {
-        const currentStroke = path.getAttribute('stroke');
-        if (currentStroke === 'white' || currentStroke === '#fff' || currentStroke === '#ffffff') {
+      containerClone.querySelectorAll('path').forEach((path: any) => {
+        const stroke = path.getAttribute('stroke');
+        if (stroke === 'white' || stroke === '#fff' || stroke === '#ffffff') {
           path.setAttribute('stroke', '#333333');
         }
       });
       
-      // Create wrapper div for the SVG
-      const svgWrapper = document.createElement('div');
-      svgWrapper.style.display = 'flex';
-      svgWrapper.style.justifyContent = 'center';
-      svgWrapper.style.marginTop = '20px';
-      svgWrapper.appendChild(svgClone);
+      // Create content wrapper
+      const contentWrapper = document.createElement('div');
+      contentWrapper.style.textAlign = 'center';
+      contentWrapper.appendChild(containerClone);
       
-      exportContainer.appendChild(svgWrapper);
+      exportContainer.appendChild(contentWrapper);
       document.body.appendChild(exportContainer);
 
       // Wait a moment for styles to apply
       await new Promise(resolve => setTimeout(resolve, 100));
 
-      // Capture as canvas with optimized settings for SVG
+      // Wait for elements to render
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Capture with html2canvas
       const canvas = await html2canvas(exportContainer, {
         backgroundColor: '#ffffff',
-        scale: 2, // Higher quality for crisp output
+        scale: 1.5,
         useCORS: true,
         allowTaint: true,
         logging: false,
-        removeContainer: true,
-        scrollX: 0,
-        scrollY: 0
+        width: exportContainer.scrollWidth,
+        height: exportContainer.scrollHeight,
+        onclone: (clonedDoc) => {
+          // Ensure styles are applied in cloned document
+          const clonedSvg = clonedDoc.querySelector('svg');
+          if (clonedSvg) {
+            clonedSvg.style.background = '#ffffff';
+          }
+        }
       });
 
       // Create PDF with format based on analysis size
