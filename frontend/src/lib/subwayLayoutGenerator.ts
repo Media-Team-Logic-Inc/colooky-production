@@ -338,6 +338,7 @@ export function transformToSubwayLayout(scenario: any): any {
     nodes: subwayLayout.nodes,
     connections: subwayLayout.connections,
     legendItems: subwayLayout.legendItems,
+    viewBox: subwayLayout.viewBox,
     title: scenario.title || 'Code Flow Analysis',
     description: scenario.description || 'Interactive code flow visualization'
   };

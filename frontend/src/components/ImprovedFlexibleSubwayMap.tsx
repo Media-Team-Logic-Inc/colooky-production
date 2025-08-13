@@ -10,6 +10,7 @@ export interface FlowScenario {
   nodes: FlowNode[];
   connections: FlowConnection[];
   legendItems: LegendItem[];
+  viewBox?: string; // Added for subway layout support
 }
 
 export interface FlowNode {
