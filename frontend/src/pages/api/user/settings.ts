@@ -14,10 +14,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const githubId = session.user.githubId as string;
 
     if (req.method === 'GET') {
+      // Debug: Check what we're looking for
+      console.log('Looking for user profile with githubId:', githubId);
+      
       // Get user settings
       const userProfile = await getUserProfile(githubId);
       if (!userProfile) {
-        return res.status(404).json({ error: 'User profile not found' });
+        console.log('No user profile found for githubId:', githubId);
+        return res.status(404).json({ 
+          error: 'User profile not found',
+          debug: {
+            githubId: githubId,
+            sessionUser: session.user
+          }
+        });
       }
 
       const settings = await getUserSettings(userProfile.id);
