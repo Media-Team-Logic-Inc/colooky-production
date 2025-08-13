@@ -12,7 +12,7 @@ export interface SubwayNode {
   stepNumber?: number;
   details: string[];
   isError?: boolean;
-  type?: 'file' | 'function' | 'class' | 'api' | 'database' | 'auth' | 'error';
+  type?: 'file' | 'function' | 'class' | 'api' | 'database' | 'auth' | 'error' | 'frontend' | 'external';
 }
 
 export interface SubwayConnection {
@@ -292,27 +292,27 @@ function generateConnections(nodes: SubwayNode[], originalConnections?: any[]): 
 
 // Create legend based on node types present
 function createLegend(nodes: SubwayNode[]): Array<{ color: string; label: string }> {
-  const typesPresent = new Set(nodes.map(n => n.type));
+  const typesPresent = new Set(nodes.map(n => n.type).filter(Boolean));
   const legend: Array<{ color: string; label: string }> = [];
   
-  if (typesPresent.has('frontend')) {
-    legend.push({ color: '#3b82f6', label: 'Frontend/UI' });
-  }
-  if (typesPresent.has('api')) {
-    legend.push({ color: '#10b981', label: 'API/Backend' });
-  }
-  if (typesPresent.has('database')) {
-    legend.push({ color: '#f59e0b', label: 'Database' });
-  }
-  if (typesPresent.has('auth')) {
-    legend.push({ color: '#8b5cf6', label: 'Auth/Security' });
-  }
-  if (typesPresent.has('external')) {
-    legend.push({ color: '#6b7280', label: 'External Service' });
-  }
-  if (typesPresent.has('error')) {
-    legend.push({ color: '#ef4444', label: 'Error Handling' });
-  }
+  const legendMap = {
+    'frontend': { color: '#3b82f6', label: 'Frontend/UI' },
+    'api': { color: '#10b981', label: 'API/Backend' },
+    'database': { color: '#f59e0b', label: 'Database' },
+    'auth': { color: '#8b5cf6', label: 'Auth/Security' },
+    'external': { color: '#6b7280', label: 'External Service' },
+    'error': { color: '#ef4444', label: 'Error Handling' },
+    'file': { color: '#94a3b8', label: 'Files' },
+    'function': { color: '#60a5fa', label: 'Functions' },
+    'class': { color: '#c084fc', label: 'Classes' }
+  } as const;
+  
+  // Add legend items for types that are present
+  Object.entries(legendMap).forEach(([type, config]) => {
+    if (typesPresent.has(type as any)) {
+      legend.push(config);
+    }
+  });
   
   return legend;
 }
