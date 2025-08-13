@@ -1,7 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { getServerSession } from 'next-auth/next';
-import { getUserProfile } from '../../../lib/supabase';
-import { supabase } from '../../../lib/supabase';
+import { getUserProfile, supabaseAdmin } from '../../../lib/supabase';
 import { authOptions } from '../../../lib/auth';
 import Stripe from 'stripe';
 
@@ -33,8 +32,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // Get subscription from database (only if Supabase is configured)
     let subscription = null;
-    if (supabase) {
-      const { data: subData, error } = await supabase
+    if (supabaseAdmin) {
+      const { data: subData, error } = await supabaseAdmin
         .from('subscription_plans')
         .select('*')
         .eq('user_id', userProfile.id)

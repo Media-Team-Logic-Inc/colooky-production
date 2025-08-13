@@ -76,12 +76,12 @@ export interface AnalysisHistory {
 
 // Helper functions
 export const getUserProfile = async (githubId: string): Promise<UserProfile | null> => {
-  if (!supabase) {
-    console.warn('Supabase not configured, cannot fetch user profile');
+  if (!supabaseAdmin) {
+    console.warn('Supabase admin client not configured, cannot fetch user profile');
     return null;
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('user_profiles')
     .select('*')
     .eq('github_id', githubId)
@@ -116,12 +116,12 @@ export const createUserProfile = async (userData: Partial<UserProfile>): Promise
 };
 
 export const updateUserProfile = async (userId: string, updates: Partial<UserProfile>): Promise<UserProfile | null> => {
-  if (!supabase) {
-    console.warn('Supabase not configured, cannot update user profile');
+  if (!supabaseAdmin) {
+    console.warn('Supabase admin client not configured, cannot update user profile');
     return null;
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('user_profiles')
     .update({ ...updates, updated_at: new Date().toISOString() })
     .eq('id', userId)
@@ -137,12 +137,12 @@ export const updateUserProfile = async (userId: string, updates: Partial<UserPro
 };
 
 export const getUserSettings = async (userId: string): Promise<UserSettings | null> => {
-  if (!supabase) {
-    console.warn('Supabase not configured, cannot fetch user settings');
+  if (!supabaseAdmin) {
+    console.warn('Supabase admin client not configured, cannot fetch user settings');
     return null;
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('user_settings')
     .select('*')
     .eq('user_id', userId)
@@ -204,7 +204,12 @@ export const createUserSettings = async (userId: string, settings: Partial<UserS
 };
 
 export const updateUserSettings = async (userId: string, settings: Partial<UserSettings>): Promise<UserSettings | null> => {
-  const { data, error } = await supabase
+  if (!supabaseAdmin) {
+    console.warn('Supabase admin client not configured, cannot update user settings');
+    return null;
+  }
+
+  const { data, error } = await supabaseAdmin
     .from('user_settings')
     .update({ ...settings, updated_at: new Date().toISOString() })
     .eq('user_id', userId)
@@ -220,7 +225,12 @@ export const updateUserSettings = async (userId: string, settings: Partial<UserS
 };
 
 export const saveAnalysisHistory = async (analysisData: Partial<AnalysisHistory>): Promise<AnalysisHistory | null> => {
-  const { data, error } = await supabase
+  if (!supabaseAdmin) {
+    console.warn('Supabase admin client not configured, cannot save analysis history');
+    return null;
+  }
+
+  const { data, error } = await supabaseAdmin
     .from('analysis_history')
     .insert([analysisData])
     .select()
@@ -235,7 +245,12 @@ export const saveAnalysisHistory = async (analysisData: Partial<AnalysisHistory>
 };
 
 export const getUserAnalysisHistory = async (userId: string, limit = 10): Promise<AnalysisHistory[]> => {
-  const { data, error } = await supabase
+  if (!supabaseAdmin) {
+    console.warn('Supabase admin client not configured, cannot fetch analysis history');
+    return [];
+  }
+
+  const { data, error } = await supabaseAdmin
     .from('analysis_history')
     .select('*')
     .eq('user_id', userId)
