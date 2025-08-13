@@ -266,21 +266,9 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
     }
   };
 
-  // Calculate canvas bounds
-  const getCanvasBounds = (nodes = scenario.nodes) => {
-    if (nodes.length === 0) return { minX: 0, minY: 0, maxX: 1000, maxY: 600 };
-    
-    const minX = Math.min(...nodes.map(n => n.x)) - 100;
-    const minY = Math.min(...nodes.map(n => n.y)) - 100;
-    const maxX = Math.max(...nodes.map(n => n.x + n.width)) + 100;
-    const maxY = Math.max(...nodes.map(n => n.y + n.height)) + 100;
-    
-    return { minX, minY, maxX, maxY };
-  };
-
-  const bounds = getCanvasBounds();
-  const canvasWidth = bounds.maxX - bounds.minX;
-  const canvasHeight = bounds.maxY - bounds.minY;
+  // Use fixed viewBox like the demo for consistent layout
+  const viewBox = scenario.viewBox || "0 0 1000 500";
+  const [viewX, viewY, viewWidth, viewHeight] = viewBox.split(' ').map(Number);
 
   return (
     <div className="h-screen flex flex-col bg-slate-900">
@@ -373,7 +361,7 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
           <svg
             ref={svgRef}
             className="w-full h-full"
-            viewBox={`${bounds.minX} ${bounds.minY} ${canvasWidth} ${canvasHeight}`}
+            viewBox={viewBox}
             preserveAspectRatio="xMidYMid meet"
           >
             <defs>
@@ -393,26 +381,29 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
               ))}
             </defs>
 
-            {/* Connections */}
+            {/* Connections - Demo style curved paths */}
             {scenario.connections.map((connection, index) => {
-              const pathData = `M ${connection.from.x} ${connection.from.y} Q ${
-                (connection.from.x + connection.to.x) / 2
-              } ${
-                connection.from.y < connection.to.y 
-                  ? connection.from.y - 50 
-                  : connection.from.y + 50
-              } ${connection.to.x} ${connection.to.y}`;
+              // Calculate smooth curve like the demo
+              const dx = connection.to.x - connection.from.x;
+              const dy = connection.to.y - connection.from.y;
+              const distance = Math.sqrt(dx * dx + dy * dy);
+              
+              // Control point for smooth curves
+              const controlX = connection.from.x + dx * 0.5;
+              const controlY = connection.from.y + (distance > 200 ? dy * 0.3 : dy * 0.5);
+              
+              const pathData = `M ${connection.from.x} ${connection.from.y} Q ${controlX} ${controlY} ${connection.to.x} ${connection.to.y}`;
 
               return (
                 <g key={index}>
                   <path
                     d={pathData}
+                    className="connection"
                     fill="none"
                     stroke={connection.isError ? '#ef4444' : connection.color}
                     strokeWidth="3"
-                    opacity={connection.isError ? 0.7 : 0.8}
-                    markerEnd={`url(#arrowhead-${(connection.isError ? '#ef4444' : connection.color).replace('#', '')})`}
-                    className={connection.animated ? 'animate-pulse' : ''}
+                    opacity={connection.isError ? 0.6 : 0.8}
+                    markerEnd={`url(#arrowhead-${(connection.isError ? 'ef4444' : connection.color.replace('#', ''))})`}
                     style={{
                       strokeDasharray: connection.animated ? '8 4' : 'none',
                       animation: connection.animated ? 'dash 2s linear infinite' : 'none'
@@ -420,11 +411,11 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
                   />
                   {connection.label && (
                     <text
-                      x={(connection.from.x + connection.to.x) / 2}
-                      y={(connection.from.y + connection.to.y) / 2}
+                      x={controlX}
+                      y={controlY - 10}
                       textAnchor="middle"
                       className="text-xs fill-slate-300"
-                      dy="-5"
+                      style={{ fontSize: '11px' }}
                     >
                       {connection.label}
                     </text>
@@ -433,60 +424,84 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
               );
             })}
 
-            {/* Nodes */}
+            {/* Nodes - Demo style */}
             {scenario.nodes.map((node) => (
-              <g 
-                key={node.id} 
-                className="cursor-pointer transition-all duration-200 hover:brightness-110"
-                onClick={() => handleNodeClick(node)}
-                transform={`translate(${node.x}, ${node.y})`}
-              >
-                {/* Node background */}
-                <rect
-                  width={node.width}
-                  height={node.height}
-                  rx="8"
-                  ry="8"
-                  fill={node.isError ? '#ef4444' : node.color}
-                  stroke={node.isError ? '#f87171' : node.strokeColor}
-                  strokeWidth="2"
-                  fillOpacity="0.9"
-                  className={selectedNode === node.id ? 'stroke-yellow-400 stroke-4' : ''}
-                />
-                
-                {/* Node text */}
-                <text
-                  x={node.width / 2}
-                  y={node.height / 2}
-                  textAnchor="middle"
-                  dominantBaseline="middle"
-                  className="text-sm font-medium fill-white"
-                  style={{ fontSize: '12px' }}
-                >
-                  {node.title}
-                </text>
-                
-                {/* Step number if present */}
+              <g key={node.id}>
+                {/* Step number indicator (positioned like demo) */}
                 {node.stepNumber && (
-                  <circle
-                    cx={-15}
-                    cy={node.height / 2}
-                    r="12"
-                    fill={node.isError ? '#ef4444' : '#64b5f6'}
-                    className="stroke-white stroke-2"
-                  />
+                  <g>
+                    <circle
+                      cx={node.x - 15}
+                      cy={node.y + node.height / 2}
+                      r="12"
+                      fill={node.isError ? '#ef4444' : '#64b5f6'}
+                      stroke="#fff"
+                      strokeWidth="2"
+                    />
+                    <text
+                      x={node.x - 15}
+                      y={node.y + node.height / 2 + 1}
+                      textAnchor="middle"
+                      dominantBaseline="middle"
+                      className="fill-white font-bold"
+                      style={{ fontSize: '10px' }}
+                    >
+                      {node.stepNumber}
+                    </text>
+                  </g>
                 )}
-                {node.stepNumber && (
+                
+                {/* Node */}
+                <g 
+                  className="node cursor-pointer"
+                  onClick={() => handleNodeClick(node)}
+                  style={{ 
+                    transition: 'all 0.3s ease',
+                    transformOrigin: `${node.x + node.width/2}px ${node.y + node.height/2}px`
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'scale(1.05)';
+                    e.currentTarget.style.filter = 'brightness(1.2)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'scale(1)';
+                    e.currentTarget.style.filter = 'brightness(1)';
+                  }}
+                >
+                  {/* Node background */}
+                  <rect
+                    className="node-rect"
+                    x={node.x}
+                    y={node.y}
+                    width={node.width}
+                    height={node.height}
+                    rx="8"
+                    ry="8"
+                    fill={node.isError ? '#ef4444' : node.color}
+                    stroke={node.isError ? '#f87171' : node.strokeColor}
+                    strokeWidth="2"
+                    fillOpacity="0.9"
+                    style={{
+                      filter: selectedNode === node.id ? 'drop-shadow(0 0 8px #fbbf24)' : 'none'
+                    }}
+                  />
+                  
+                  {/* Node text */}
                   <text
-                    x={-15}
-                    y={node.height / 2 + 1}
+                    className="node-text"
+                    x={node.x + node.width / 2}
+                    y={node.y + node.height / 2}
                     textAnchor="middle"
                     dominantBaseline="middle"
-                    className="text-xs font-bold fill-white"
+                    fill="#fff"
+                    style={{ 
+                      fontSize: node.isError ? '10px' : '12px',
+                      fontWeight: '500'
+                    }}
                   >
-                    {node.stepNumber}
+                    {node.title}
                   </text>
-                )}
+                </g>
               </g>
             ))}
           </svg>

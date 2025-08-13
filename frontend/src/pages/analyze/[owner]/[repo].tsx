@@ -6,6 +6,7 @@ import Link from 'next/link';
 import Header from '../../../components/layout/Header';
 import ImprovedFlexibleSubwayMap from '../../../components/ImprovedFlexibleSubwayMap';
 import { enhanceScenarioWithErrors, addStepNumbers } from '../../../lib/errorDetection';
+import { transformToSubwayLayout } from '../../../lib/subwayLayoutGenerator';
 import { 
   Github, 
   Folder, 
@@ -902,7 +903,7 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
               {/* Repository Visualization - Full Width with Code Viewer Below */}
               <div className="w-full">
                 <ImprovedFlexibleSubwayMap 
-                  scenario={addStepNumbers(enhanceScenarioWithErrors(analysis.visualization))}
+                  scenario={transformToSubwayLayout(enhanceScenarioWithErrors(analysis.visualization))}
                   onScenarioChange={() => {}}
                   availableScenarios={[analysis.visualization]}
                   repositoryInfo={{
