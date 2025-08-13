@@ -7,6 +7,7 @@ import Header from '../../../components/layout/Header';
 import ImprovedFlexibleSubwayMap from '../../../components/ImprovedFlexibleSubwayMap';
 import { enhanceScenarioWithErrors, addStepNumbers } from '../../../lib/errorDetection';
 import { transformToSubwayLayout } from '../../../lib/subwayLayoutGenerator';
+import { generateDetailedVisualization, hasDetailedAnalysisData } from '../../../lib/detailedScenarioGenerator';
 import { 
   Github, 
   Folder, 
@@ -903,7 +904,24 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
               {/* Repository Visualization - Full Width with Code Viewer Below */}
               <div className="w-full">
                 <ImprovedFlexibleSubwayMap 
-                  scenario={transformToSubwayLayout(enhanceScenarioWithErrors(analysis.visualization))}
+                  scenario={(() => {
+                    // Check if we need to generate a more detailed visualization
+                    const currentVisualization = analysis.visualization;
+                    const nodeCount = currentVisualization?.nodes?.length || 0;
+                    const summaryFunctions = analysis.summary?.functions || 0;
+                    const summaryImports = analysis.summary?.imports || 0;
+                    const totalSummaryElements = summaryFunctions + summaryImports + (analysis.summary?.classes || 0);
+                    
+                    // If the visualization has significantly fewer nodes than detected elements, generate detailed view
+                    if (totalSummaryElements > nodeCount * 2 && totalSummaryElements > 5) {
+                      console.log(`🔍 Generating detailed visualization: ${totalSummaryElements} elements detected, only ${nodeCount} nodes shown`);
+                      const detailedVisualization = generateDetailedVisualization(analysis, selectedFiles);
+                      return transformToSubwayLayout(enhanceScenarioWithErrors(detailedVisualization));
+                    }
+                    
+                    // Use the original visualization
+                    return transformToSubwayLayout(enhanceScenarioWithErrors(currentVisualization));
+                  })()}
                   onScenarioChange={() => {}}
                   availableScenarios={[analysis.visualization]}
                   repositoryInfo={{
