@@ -63,6 +63,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const planType = subscription.metadata?.plan || 'individual';
     const billingPeriod = subscription.metadata?.billing_period || 'monthly';
 
+    // Safely parse timestamp fields
+    let currentPeriodStart = null;
+    let currentPeriodEnd = null;
+    let cancelAtPeriodEnd = false;
+
+    try {
+      if ((subscription as any).current_period_start) {
+        currentPeriodStart = new Date((subscription as any).current_period_start * 1000).toISOString();
+      }
+      if ((subscription as any).current_period_end) {
+        currentPeriodEnd = new Date((subscription as any).current_period_end * 1000).toISOString();
+      }
+      cancelAtPeriodEnd = Boolean((subscription as any).cancel_at_period_end);
+    } catch (dateError) {
+      console.error('Error parsing subscription dates:', dateError);
+      // Continue with null values
+    }
+
     const { data, error } = await supabaseAdmin
       .from('subscription_plans')
       .upsert({
@@ -72,9 +90,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         plan_type: planType,
         billing_period: billingPeriod,
         status: subscription.status,
-        current_period_start: new Date((subscription as any).current_period_start * 1000).toISOString(),
-        current_period_end: new Date((subscription as any).current_period_end * 1000).toISOString(),
-        cancel_at_period_end: (subscription as any).cancel_at_period_end,
+        current_period_start: currentPeriodStart,
+        current_period_end: currentPeriodEnd,
+        cancel_at_period_end: cancelAtPeriodEnd,
         updated_at: new Date().toISOString(),
       }, { 
         onConflict: 'user_id' 
@@ -93,6 +111,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         status: subscription.status,
         plan_type: planType,
         billing_period: billingPeriod,
+        current_period_start: currentPeriodStart,
+        current_period_end: currentPeriodEnd,
+      },
+      debug: {
+        stripeSubscription: subscription,
+        customer: customer.id,
+        userProfile: userProfile.id,
       }
     });
 
