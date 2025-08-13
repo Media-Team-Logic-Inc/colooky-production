@@ -214,23 +214,25 @@ function generateFromSummary(summary: any, selectedFiles: string[]) {
   nodes.push(mainFileNode);
   currentX += 200;
   
-  // Create import nodes (show up to 6, represent the rest)
+  // Create import nodes (show up to 8, represent the rest)
   if (importsCount > 0) {
-    const importNodesToShow = Math.min(importsCount, 6);
+    const importNodesToShow = Math.min(importsCount, 8);
     for (let i = 0; i < importNodesToShow; i++) {
-      const isLastImport = i === importNodesToShow - 1 && importsCount > 6;
+      const isLastImport = i === importNodesToShow - 1 && importsCount > 8;
       const importNode = {
         id: `import-${nodeId++}`,
-        title: isLastImport ? `+${importsCount - 5} more imports` : `Import ${i + 1}`,
-        x: 50 + i * 30,
-        y: currentY + 80,
-        width: isLastImport ? 150 : 100,
-        height: 30,
+        title: isLastImport ? `+${importsCount - 7} more imports` : `Import ${i + 1}`,
+        x: 100 + (i % 4) * 160, // Better spacing in grid layout
+        y: 50 + Math.floor(i / 4) * 60, // Grid layout for better visibility
+        width: isLastImport ? 150 : 140,
+        height: 35,
         color: '#6b7280',
         strokeColor: '#9ca3af',
+        stepNumber: i + 1, // Add step numbers to imports
         details: [
-          isLastImport ? `${importsCount} total imports` : `Import dependency ${i + 1}`,
-          'Type: External dependency'
+          isLastImport ? `${importsCount} total imports detected` : `Import dependency ${i + 1}`,
+          'Type: External dependency',
+          `File: ${selectedFiles[0] || 'Unknown'}`
         ],
         type: 'import'
       };
@@ -238,11 +240,13 @@ function generateFromSummary(summary: any, selectedFiles: string[]) {
       
       // Connect to main file
       connections.push({
-        from: { x: importNode.x + importNode.width/2, y: importNode.y },
-        to: { x: mainFileNode.x + mainFileNode.width/2, y: mainFileNode.y + mainFileNode.height },
-        color: '#6b7280'
+        from: { x: importNode.x + importNode.width/2, y: importNode.y + importNode.height },
+        to: { x: mainFileNode.x + mainFileNode.width/2, y: mainFileNode.y },
+        color: '#6b7280',
+        label: 'imports into'
       });
     }
+    currentY += Math.ceil(importNodesToShow / 4) * 60 + 60; // Adjust Y for next elements
   }
   
   // Create function nodes (show up to 8, represent the rest)

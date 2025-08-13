@@ -912,8 +912,8 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
                     const summaryImports = analysis.summary?.imports || 0;
                     const totalSummaryElements = summaryFunctions + summaryImports + (analysis.summary?.classes || 0);
                     
-                    // If the visualization has significantly fewer nodes than detected elements, generate detailed view
-                    if (totalSummaryElements > nodeCount * 2 && totalSummaryElements > 5) {
+                    // Always use detailed view when we have imports, functions, or classes to show properly
+                    if (summaryImports > 0 || summaryFunctions > 0 || (analysis.summary?.classes || 0) > 0) {
                       console.log(`🔍 Generating detailed visualization: ${totalSummaryElements} elements detected, only ${nodeCount} nodes shown`);
                       const detailedVisualization = generateDetailedVisualization(analysis, selectedFiles);
                       return transformToSubwayLayout(enhanceScenarioWithErrors(detailedVisualization));
