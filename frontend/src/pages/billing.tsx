@@ -37,8 +37,8 @@ export default function Billing({ user }: BillingProps) {
   useEffect(() => {
     const loadSubscription = async () => {
       try {
-        // Try simplified endpoint first for debugging
-        const response = await fetch('/api/user/subscription-simple');
+        // Use the main subscription endpoint
+        const response = await fetch('/api/user/subscription');
         if (response.ok) {
           const data = await response.json();
           console.log('Subscription data loaded:', data);
