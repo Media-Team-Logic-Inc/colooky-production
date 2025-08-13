@@ -4,7 +4,8 @@ import { getSession } from 'next-auth/react';
 import Head from 'next/head';
 import Link from 'next/link';
 import Header from '../../../components/layout/Header';
-import FlexibleSubwayMap from '../../../components/FlexibleSubwayMap';
+import ImprovedFlexibleSubwayMap from '../../../components/ImprovedFlexibleSubwayMap';
+import { enhanceScenarioWithErrors, addStepNumbers } from '../../../lib/errorDetection';
 import { 
   Github, 
   Folder, 
@@ -898,96 +899,33 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
                 )}
               </div>
 
-              {/* Repository Visualization with Code Viewer */}
-              <div className={`grid gap-6 ${showCodeViewer ? 'grid-cols-2' : 'grid-cols-1'}`}>
-                <div className="min-w-0">
-                  <FlexibleSubwayMap 
-                    scenario={analysis.visualization}
-                    onScenarioChange={() => {}}
-                    availableScenarios={[analysis.visualization]}
-                    repositoryInfo={{
-                      owner: repository.owner,
-                      name: repository.name,
-                      full_name: repository.full_name
-                    }}
-                    analysisInfo={{
-                      selectedFiles: selectedFiles,
-                      fileCount: selectedFiles.length,
-                      analysisType: selectedFiles.length === 1 ? 'single-file' : 'multi-file'
-                    }}
-                    onNodeClick={(node) => {
-                      // Extract file path and line number from node details
-                      const fileDetail = node.details?.find((detail: string) => detail.startsWith('File: '));
-                      if (fileDetail) {
-                        const fileInfo = fileDetail.replace('File: ', '');
-                        const [filePath, lineNumber] = fileInfo.split(':');
-                        const highlightLine = lineNumber ? parseInt(lineNumber) : undefined;
-                        viewFileContent(filePath, highlightLine);
-                      }
-                    }}
-                  />
-                </div>
-                
-                {showCodeViewer && (
-                  <div className="bg-slate-800 border border-slate-700 rounded-lg overflow-hidden">
-                    <div className="bg-slate-700 px-4 py-3 border-b border-slate-600">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <File className="w-4 h-4 text-blue-400" />
-                          <span className="text-white font-medium text-sm">
-                            {selectedFileContent ? selectedFileContent.path : 'Select a node to view code'}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {selectedFileContent && (
-                            <span className="text-xs text-slate-400 bg-slate-600 px-2 py-1 rounded">
-                              {selectedFileContent.language}
-                            </span>
-                          )}
-                          <button
-                            onClick={() => setShowCodeViewer(false)}
-                            className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-xs font-medium transition-colors"
-                            title="Hide Code Viewer"
-                          >
-                            Hide Code
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="h-[500px] overflow-auto">
-                      {selectedFileContent ? (
-                        <div className="text-sm">
-                          {selectedFileContent.content.split('\n').map((line, index) => {
-                            const lineNumber = index + 1;
-                            const isHighlighted = selectedFileContent.highlightLine === lineNumber;
-                            return (
-                              <div
-                                key={index}
-                                className={`flex ${isHighlighted ? 'bg-yellow-900/30 border-l-4 border-yellow-400' : ''}`}
-                              >
-                                <span className="text-slate-500 text-right pr-4 py-1 w-12 flex-shrink-0 select-none border-r border-slate-700">
-                                  {lineNumber}
-                                </span>
-                                <pre className="text-slate-300 pl-4 py-1 flex-1 whitespace-pre-wrap">
-                                  <code>{line || ' '}</code>
-                                </pre>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      ) : (
-                        <div className="flex items-center justify-center h-full text-slate-400">
-                          <div className="text-center">
-                            <File className="w-12 h-12 mx-auto mb-4 text-slate-500" />
-                            <p>Click a node in the visualization to view its code</p>
-                            <p className="text-xs mt-2">Line numbers and highlighting included</p>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
+              {/* Repository Visualization - Full Width with Code Viewer Below */}
+              <div className="w-full">
+                <ImprovedFlexibleSubwayMap 
+                  scenario={addStepNumbers(enhanceScenarioWithErrors(analysis.visualization))}
+                  onScenarioChange={() => {}}
+                  availableScenarios={[analysis.visualization]}
+                  repositoryInfo={{
+                    owner: repository.owner,
+                    name: repository.name,
+                    full_name: repository.full_name
+                  }}
+                  analysisInfo={{
+                    selectedFiles: selectedFiles,
+                    fileCount: selectedFiles.length,
+                    analysisType: selectedFiles.length === 1 ? 'single-file' : 'multi-file'
+                  }}
+                  onNodeClick={(node) => {
+                    // Extract file path and line number from node details
+                    const fileDetail = node.details?.find((detail: string) => detail.startsWith('File: '));
+                    if (fileDetail) {
+                      const fileInfo = fileDetail.replace('File: ', '');
+                      const [filePath, lineNumber] = fileInfo.split(':');
+                      const highlightLine = lineNumber ? parseInt(lineNumber) : undefined;
+                      viewFileContent(filePath, highlightLine);
+                    }
+                  }}
+                />
               </div>
 
               <div className="mt-8 flex justify-center gap-4">
