@@ -8,6 +8,7 @@ import ImprovedFlexibleSubwayMap from '../../../components/ImprovedFlexibleSubwa
 import { enhanceScenarioWithErrors, addStepNumbers } from '../../../lib/errorDetection';
 import { transformToSubwayLayout } from '../../../lib/subwayLayoutGenerator';
 import { generateDetailedVisualization, hasDetailedAnalysisData } from '../../../lib/detailedScenarioGenerator';
+import { generateIntelligentVisualization } from '../../../lib/intelligentVisualizationGenerator';
 import { 
   Github, 
   Folder, 
@@ -905,22 +906,16 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
               <div className="w-full">
                 <ImprovedFlexibleSubwayMap 
                   scenario={(() => {
-                    // Check if we need to generate a more detailed visualization
-                    const currentVisualization = analysis.visualization;
-                    const nodeCount = currentVisualization?.nodes?.length || 0;
-                    const summaryFunctions = analysis.summary?.functions || 0;
-                    const summaryImports = analysis.summary?.imports || 0;
-                    const totalSummaryElements = summaryFunctions + summaryImports + (analysis.summary?.classes || 0);
+                    // Generate intelligent visualization based on content type and complexity
+                    console.log('🎨 Generating intelligent visualization for analysis:', {
+                      functions: analysis.summary?.functions || 0,
+                      classes: analysis.summary?.classes || 0,
+                      imports: analysis.summary?.imports || 0,
+                      files: selectedFiles.length
+                    });
                     
-                    // Always use detailed view when we have imports, functions, or classes to show properly
-                    if (summaryImports > 0 || summaryFunctions > 0 || (analysis.summary?.classes || 0) > 0) {
-                      console.log(`🔍 Generating detailed visualization: ${totalSummaryElements} elements detected, only ${nodeCount} nodes shown`);
-                      const detailedVisualization = generateDetailedVisualization(analysis, selectedFiles);
-                      return transformToSubwayLayout(enhanceScenarioWithErrors(detailedVisualization));
-                    }
-                    
-                    // Use the original visualization
-                    return transformToSubwayLayout(enhanceScenarioWithErrors(currentVisualization));
+                    const intelligentVisualization = generateIntelligentVisualization(analysis, selectedFiles);
+                    return transformToSubwayLayout(enhanceScenarioWithErrors(intelligentVisualization));
                   })()}
                   onScenarioChange={() => {}}
                   availableScenarios={[analysis.visualization]}
