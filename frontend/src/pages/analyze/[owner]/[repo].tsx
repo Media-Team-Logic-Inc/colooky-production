@@ -674,6 +674,16 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
               <div>
                 <h1 className="text-3xl font-bold text-white">
                   {repository.owner}/{repository.name}
+                  {selectedFiles.length === 1 && (
+                    <span className="text-blue-400 text-xl ml-3 font-normal">
+                      → {selectedFiles[0].split('/').pop()}
+                    </span>
+                  )}
+                  {selectedFiles.length > 1 && (
+                    <span className="text-blue-400 text-xl ml-3 font-normal">
+                      → {selectedFiles.length} files
+                    </span>
+                  )}
                 </h1>
                 <p className="text-slate-400">
                   {repository.description || 'Analyze this repository with Colooky'}

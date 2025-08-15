@@ -224,6 +224,13 @@ async function analyzeCodeStructure(
 function analyzeFile(file: { path: string; content: string; language: string }) {
   console.log('🔬 Analyzing file:', file.path, 'Language:', file.language, 'Lines:', file.content.split('\n').length);
   
+  // DEBUG: Show first 10 lines of file content to see what we're working with
+  const lines = file.content.split('\n');
+  console.log('📝 First 10 lines of file content:');
+  lines.slice(0, 10).forEach((line, i) => {
+    console.log(`${i + 1}: ${line}`);
+  });
+  
   const analysis = {
     functions: 0,
     classes: 0,
@@ -233,8 +240,6 @@ function analyzeFile(file: { path: string; content: string; language: string }) 
     elements: [] as any[],
     functionCalls: [] as { function: string; line: number; calledFrom: string }[]
   };
-
-  const lines = file.content.split('\n');
   
   for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
     const line = lines[lineIndex];
@@ -275,10 +280,13 @@ function analyzeFile(file: { path: string; content: string; language: string }) 
       /^\s*(?:public|private|protected|async\s+)*(\w+)\s*\([^)]*\)\s*(?::\s*[\w\[\]<>,\s|]+)?\s*\{/
     ];
     
-    for (const pattern of functionMatches) {
+    let foundMatch = false;
+    for (let patternIndex = 0; patternIndex < functionMatches.length; patternIndex++) {
+      const pattern = functionMatches[patternIndex];
       const match = trimmed.match(pattern);
       if (match) {
-        console.log(`🎯 Found function "${match[1]}" at line ${lineNumber} in ${file.path}`);
+        console.log(`🎯 FOUND FUNCTION "${match[1]}" using pattern ${patternIndex} at line ${lineNumber} in ${file.path}`);
+        foundMatch = true;
         analysis.functions++;
         
         // Extract function code snippet (5 lines around the function)
@@ -300,6 +308,11 @@ function analyzeFile(file: { path: string; content: string; language: string }) 
         });
         break;
       }
+    }
+    
+    // Debug: If line looks like a function but no pattern matched, show why
+    if (!foundMatch && (trimmed.includes('function') || trimmed.includes('=>') || trimmed.includes('const '))) {
+      console.log(`❌ Line ${lineNumber} looks like function but no pattern matched: "${trimmed}"`);
     }
     
     // Extract class definitions
