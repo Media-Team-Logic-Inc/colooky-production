@@ -252,32 +252,19 @@ function analyzeFile(file: { path: string; content: string; language: string }) 
       console.log(`🔍 Line ${lineNumber}: "${trimmed}"`);
     }
     
-    // Extract function definitions with names and line numbers - COMPREHENSIVE React/TypeScript patterns
+    // ULTRA SIMPLE patterns that WILL work
     const functionMatches = [
-      // Traditional function declarations
-      /^(?:export\s+)?(?:async\s+)?function\s+(\w+)\s*\(/,
+      // ANY function keyword
+      /function\s+(\w+)/,
       
-      // React/TypeScript arrow functions and hooks
-      /^(?:export\s+)?const\s+(\w+)\s*=\s*(?:async\s+)?\([^)]*\)\s*(?::\s*[\w\[\]<>,\s|]+)?\s*=>/,
-      /^(?:export\s+)?const\s+(\w+)\s*:\s*React\.FC(?:<[^>]*>)?\s*=\s*\([^)]*\)\s*=>/,
-      /^(?:export\s+)?const\s+(\w+)\s*=\s*\([^)]*\)\s*:\s*[\w\[\]<>,\s|]+\s*=>/,
+      // ANY const = () => (arrow functions)
+      /const\s+(\w+)\s*=.*=>/,
       
-      // React component patterns
-      /^(?:export\s+)?(?:default\s+)?(?:const\s+|function\s+)(\w+)(?:\s*:\s*React\.FC|Component|\([^)]*\))/,
+      // ANY const = ( (function assignments)  
+      /const\s+(\w+)\s*=.*\(/,
       
-      // Hook patterns (useState, useEffect, custom hooks)
-      /^\s*const\s+\[(\w+),\s*\w+\]\s*=\s*useState/,
-      /^\s*const\s+(\w+)\s*=\s*use\w+\(/,
-      
-      // Context and Provider patterns  
-      /^(?:export\s+)?const\s+(\w+(?:Context|Provider))\s*=/,
-      
-      // Method definitions in objects/classes
-      /^\s*(\w+)\s*:\s*(?:async\s+)?\([^)]*\)\s*(?::\s*[\w\[\]<>,\s|]+)?\s*=>/,
-      /^\s*(?:async\s+)?(\w+)\s*\([^)]*\)\s*(?::\s*[\w\[\]<>,\s|]+)?\s*\{/,
-      
-      // Class methods
-      /^\s*(?:public|private|protected|async\s+)*(\w+)\s*\([^)]*\)\s*(?::\s*[\w\[\]<>,\s|]+)?\s*\{/
+      // Method definitions (name followed by parentheses)
+      /^\s*(\w+)\s*\(/
     ];
     
     let foundMatch = false;
