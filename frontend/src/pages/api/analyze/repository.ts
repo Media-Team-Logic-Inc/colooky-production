@@ -241,19 +241,38 @@ function analyzeFile(file: { path: string; content: string; language: string }) 
     const trimmed = line.trim();
     const lineNumber = lineIndex + 1;
     
-    // Extract function definitions with names and line numbers
+    // Debug: Log lines that look like they might contain functions
+    if (trimmed.includes('const ') || trimmed.includes('function ') || trimmed.includes('export ') || 
+        trimmed.includes('=>') || trimmed.includes('useState') || trimmed.includes('use')) {
+      console.log(`🔍 Line ${lineNumber}: "${trimmed}"`);
+    }
+    
+    // Extract function definitions with names and line numbers - COMPREHENSIVE React/TypeScript patterns
     const functionMatches = [
+      // Traditional function declarations
       /^(?:export\s+)?(?:async\s+)?function\s+(\w+)\s*\(/,
-      /^(?:export\s+)?const\s+(\w+)\s*=\s*(?:async\s+)?\(/,
-      /^(?:export\s+)?const\s+(\w+)\s*=\s*(?:async\s+)?[\w\s]*=>/,
-      /(\w+)\s*:\s*(?:async\s+)?\([^)]*\)\s*=>/,
-      // TypeScript interface method signatures
-      /^\s*(\w+)\?\s*:\s*\([^)]*\)\s*=>\s*\w+;?$/,
-      /^\s*(\w+)\s*:\s*\([^)]*\)\s*=>\s*\w+;?$/,
-      // Regular method definitions in classes/interfaces
-      /^\s*(?:public|private|protected)?\s*(\w+)\s*\([^)]*\)\s*(?::\s*\w+)?\s*\{?$/,
-      // Arrow function properties
-      /^\s*(\w+)\s*=\s*(?:async\s+)?\([^)]*\)\s*=>/
+      
+      // React/TypeScript arrow functions and hooks
+      /^(?:export\s+)?const\s+(\w+)\s*=\s*(?:async\s+)?\([^)]*\)\s*(?::\s*[\w\[\]<>,\s|]+)?\s*=>/,
+      /^(?:export\s+)?const\s+(\w+)\s*:\s*React\.FC(?:<[^>]*>)?\s*=\s*\([^)]*\)\s*=>/,
+      /^(?:export\s+)?const\s+(\w+)\s*=\s*\([^)]*\)\s*:\s*[\w\[\]<>,\s|]+\s*=>/,
+      
+      // React component patterns
+      /^(?:export\s+)?(?:default\s+)?(?:const\s+|function\s+)(\w+)(?:\s*:\s*React\.FC|Component|\([^)]*\))/,
+      
+      // Hook patterns (useState, useEffect, custom hooks)
+      /^\s*const\s+\[(\w+),\s*\w+\]\s*=\s*useState/,
+      /^\s*const\s+(\w+)\s*=\s*use\w+\(/,
+      
+      // Context and Provider patterns  
+      /^(?:export\s+)?const\s+(\w+(?:Context|Provider))\s*=/,
+      
+      // Method definitions in objects/classes
+      /^\s*(\w+)\s*:\s*(?:async\s+)?\([^)]*\)\s*(?::\s*[\w\[\]<>,\s|]+)?\s*=>/,
+      /^\s*(?:async\s+)?(\w+)\s*\([^)]*\)\s*(?::\s*[\w\[\]<>,\s|]+)?\s*\{/,
+      
+      // Class methods
+      /^\s*(?:public|private|protected|async\s+)*(\w+)\s*\([^)]*\)\s*(?::\s*[\w\[\]<>,\s|]+)?\s*\{/
     ];
     
     for (const pattern of functionMatches) {

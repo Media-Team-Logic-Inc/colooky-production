@@ -196,7 +196,8 @@ function generateRichCodeVisualization(summary: any, selectedFiles: string[], or
     
     for (let i = 0; i < funcCount; i++) {
       const element = functionElements[i];
-      const isErrorFunc = element?.name.toLowerCase().includes('error') || element?.name.toLowerCase().includes('exception');
+      // Only mark as error if there's ACTUAL error detection data, not just naming convention
+      const isErrorFunc = element?.isError === true; // Only if backend detected real errors
       const isValidationFunc = element?.name.toLowerCase().includes('valid') || element?.name.toLowerCase().includes('check');
       
       const funcNode = {
