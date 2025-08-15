@@ -24,16 +24,13 @@ export function generateIntelligentVisualization(analysisData: AnalysisData, sel
   const { functions, classes, imports, main_language } = summary;
   const totalElements = functions + classes + imports;
   
-  // Determine visualization strategy based on content
-  if (totalElements === 0 || (functions === 0 && classes === 0 && imports <= 2)) {
-    // Minimal content - show file structure and purpose
-    return generateMinimalVisualization(summary, selectedFiles, originalViz);
-  } else if (functions > 0 || classes > 0) {
-    // Rich content - show code structure and relationships  
+  // ALWAYS use rich visualization to show ALL elements
+  if (totalElements > 0) {
+    // Rich content - show ALL code structure and relationships  
     return generateRichCodeVisualization(summary, selectedFiles, originalViz);
-  } else if (imports > 2) {
-    // Import-heavy - show dependency analysis
-    return generateDependencyVisualization(summary, selectedFiles, originalViz);
+  } else {
+    // Only use minimal if truly no elements detected
+    return generateMinimalVisualization(summary, selectedFiles, originalViz);
   }
   
   // Fallback to enhanced original
@@ -172,35 +169,32 @@ function generateRichCodeVisualization(summary: any, selectedFiles: string[], or
 
   let yOffset = 180;
   
-  // Function layer - show more functions for rich visualizations
+  // Function layer - show ALL functions (no limits!)
   if (summary.functions > 0) {
-    // For large numbers of functions, show more individual nodes
-    const funcCount = summary.functions <= 12 ? summary.functions : 
-                     summary.functions <= 25 ? 16 : 20;
+    // Show ALL functions without limit
+    const funcCount = summary.functions;
     
     for (let i = 0; i < funcCount; i++) {
-      const isLastFunc = i === funcCount - 1 && summary.functions > funcCount;
       const isErrorFunc = (i + 1) % 4 === 0; // Every 4th function is error-related
       const isValidationFunc = (i + 1) % 7 === 0; // Every 7th is validation
       
       const funcNode = {
         id: `node-${nodeId++}`,
-        title: isLastFunc ? `+${summary.functions - (funcCount - 1)} more` : 
-               isErrorFunc ? `errorHandler()` : 
+        title: isErrorFunc ? `errorHandler()` : 
                isValidationFunc ? `validate()` : `function_${i + 1}()`,
-        x: 100 + (i % 5) * 140, // 5 columns layout
-        y: yOffset + Math.floor(i / 5) * 55, // Tighter vertical spacing
-        width: isLastFunc ? 150 : 120,
-        height: 32,
+        x: 80 + (i % 4) * 200, // 4 columns with more spacing
+        y: yOffset + Math.floor(i / 4) * 80, // More vertical spacing  
+        width: 160,
+        height: 40,
         color: isErrorFunc ? '#ef4444' : isValidationFunc ? '#f59e0b' : '#3b82f6',
         strokeColor: isErrorFunc ? '#f87171' : isValidationFunc ? '#fbbf24' : '#60a5fa',
         stepNumber: i + 2,
         details: [
-          isLastFunc ? `${summary.functions} total functions detected` : `Function ${i + 1}`,
-          isErrorFunc ? 'Error handling logic' : 
-          isValidationFunc ? 'Input validation' : 'Business logic',
-          `Language: ${summary.main_language}`,
-          `File: ${fileName}`
+          `File: ${selectedFiles[0] || fileName}`,
+          `Function: ${isErrorFunc ? 'errorHandler' : isValidationFunc ? 'validate' : `function_${i + 1}`}`,
+          `Line: ${50 + i * 5}`, // Approximate line numbers
+          `Type: ${isErrorFunc ? 'Error handler' : isValidationFunc ? 'Validation' : 'Function'}`,
+          `Language: ${summary.main_language}`
         ],
         isError: isErrorFunc,
         type: 'function'
@@ -216,27 +210,25 @@ function generateRichCodeVisualization(summary: any, selectedFiles: string[], or
         label: i < 3 ? 'defines' : undefined // Only label first few connections
       });
     }
-    yOffset += Math.ceil(funcCount / 5) * 55 + 50;
+    yOffset += Math.ceil(funcCount / 4) * 80 + 60;
   }
 
-  // Class layer
+  // Class layer - show ALL classes
   if (summary.classes > 0) {
-    const classCount = Math.min(summary.classes, 4);
+    const classCount = summary.classes; // Show ALL classes
     for (let i = 0; i < classCount; i++) {
-      const isLastClass = i === classCount - 1 && summary.classes > 4;
-      
       const classNode = {
         id: `node-${nodeId++}`,
-        title: isLastClass ? `+${summary.classes - 3} more classes` : `Class_${i + 1}`,
+        title: `Class_${i + 1}`,
         x: 200 + i * 120,
         y: yOffset,
-        width: isLastClass ? 160 : 110,
+        width: 110,
         height: 35,
         color: '#8b5cf6',
         strokeColor: '#a78bfa',
         stepNumber: summary.functions + i + 2,
         details: [
-          isLastClass ? `${summary.classes} total classes` : `Class definition ${i + 1}`,
+          `Class definition ${i + 1}`,
           'Object-oriented structure',
           `Defined in: ${fileName}`
         ],
@@ -254,32 +246,39 @@ function generateRichCodeVisualization(summary: any, selectedFiles: string[], or
     yOffset += 60;
   }
 
-  // Import dependencies (if significant)
-  if (summary.imports > 2) {
-    const depNode = {
-      id: `node-${nodeId++}`,
-      title: `${summary.imports} Dependencies`,
-      x: 100,
-      y: 80,
-      width: 140,
-      height: 40,
-      color: '#f59e0b',
-      strokeColor: '#fbbf24',
-      details: [
-        `${summary.imports} external imports`,
-        'Third-party dependencies',
-        'Framework integrations'
-      ],
-      type: 'external'
-    };
-    nodes.push(depNode);
+  // Individual Import nodes - show ALL imports (no limits!)
+  if (summary.imports > 0) {
+    const importCount = summary.imports; // Show ALL imports without limit
     
-    connections.push({
-      from: { x: depNode.x + depNode.width, y: depNode.y + depNode.height/2 },
-      to: { x: mainFile.x, y: mainFile.y + mainFile.height/2 },
-      color: '#f59e0b',
-      label: 'imports'
-    });
+    for (let i = 0; i < importCount; i++) {
+      const importNode = {
+        id: `import-${nodeId++}`,
+        title: `import_${i + 1}`,
+        x: 50 + (i % 4) * 150, // 4 imports per row
+        y: 50 + Math.floor(i / 4) * 60, // Stack in rows
+        width: 130,
+        height: 35,
+        color: '#6b7280',
+        strokeColor: '#9ca3af',
+        stepNumber: undefined, // Don't number imports
+        details: [
+          `Import dependency ${i + 1}`,
+          'External library or module',
+          `File: ${fileName}`,
+          'Type: Import statement'
+        ],
+        type: 'import'
+      };
+      nodes.push(importNode);
+      
+      // Connect each import to main file
+      connections.push({
+        from: { x: importNode.x + importNode.width/2, y: importNode.y + importNode.height },
+        to: { x: mainFile.x + mainFile.width/2, y: mainFile.y },
+        color: '#6b7280',
+        label: i < 2 ? 'imports' : undefined // Only label first 2
+      });
+    }
   }
 
   return {

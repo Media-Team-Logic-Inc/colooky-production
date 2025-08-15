@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { ChevronUp, ChevronDown, Move, ZoomIn, ZoomOut, Download } from 'lucide-react';
+import { ChevronUp, ChevronDown, Move, ZoomIn, ZoomOut, Download, Play, Square } from 'lucide-react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
@@ -75,8 +75,12 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
   const [draggedNodes, setDraggedNodes] = useState<{[key: string]: {x: number, y: number}}>({});
   const [isDragging, setIsDragging] = useState<string | null>(null);
   const [dragStart, setDragStart] = useState<{x: number, y: number} | null>(null);
+  const [isSimulating, setIsSimulating] = useState(false);
+  const [simulationStep, setSimulationStep] = useState(0);
+  const [simulationErrors, setSimulationErrors] = useState<string[]>([]);
   const visualizationRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
+  const simulationInterval = useRef<NodeJS.Timeout | null>(null);
 
   const selectedNodeInfo = scenario.nodes.find(node => node.id === selectedNode);
 
@@ -167,6 +171,82 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
     const dragged = draggedNodes[node.id];
     return dragged ? dragged : { x: node.x, y: node.y };
   };
+
+  // Code execution simulation
+  const runSimulation = () => {
+    if (isSimulating) {
+      stopSimulation();
+      return;
+    }
+
+    setIsSimulating(true);
+    setSimulationStep(0);
+    setSimulationErrors([]);
+
+    // Create execution order based on node types and positions
+    const executionOrder = createExecutionOrder(scenario.nodes);
+    
+    // Animate through the execution order
+    let stepIndex = 0;
+    simulationInterval.current = setInterval(() => {
+      if (stepIndex >= executionOrder.length) {
+        stopSimulation();
+        return;
+      }
+
+      const currentNode = executionOrder[stepIndex];
+      setSimulationStep(stepIndex);
+
+      // Check for errors in this step
+      if (currentNode.isError) {
+        setSimulationErrors(prev => [...prev, currentNode.title]);
+      }
+
+      stepIndex++;
+    }, 800); // 800ms between steps
+  };
+
+  const stopSimulation = () => {
+    setIsSimulating(false);
+    setSimulationStep(0);
+    if (simulationInterval.current) {
+      clearInterval(simulationInterval.current);
+      simulationInterval.current = null;
+    }
+  };
+
+  const createExecutionOrder = (nodes: any[]) => {
+    // Sort nodes by execution order: imports → file → functions → classes
+    const imports = nodes.filter(n => n.type === 'import').sort((a, b) => a.stepNumber - b.stepNumber);
+    const files = nodes.filter(n => n.type === 'file');
+    const functions = nodes.filter(n => n.type === 'function').sort((a, b) => a.stepNumber - b.stepNumber);
+    const classes = nodes.filter(n => n.type === 'class').sort((a, b) => a.stepNumber - b.stepNumber);
+    
+    return [...imports, ...files, ...functions, ...classes];
+  };
+
+  // Check if node is currently executing
+  const isNodeExecuting = (node: any, executionOrder: any[]) => {
+    if (!isSimulating) return false;
+    const currentNode = executionOrder[simulationStep];
+    return currentNode && currentNode.id === node.id;
+  };
+
+  // Check if node has executed
+  const hasNodeExecuted = (node: any, executionOrder: any[]) => {
+    if (!isSimulating) return false;
+    const nodeIndex = executionOrder.findIndex(n => n.id === node.id);
+    return nodeIndex >= 0 && nodeIndex < simulationStep;
+  };
+
+  // Cleanup simulation on unmount
+  React.useEffect(() => {
+    return () => {
+      if (simulationInterval.current) {
+        clearInterval(simulationInterval.current);
+      }
+    };
+  }, []);
 
   // Enhanced PDF export - captures ONLY the visualization
   const exportToPDF = async () => {
@@ -290,15 +370,16 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
       // Wait for render
       await new Promise(resolve => setTimeout(resolve, 300));
 
-      // Capture with html2canvas
+      // Capture with html2canvas - OPTIMIZED for smaller file size
       const canvas = await html2canvas(exportContainer, {
         backgroundColor: '#0f1419',
-        scale: 2,
+        scale: 1.2, // Reduced from 2 to 1.2 for smaller file size
         useCORS: true,
         allowTaint: true,
         logging: false,
         width: 1200,
-        height: 800
+        height: 800,
+        removeContainer: true // Clean up faster
       });
 
       document.body.removeChild(exportContainer);
@@ -323,8 +404,9 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
       const x = (pageWidth - finalWidth) / 2;
       const y = (pageHeight - finalHeight) / 2;
 
-      const imgData = canvas.toDataURL('image/png', 1.0);
-      pdf.addImage(imgData, 'PNG', x, y, finalWidth, finalHeight);
+      // Compress image for smaller PDF - JPEG with 0.7 quality instead of PNG
+      const imgData = canvas.toDataURL('image/jpeg', 0.7); // Much smaller than PNG
+      pdf.addImage(imgData, 'JPEG', x, y, finalWidth, finalHeight);
 
       const timestamp = new Date().toISOString().slice(0, 10);
       const filename = `${repositoryInfo?.name || 'code-analysis'}-flow-${timestamp}.pdf`;
@@ -351,6 +433,27 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
       >
         {/* Controls */}
         <div className="absolute top-6 left-6 flex flex-col gap-2 z-20">
+          {/* Simulation Button - FEATURED! */}
+          <button
+            onClick={runSimulation}
+            className={`p-3 ${isSimulating ? 'bg-red-600 hover:bg-red-700 border-red-500' : 'bg-purple-600 hover:bg-purple-700 border-purple-500'} border rounded-lg transition-colors shadow-lg`}
+            title={isSimulating ? "Stop Simulation" : "Run Code Simulation"}
+          >
+            {isSimulating ? <Square className="w-5 h-5 text-white" /> : <Play className="w-5 h-5 text-white" />}
+          </button>
+          
+          {isSimulating && (
+            <div className="bg-purple-600/20 border border-purple-500 rounded-lg p-2 text-xs text-purple-300">
+              <div className="font-medium">🎬 Simulating...</div>
+              <div>Step {simulationStep + 1}</div>
+              {simulationErrors.length > 0 && (
+                <div className="text-red-400 mt-1">⚠️ {simulationErrors.length} errors</div>
+              )}
+            </div>
+          )}
+          
+          <div className="w-full h-px bg-slate-600 my-1" />
+          
           <button
             onClick={exportToPDF}
             className="p-2 bg-green-600 hover:bg-green-700 border border-green-500 rounded-lg transition-colors"
@@ -462,46 +565,68 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
               ))}
             </defs>
 
-            {/* Connections - Demo style curved paths with drag support */}
+            {/* Connections - Fixed to always stay connected */}
             {scenario.connections.map((connection, index) => {
-              // Find nodes that might be dragged and update connection points
-              const fromNode = scenario.nodes.find(n => 
-                Math.abs(n.x - connection.from.x) < 50 && Math.abs(n.y - connection.from.y) < 50
-              );
-              const toNode = scenario.nodes.find(n => 
-                Math.abs(n.x - connection.to.x) < 50 && Math.abs(n.y - connection.to.y) < 50
-              );
+              // More robust node finding using node IDs from connection metadata
+              let fromNode = null;
+              let toNode = null;
 
-              // Use dragged positions if available
-              const fromPos = fromNode ? getNodePosition(fromNode) : connection.from;
-              const toPos = toNode ? getNodePosition(toNode) : connection.to;
+              // Try to find nodes by proximity or by iterating through all nodes
+              for (const node of scenario.nodes) {
+                const nodePos = getNodePosition(node);
+                // Check if this node is the source (within reasonable distance)
+                if (Math.abs(nodePos.x + node.width/2 - connection.from.x) < 100 && 
+                    Math.abs(nodePos.y + node.height/2 - connection.from.y) < 100) {
+                  fromNode = node;
+                }
+                // Check if this node is the target
+                if (Math.abs(nodePos.x + node.width/2 - connection.to.x) < 100 && 
+                    Math.abs(nodePos.y + node.height/2 - connection.to.y) < 100) {
+                  toNode = node;
+                }
+              }
+
+              // Calculate connection points
+              let fromX, fromY, toX, toY;
               
-              // Adjust connection points to node edges
-              const fromX = fromNode ? fromPos.x + fromNode.width/2 : fromPos.x;
-              const fromY = fromNode ? fromPos.y + fromNode.height/2 : fromPos.y;
-              const toX = toNode ? toPos.x + toNode.width/2 : toPos.x;
-              const toY = toNode ? toPos.y + toNode.height/2 : toPos.y;
+              if (fromNode) {
+                const fromPos = getNodePosition(fromNode);
+                fromX = fromPos.x + fromNode.width/2;
+                fromY = fromPos.y + fromNode.height;  // Bottom of source node
+              } else {
+                fromX = connection.from.x;
+                fromY = connection.from.y;
+              }
+
+              if (toNode) {
+                const toPos = getNodePosition(toNode);
+                toX = toPos.x + toNode.width/2;
+                toY = toPos.y;  // Top of target node
+              } else {
+                toX = connection.to.x;
+                toY = connection.to.y;
+              }
 
               // Calculate smooth curve
               const dx = toX - fromX;
               const dy = toY - fromY;
               const distance = Math.sqrt(dx * dx + dy * dy);
               
-              // Control point for smooth curves
+              // Better control point calculation
               const controlX = fromX + dx * 0.5;
-              const controlY = fromY + (distance > 200 ? dy * 0.3 : dy * 0.5);
+              const controlY = fromY + Math.min(dy * 0.5, dy > 0 ? 30 : -30);
               
               const pathData = `M ${fromX} ${fromY} Q ${controlX} ${controlY} ${toX} ${toY}`;
 
               return (
-                <g key={index}>
+                <g key={`connection-${index}`}>
                   <path
                     d={pathData}
                     className="connection"
                     fill="none"
                     stroke={connection.isError ? '#ef4444' : connection.color}
                     strokeWidth="3"
-                    opacity={connection.isError ? 0.6 : 0.8}
+                    opacity={connection.isError ? 0.7 : 0.8}
                     markerEnd={`url(#arrowhead-${(connection.isError ? 'ef4444' : connection.color.replace('#', ''))})`}
                     style={{
                       strokeDasharray: connection.animated ? '8 4' : 'none',
@@ -514,7 +639,7 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
                       y={controlY - 10}
                       textAnchor="middle"
                       className="text-xs fill-slate-300"
-                      style={{ fontSize: '11px' }}
+                      style={{ fontSize: '11px', pointerEvents: 'none' }}
                     >
                       {connection.label}
                     </text>
@@ -523,10 +648,13 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
               );
             })}
 
-            {/* Nodes - Demo style with drag support */}
+            {/* Nodes - Demo style with drag support and simulation */}
             {scenario.nodes.map((node) => {
               const position = getNodePosition(node);
               const isDraggingThis = isDragging === node.id;
+              const executionOrder = createExecutionOrder(scenario.nodes);
+              const isExecuting = isNodeExecuting(node, executionOrder);
+              const hasExecuted = hasNodeExecuted(node, executionOrder);
               
               return (
                 <g key={node.id}>
@@ -540,6 +668,9 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
                         fill={node.isError ? '#ef4444' : '#64b5f6'}
                         stroke="#fff"
                         strokeWidth="2"
+                        style={{
+                          filter: isExecuting ? 'drop-shadow(0 0 8px #fff)' : 'none'
+                        }}
                       />
                       <text
                         x={position.x - 15}
@@ -554,7 +685,7 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
                     </g>
                   )}
                   
-                  {/* Node with drag support */}
+                  {/* Node with drag support and simulation effects */}
                   <g 
                     className="node"
                     style={{ 
@@ -577,6 +708,25 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
                     }}
                     onClick={() => !isDraggingThis && handleNodeClick(node)}
                   >
+                    {/* Simulation glow effect */}
+                    {isExecuting && (
+                      <rect
+                        x={position.x - 5}
+                        y={position.y - 5}
+                        width={node.width + 10}
+                        height={node.height + 10}
+                        rx="12"
+                        ry="12"
+                        fill="none"
+                        stroke="#00ff88"
+                        strokeWidth="3"
+                        opacity="0.8"
+                        style={{
+                          animation: 'pulse 1s infinite'
+                        }}
+                      />
+                    )}
+                    
                     {/* Node background */}
                     <rect
                       className="node-rect"
@@ -586,13 +736,15 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
                       height={node.height}
                       rx="8"
                       ry="8"
-                      fill={node.isError ? '#ef4444' : node.color}
-                      stroke={node.isError ? '#f87171' : node.strokeColor}
-                      strokeWidth={isDraggingThis ? "3" : "2"}
-                      fillOpacity="0.9"
+                      fill={isExecuting ? '#00ff88' : hasExecuted ? '#4ade80' : node.isError ? '#ef4444' : node.color}
+                      stroke={isExecuting ? '#00ff88' : hasExecuted ? '#4ade80' : node.isError ? '#f87171' : node.strokeColor}
+                      strokeWidth={isDraggingThis || isExecuting ? "3" : "2"}
+                      fillOpacity={hasExecuted ? "0.7" : "0.9"}
                       style={{
                         filter: selectedNode === node.id ? 'drop-shadow(0 0 8px #fbbf24)' : 
-                                isDraggingThis ? 'drop-shadow(0 0 12px rgba(255, 255, 255, 0.5))' : 'none'
+                                isDraggingThis ? 'drop-shadow(0 0 12px rgba(255, 255, 255, 0.5))' :
+                                isExecuting ? 'drop-shadow(0 0 20px #00ff88)' : 'none',
+                        transition: 'all 0.3s ease'
                       }}
                     />
                     
@@ -606,12 +758,38 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
                       fill="#fff"
                       style={{ 
                         fontSize: node.isError ? '10px' : '12px',
-                        fontWeight: '500',
+                        fontWeight: isExecuting ? '700' : '500',
                         pointerEvents: 'none' // Prevent text from interfering with drag
                       }}
                     >
                       {node.title}
                     </text>
+                    
+                    {/* Execution indicator */}
+                    {isExecuting && (
+                      <text
+                        x={position.x + node.width - 10}
+                        y={position.y + 15}
+                        textAnchor="middle"
+                        className="fill-white font-bold"
+                        style={{ fontSize: '14px' }}
+                      >
+                        ▶
+                      </text>
+                    )}
+                    
+                    {/* Completed indicator */}
+                    {hasExecuted && !isExecuting && (
+                      <text
+                        x={position.x + node.width - 10}
+                        y={position.y + 15}
+                        textAnchor="middle"
+                        className="fill-white font-bold"
+                        style={{ fontSize: '12px' }}
+                      >
+                        ✓
+                      </text>
+                    )}
                   </g>
                 </g>
               );
