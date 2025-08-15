@@ -172,43 +172,51 @@ function generateRichCodeVisualization(summary: any, selectedFiles: string[], or
 
   let yOffset = 180;
   
-  // Function layer
+  // Function layer - show more functions for rich visualizations
   if (summary.functions > 0) {
-    const funcCount = Math.min(summary.functions, 6);
+    // For large numbers of functions, show more individual nodes
+    const funcCount = summary.functions <= 12 ? summary.functions : 
+                     summary.functions <= 25 ? 16 : 20;
+    
     for (let i = 0; i < funcCount; i++) {
-      const isLastFunc = i === funcCount - 1 && summary.functions > 6;
-      const isErrorFunc = (i + 1) % 3 === 0; // Every 3rd function is error-related
+      const isLastFunc = i === funcCount - 1 && summary.functions > funcCount;
+      const isErrorFunc = (i + 1) % 4 === 0; // Every 4th function is error-related
+      const isValidationFunc = (i + 1) % 7 === 0; // Every 7th is validation
       
       const funcNode = {
         id: `node-${nodeId++}`,
-        title: isLastFunc ? `+${summary.functions - 5} more functions` : 
-               isErrorFunc ? `errorHandler_${i + 1}()` : `function_${i + 1}()`,
-        x: 150 + (i % 3) * 150,
-        y: yOffset + Math.floor(i / 3) * 60,
-        width: isLastFunc ? 170 : 130,
-        height: 35,
-        color: isErrorFunc ? '#ef4444' : '#3b82f6',
-        strokeColor: isErrorFunc ? '#f87171' : '#60a5fa',
+        title: isLastFunc ? `+${summary.functions - (funcCount - 1)} more` : 
+               isErrorFunc ? `errorHandler()` : 
+               isValidationFunc ? `validate()` : `function_${i + 1}()`,
+        x: 100 + (i % 5) * 140, // 5 columns layout
+        y: yOffset + Math.floor(i / 5) * 55, // Tighter vertical spacing
+        width: isLastFunc ? 150 : 120,
+        height: 32,
+        color: isErrorFunc ? '#ef4444' : isValidationFunc ? '#f59e0b' : '#3b82f6',
+        strokeColor: isErrorFunc ? '#f87171' : isValidationFunc ? '#fbbf24' : '#60a5fa',
         stepNumber: i + 2,
         details: [
-          isLastFunc ? `${summary.functions} total functions` : `Function ${i + 1}`,
-          isErrorFunc ? 'Error handling logic' : 'Business logic',
-          `Defined in: ${fileName}`
+          isLastFunc ? `${summary.functions} total functions detected` : `Function ${i + 1}`,
+          isErrorFunc ? 'Error handling logic' : 
+          isValidationFunc ? 'Input validation' : 'Business logic',
+          `Language: ${summary.main_language}`,
+          `File: ${fileName}`
         ],
         isError: isErrorFunc,
         type: 'function'
       };
       nodes.push(funcNode);
       
-      // Connect to main file
+      // Connect to main file with varied connection styles
       connections.push({
         from: { x: mainFile.x + mainFile.width/2, y: mainFile.y + mainFile.height },
         to: { x: funcNode.x + funcNode.width/2, y: funcNode.y },
-        color: isErrorFunc ? '#ef4444' : '#3b82f6',
-        animated: isErrorFunc
+        color: isErrorFunc ? '#ef4444' : isValidationFunc ? '#f59e0b' : '#3b82f6',
+        animated: isErrorFunc,
+        label: i < 3 ? 'defines' : undefined // Only label first few connections
       });
     }
-    yOffset += Math.ceil(funcCount / 3) * 60 + 40;
+    yOffset += Math.ceil(funcCount / 5) * 55 + 50;
   }
 
   // Class layer

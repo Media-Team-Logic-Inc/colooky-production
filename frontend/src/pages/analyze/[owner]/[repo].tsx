@@ -833,63 +833,64 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
                 
                 {analysis.summary && (
                   <>
-                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-6">
-                      <div className="bg-slate-800 border border-slate-700 rounded-lg p-4 text-center">
-                        <div className="text-2xl font-bold text-blue-400">
+                    {/* Compact Statistics Grid - 50% smaller */}
+                    <div className="grid grid-cols-3 md:grid-cols-6 gap-2 mb-3">
+                      <div className="bg-slate-800 border border-slate-700 rounded-md p-2 text-center">
+                        <div className="text-lg font-bold text-blue-400">
                           {analysis.summary.supported_files}
                         </div>
-                        <div className="text-sm text-slate-400">Analyzed Files</div>
+                        <div className="text-xs text-slate-400">Analyzed Files</div>
                       </div>
-                      <div className="bg-slate-800 border border-slate-700 rounded-lg p-4 text-center">
-                        <div className="text-2xl font-bold text-green-400">
+                      <div className="bg-slate-800 border border-slate-700 rounded-md p-2 text-center">
+                        <div className="text-lg font-bold text-green-400">
                           {analysis.summary.functions}
                         </div>
-                        <div className="text-sm text-slate-400">Functions</div>
+                        <div className="text-xs text-slate-400">Functions</div>
                       </div>
-                      <div className="bg-slate-800 border border-slate-700 rounded-lg p-4 text-center">
-                        <div className="text-2xl font-bold text-purple-400">
+                      <div className="bg-slate-800 border border-slate-700 rounded-md p-2 text-center">
+                        <div className="text-lg font-bold text-purple-400">
                           {analysis.summary.classes}
                         </div>
-                        <div className="text-sm text-slate-400">Classes</div>
+                        <div className="text-xs text-slate-400">Classes</div>
                       </div>
-                      <div className="bg-slate-800 border border-slate-700 rounded-lg p-4 text-center">
-                        <div className="text-2xl font-bold text-orange-400">
+                      <div className="bg-slate-800 border border-slate-700 rounded-md p-2 text-center">
+                        <div className="text-lg font-bold text-orange-400">
                           {analysis.summary.imports}
                         </div>
-                        <div className="text-sm text-slate-400">Imports</div>
+                        <div className="text-xs text-slate-400">Imports</div>
                       </div>
-                      <div className="bg-slate-800 border border-slate-700 rounded-lg p-4 text-center">
-                        <div className="text-2xl font-bold text-yellow-400">
+                      <div className="bg-slate-800 border border-slate-700 rounded-md p-2 text-center">
+                        <div className="text-lg font-bold text-yellow-400">
                           {analysis.summary.complexity_score}
                         </div>
-                        <div className="text-sm text-slate-400">Complexity</div>
+                        <div className="text-xs text-slate-400">Complexity</div>
                       </div>
-                      <div className="bg-slate-800 border border-slate-700 rounded-lg p-4 text-center">
-                        <div className="text-lg font-bold text-slate-300">
+                      <div className="bg-slate-800 border border-slate-700 rounded-md p-2 text-center">
+                        <div className="text-sm font-bold text-slate-300">
                           {analysis.summary.main_language}
                         </div>
-                        <div className="text-sm text-slate-400">Language</div>
+                        <div className="text-xs text-slate-400">Language</div>
                       </div>
                     </div>
 
-                    {/* Enhanced insights panel */}
-                    <div className="bg-slate-800 border border-slate-700 rounded-lg p-6 mb-6">
-                      <h3 className="text-lg font-semibold text-white mb-4">🔍 Code Insights</h3>
-                      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
-                        <div className="bg-slate-700 rounded-lg p-3">
+                    {/* Compact Code Insights */}
+                    <div className="bg-slate-800 border border-slate-700 rounded-lg p-3 mb-4">
+                      <h3 className="text-sm font-semibold text-white mb-2">🔍 Code Insights</h3>
+                      <div className="grid md:grid-cols-3 gap-2 text-xs">
+                        <div className="bg-slate-700 rounded p-2">
                           <div className="text-blue-400 font-medium">Architecture Pattern</div>
                           <div className="text-slate-300">
                             {analysis.summary.functions > analysis.summary.classes * 3 ? 'Functional-oriented' : 
                              analysis.summary.classes > analysis.summary.functions ? 'Object-oriented' : 'Hybrid approach'}
                           </div>
                         </div>
-                        <div className="bg-slate-700 rounded-lg p-3">
+                        <div className="bg-slate-700 rounded p-2">
                           <div className="text-green-400 font-medium">Code Density</div>
                           <div className="text-slate-300">
                             {Math.round((analysis.summary.functions + analysis.summary.classes) / analysis.summary.supported_files)} elements/file
                           </div>
                         </div>
-                        <div className="bg-slate-700 rounded-lg p-3">
+                        <div className="bg-slate-700 rounded p-2">
                           <div className="text-purple-400 font-medium">Dependency Style</div>
                           <div className="text-slate-300">
                             {analysis.summary.imports > analysis.summary.supported_files * 2 ? 'Highly modular' : 
