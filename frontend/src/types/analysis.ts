@@ -25,6 +25,22 @@ export interface AnalysisResult {
     main_language: string;
     file_types: { [key: string]: number };
   };
+  elements?: Array<{
+    id: string;
+    name: string;
+    type: 'function' | 'class' | 'import';
+    file: string;
+    line: number;
+    language: string;
+    content?: string;
+  }>;
+  dependencies?: Array<{
+    from: string;
+    to: string;
+    type: string;
+    line: number;
+    detail: string;
+  }>;
 }
 
 declare global {

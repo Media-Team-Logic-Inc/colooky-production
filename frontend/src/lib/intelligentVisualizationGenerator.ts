@@ -9,12 +9,29 @@ interface AnalysisData {
     main_language: string;
     file_types: { [key: string]: number };
   };
+  elements?: Array<{
+    id: string;
+    name: string;
+    type: 'function' | 'class' | 'import';
+    file: string;
+    line: number;
+    language: string;
+    content?: string;
+  }>;
+  dependencies?: Array<{
+    from: string;
+    to: string;
+    type: string;
+    line: number;
+    detail: string;
+  }>;
   visualization?: any; // Original backend visualization
 }
 
 // Generate intelligent visualization based on analysis complexity and content
 export function generateIntelligentVisualization(analysisData: AnalysisData, selectedFiles: string[]) {
   const summary = analysisData.summary;
+  const elements = analysisData.elements;
   const originalViz = analysisData.visualization;
   
   if (!summary) {
@@ -27,7 +44,7 @@ export function generateIntelligentVisualization(analysisData: AnalysisData, sel
   // ALWAYS use rich visualization to show ALL elements
   if (totalElements > 0) {
     // Rich content - show ALL code structure and relationships  
-    return generateRichCodeVisualization(summary, selectedFiles, originalViz);
+    return generateRichCodeVisualization(summary, selectedFiles, originalViz, elements);
   } else {
     // Only use minimal if truly no elements detected
     return generateMinimalVisualization(summary, selectedFiles, originalViz);
@@ -139,7 +156,7 @@ function generateMinimalVisualization(summary: any, selectedFiles: string[], ori
 }
 
 // Rich visualization for files with functions/classes
-function generateRichCodeVisualization(summary: any, selectedFiles: string[], originalViz: any) {
+function generateRichCodeVisualization(summary: any, selectedFiles: string[], originalViz: any, elements?: any[]) {
   const fileName = selectedFiles[0]?.split('/').pop() || 'File';
   const nodes: any[] = [];
   const connections: any[] = [];
@@ -169,32 +186,33 @@ function generateRichCodeVisualization(summary: any, selectedFiles: string[], or
 
   let yOffset = 180;
   
-  // Function layer - show ALL functions (no limits!)
+  // Function layer - show ALL functions with real names!
   if (summary.functions > 0) {
-    // Show ALL functions without limit
-    const funcCount = summary.functions;
+    const functionElements = elements?.filter(e => e.type === 'function') || [];
+    const funcCount = Math.max(summary.functions, functionElements.length);
     
     for (let i = 0; i < funcCount; i++) {
-      const isErrorFunc = (i + 1) % 4 === 0; // Every 4th function is error-related
-      const isValidationFunc = (i + 1) % 7 === 0; // Every 7th is validation
+      const element = functionElements[i];
+      const isErrorFunc = element?.name.toLowerCase().includes('error') || element?.name.toLowerCase().includes('exception');
+      const isValidationFunc = element?.name.toLowerCase().includes('valid') || element?.name.toLowerCase().includes('check');
       
       const funcNode = {
-        id: `node-${nodeId++}`,
-        title: isErrorFunc ? `errorHandler()` : 
-               isValidationFunc ? `validate()` : `function_${i + 1}()`,
-        x: 80 + (i % 4) * 200, // 4 columns with more spacing
-        y: yOffset + Math.floor(i / 4) * 80, // More vertical spacing  
+        id: element?.id || `node-${nodeId++}`,
+        title: element ? `${element.name}()` : `function_${i + 1}()`,
+        x: 80 + (i % 5) * 180, // 5 columns for better space usage
+        y: yOffset + Math.floor(i / 5) * 90, // More vertical spacing between rows  
         width: 160,
         height: 40,
         color: isErrorFunc ? '#ef4444' : isValidationFunc ? '#f59e0b' : '#3b82f6',
         strokeColor: isErrorFunc ? '#f87171' : isValidationFunc ? '#fbbf24' : '#60a5fa',
         stepNumber: i + 2,
+        content: element?.content, // Include actual code content
         details: [
-          `File: ${selectedFiles[0] || fileName}`,
-          `Function: ${isErrorFunc ? 'errorHandler' : isValidationFunc ? 'validate' : `function_${i + 1}`}`,
-          `Line: ${50 + i * 5}`, // Approximate line numbers
+          `File: ${element?.file || selectedFiles[0] || fileName}`,
+          `Function: ${element?.name || `function_${i + 1}`}`,
+          `Line: ${element?.line || 'Unknown'}`,
           `Type: ${isErrorFunc ? 'Error handler' : isValidationFunc ? 'Validation' : 'Function'}`,
-          `Language: ${summary.main_language}`
+          `Language: ${element?.language || summary.main_language}`
         ],
         isError: isErrorFunc,
         type: 'function'
@@ -210,16 +228,19 @@ function generateRichCodeVisualization(summary: any, selectedFiles: string[], or
         label: i < 3 ? 'defines' : undefined // Only label first few connections
       });
     }
-    yOffset += Math.ceil(funcCount / 4) * 80 + 60;
+    yOffset += Math.ceil(funcCount / 5) * 90 + 80;
   }
 
-  // Class layer - show ALL classes
+  // Class layer - show ALL classes with real names
   if (summary.classes > 0) {
-    const classCount = summary.classes; // Show ALL classes
+    const classElements = elements?.filter(e => e.type === 'class') || [];
+    const classCount = Math.max(summary.classes, classElements.length);
+    
     for (let i = 0; i < classCount; i++) {
+      const element = classElements[i];
       const classNode = {
-        id: `node-${nodeId++}`,
-        title: `Class_${i + 1}`,
+        id: element?.id || `node-${nodeId++}`,
+        title: element?.name || `Class_${i + 1}`,
         x: 200 + i * 120,
         y: yOffset,
         width: 110,
@@ -227,10 +248,13 @@ function generateRichCodeVisualization(summary: any, selectedFiles: string[], or
         color: '#8b5cf6',
         strokeColor: '#a78bfa',
         stepNumber: summary.functions + i + 2,
+        content: element?.content, // Include actual code content
         details: [
-          `Class definition ${i + 1}`,
+          `File: ${element?.file || fileName}`,
+          `Class: ${element?.name || `Class_${i + 1}`}`,
+          `Line: ${element?.line || 'Unknown'}`,
           'Object-oriented structure',
-          `Defined in: ${fileName}`
+          `Language: ${element?.language || summary.main_language}`
         ],
         type: 'class'
       };
@@ -246,26 +270,30 @@ function generateRichCodeVisualization(summary: any, selectedFiles: string[], or
     yOffset += 60;
   }
 
-  // Individual Import nodes - show ALL imports (no limits!)
+  // Individual Import nodes - show ALL imports with real names!
   if (summary.imports > 0) {
-    const importCount = summary.imports; // Show ALL imports without limit
+    const importElements = elements?.filter(e => e.type === 'import') || [];
+    const importCount = Math.max(summary.imports, importElements.length);
     
     for (let i = 0; i < importCount; i++) {
+      const element = importElements[i];
       const importNode = {
-        id: `import-${nodeId++}`,
-        title: `import_${i + 1}`,
-        x: 50 + (i % 4) * 150, // 4 imports per row
-        y: 50 + Math.floor(i / 4) * 60, // Stack in rows
+        id: element?.id || `import-${nodeId++}`,
+        title: element?.name || `import_${i + 1}`,
+        x: 50 + (i % 6) * 140, // 6 imports per row for better usage
+        y: 50 + Math.floor(i / 6) * 70, // Stack in rows with more spacing
         width: 130,
         height: 35,
         color: '#6b7280',
         strokeColor: '#9ca3af',
         stepNumber: undefined, // Don't number imports
+        content: element?.content, // Include actual code content
         details: [
-          `Import dependency ${i + 1}`,
+          `File: ${element?.file || fileName}`,
+          `Import: ${element?.name || `import_${i + 1}`}`,
+          `Line: ${element?.line || 'Unknown'}`,
           'External library or module',
-          `File: ${fileName}`,
-          'Type: Import statement'
+          `Language: ${element?.language || summary.main_language}`
         ],
         type: 'import'
       };
@@ -284,14 +312,15 @@ function generateRichCodeVisualization(summary: any, selectedFiles: string[], or
   return {
     id: 'rich-code-viz',
     title: `${fileName} - Code Structure`,
-    description: `Rich codebase with ${summary.functions} functions and ${summary.classes} classes`,
+    description: `Analysis of ${fileName} with ${summary.functions} functions, ${summary.classes} classes, and ${summary.imports} imports`,
+    fileName: fileName, // Add filename for display
     nodes,
     connections,
     legendItems: [
       { color: '#94a3b8', label: 'File' },
       { color: '#3b82f6', label: 'Functions' },
       { color: '#8b5cf6', label: 'Classes' },
-      { color: '#f59e0b', label: 'Dependencies' },
+      { color: '#6b7280', label: 'Imports' },
       { color: '#ef4444', label: 'Error Handling' }
     ]
   };

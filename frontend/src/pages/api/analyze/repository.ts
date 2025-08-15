@@ -88,7 +88,9 @@ async function processAnalysis(jobId: string, repository: string, files: string[
       id: jobId,
       repository,
       visualization,
-      summary: analysis.summary
+      summary: analysis.summary,
+      elements: analysis.elements,
+      dependencies: analysis.dependencies
     };
 
   } catch (error) {
@@ -256,6 +258,14 @@ function analyzeFile(file: { path: string; content: string; language: string }) 
       const match = trimmed.match(pattern);
       if (match) {
         analysis.functions++;
+        
+        // Extract function code snippet (5 lines around the function)
+        const startLine = Math.max(0, lineIndex - 2);
+        const endLine = Math.min(lines.length - 1, lineIndex + 5);
+        const codeSnippet = lines.slice(startLine, endLine + 1)
+          .map((line, index) => `${startLine + index + 1}: ${line}`)
+          .join('\n');
+        
         analysis.elements.push({
           id: `${file.path}_func_${match[1]}_${lineNumber}`,
           name: match[1],
@@ -263,6 +273,7 @@ function analyzeFile(file: { path: string; content: string; language: string }) 
           file: file.path,
           line: lineNumber,
           language: file.language,
+          content: codeSnippet,
           details: [`Function: ${match[1]}`, `File: ${file.path}:${lineNumber}`, `Language: ${file.language}`]
         });
         break;
@@ -273,6 +284,14 @@ function analyzeFile(file: { path: string; content: string; language: string }) 
     const classMatch = trimmed.match(/^(?:export\s+)?class\s+(\w+)/);
     if (classMatch) {
       analysis.classes++;
+      
+      // Extract class code snippet
+      const startLine = Math.max(0, lineIndex - 1);
+      const endLine = Math.min(lines.length - 1, lineIndex + 8);
+      const codeSnippet = lines.slice(startLine, endLine + 1)
+        .map((line, index) => `${startLine + index + 1}: ${line}`)
+        .join('\n');
+      
       analysis.elements.push({
         id: `${file.path}_class_${classMatch[1]}_${lineNumber}`,
         name: classMatch[1],
@@ -280,6 +299,7 @@ function analyzeFile(file: { path: string; content: string; language: string }) 
         file: file.path,
         line: lineNumber,
         language: file.language,
+        content: codeSnippet,
         details: [`Class: ${classMatch[1]}`, `File: ${file.path}:${lineNumber}`, `Language: ${file.language}`]
       });
     }
@@ -312,6 +332,7 @@ function analyzeFile(file: { path: string; content: string; language: string }) 
           line: lineNumber,
           language: file.language,
           target: importMatch[1],
+          content: `${lineNumber}: ${line.trim()}`,
           details: [`Import: ${importMatch[1]}`, `File: ${file.path}:${lineNumber}`, `Type: ${file.language} import`]
         });
         break;

@@ -75,6 +75,8 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
   const [draggedNodes, setDraggedNodes] = useState<{[key: string]: {x: number, y: number}}>({});
   const [isDragging, setIsDragging] = useState<string | null>(null);
   const [dragStart, setDragStart] = useState<{x: number, y: number} | null>(null);
+  const [isPanning, setIsPanning] = useState(false);
+  const [panStart, setPanStart] = useState<{x: number, y: number} | null>(null);
   const [isSimulating, setIsSimulating] = useState(false);
   const [simulationStep, setSimulationStep] = useState(0);
   const [simulationErrors, setSimulationErrors] = useState<string[]>([]);
@@ -93,6 +95,7 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
         id: node.id,
         title: node.title,
         details: node.details,
+        content: (node as any).content, // Include code content
         isError: node.isError
       });
     }
@@ -129,6 +132,19 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
+    // Handle canvas panning
+    if (isPanning && panStart) {
+      const deltaX = e.clientX - panStart.x;
+      const deltaY = e.clientY - panStart.y;
+      setPanOffset(prev => ({
+        x: prev.x + deltaX / zoom,
+        y: prev.y + deltaY / zoom
+      }));
+      setPanStart({ x: e.clientX, y: e.clientY });
+      return;
+    }
+    
+    // Handle node dragging
     if (!isDragging || !dragStart) return;
     
     const svgElement = svgRef.current;
@@ -164,6 +180,17 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
   const handleMouseUp = () => {
     setIsDragging(null);
     setDragStart(null);
+    setIsPanning(false);
+    setPanStart(null);
+  };
+
+  // Handle canvas panning (when not clicking on nodes)
+  const handleCanvasMouseDown = (e: React.MouseEvent) => {
+    // Only start panning if not clicking on a node
+    if (e.target === svgRef.current || (e.target as Element).tagName === 'svg') {
+      setIsPanning(true);
+      setPanStart({ x: e.clientX, y: e.clientY });
+    }
   };
 
   // Get effective node position (dragged or original)
@@ -216,11 +243,12 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
   };
 
   const createExecutionOrder = (nodes: any[]) => {
-    // Sort nodes by execution order: imports → file → functions → classes
-    const imports = nodes.filter(n => n.type === 'import').sort((a, b) => a.stepNumber - b.stepNumber);
+    // Sort nodes by real execution order: imports → file → functions → classes
+    // Filter out nodes without actual content first
+    const imports = nodes.filter(n => n.type === 'import' && n.content).sort((a, b) => (a.line || 0) - (b.line || 0));
     const files = nodes.filter(n => n.type === 'file');
-    const functions = nodes.filter(n => n.type === 'function').sort((a, b) => a.stepNumber - b.stepNumber);
-    const classes = nodes.filter(n => n.type === 'class').sort((a, b) => a.stepNumber - b.stepNumber);
+    const functions = nodes.filter(n => n.type === 'function' && n.content).sort((a, b) => (a.line || 0) - (b.line || 0));
+    const classes = nodes.filter(n => n.type === 'class' && n.content).sort((a, b) => (a.line || 0) - (b.line || 0));
     
     return [...imports, ...files, ...functions, ...classes];
   };
@@ -543,10 +571,11 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
             className="w-full h-full"
             viewBox={viewBox}
             preserveAspectRatio="xMidYMid meet"
+            onMouseDown={handleCanvasMouseDown}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
             onMouseLeave={handleMouseUp}
-            style={{ cursor: isDragging ? 'grabbing' : 'default' }}
+            style={{ cursor: isDragging ? 'grabbing' : isPanning ? 'grabbing' : 'grab' }}
           >
             <defs>
               {/* Arrow markers for different colors */}
@@ -815,7 +844,7 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
           
           <div className="flex-1 p-4 overflow-auto">
             {selectedNodeInfo ? (
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {selectedNodeInfo.isError && (
                   <div className="p-3 bg-red-900/30 border border-red-500/50 rounded-lg">
                     <div className="flex items-center gap-2 text-red-400 font-medium">
@@ -825,11 +854,27 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
                   </div>
                 )}
                 
-                {selectedNodeInfo.details.map((detail, index) => (
-                  <div key={index} className="text-slate-300 text-sm">
-                    <span className="text-slate-500">•</span> {detail}
+                {/* Show code content if available */}
+                {selectedNodeInfo.content && (
+                  <div className="bg-slate-900 border border-slate-600 rounded-lg p-4">
+                    <h4 className="text-slate-200 font-medium mb-3">Code</h4>
+                    <pre className="text-sm text-slate-300 font-mono overflow-x-auto whitespace-pre-wrap">
+                      {selectedNodeInfo.content}
+                    </pre>
                   </div>
-                ))}
+                )}
+                
+                {/* Show node details */}
+                <div className="bg-slate-800 border border-slate-600 rounded-lg p-4">
+                  <h4 className="text-slate-200 font-medium mb-3">Details</h4>
+                  <div className="space-y-2">
+                    {selectedNodeInfo.details.map((detail, index) => (
+                      <div key={index} className="text-slate-300 text-sm">
+                        <span className="text-slate-500">•</span> {detail}
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
             ) : (
               <div className="text-slate-400 text-center py-8">
