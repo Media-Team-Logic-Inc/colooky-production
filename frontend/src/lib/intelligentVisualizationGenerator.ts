@@ -157,7 +157,8 @@ function generateMinimalVisualization(summary: any, selectedFiles: string[], ori
 
 // Rich visualization for files with functions/classes
 function generateRichCodeVisualization(summary: any, selectedFiles: string[], originalViz: any, elements?: any[]) {
-  const fileName = selectedFiles[0]?.split('/').pop() || 'File';
+  const fileName = selectedFiles.length === 1 ? selectedFiles[0]?.split('/').pop() : `${selectedFiles.length} Files`;
+  console.log('📁 Analyzing file(s):', fileName, 'from', selectedFiles);
   const nodes: any[] = [];
   const connections: any[] = [];
   let nodeId = 1;
@@ -190,6 +191,8 @@ function generateRichCodeVisualization(summary: any, selectedFiles: string[], or
   if (summary.functions > 0) {
     const functionElements = elements?.filter(e => e.type === 'function') || [];
     const funcCount = Math.max(summary.functions, functionElements.length);
+    console.log('🔧 Function elements:', functionElements.length, 'detected, summary says:', summary.functions);
+    console.log('🔧 Function names:', functionElements.map(f => f.name));
     
     for (let i = 0; i < funcCount; i++) {
       const element = functionElements[i];
@@ -199,8 +202,8 @@ function generateRichCodeVisualization(summary: any, selectedFiles: string[], or
       const funcNode = {
         id: element?.id || `node-${nodeId++}`,
         title: element ? `${element.name}()` : `function_${i + 1}()`,
-        x: 80 + (i % 5) * 180, // 5 columns for better space usage
-        y: yOffset + Math.floor(i / 5) * 90, // More vertical spacing between rows  
+        x: 80 + (i % 4) * 220, // 4 columns with wider spacing (220px)
+        y: yOffset + Math.floor(i / 4) * 100, // Much more vertical spacing (100px)  
         width: 160,
         height: 40,
         color: isErrorFunc ? '#ef4444' : isValidationFunc ? '#f59e0b' : '#3b82f6',
@@ -228,7 +231,7 @@ function generateRichCodeVisualization(summary: any, selectedFiles: string[], or
         label: i < 3 ? 'defines' : undefined // Only label first few connections
       });
     }
-    yOffset += Math.ceil(funcCount / 5) * 90 + 80;
+    yOffset += Math.ceil(funcCount / 4) * 100 + 120; // More space after functions
   }
 
   // Class layer - show ALL classes with real names
@@ -314,6 +317,7 @@ function generateRichCodeVisualization(summary: any, selectedFiles: string[], or
     title: `${fileName} - Code Structure`,
     description: `Analysis of ${fileName} with ${summary.functions} functions, ${summary.classes} classes, and ${summary.imports} imports`,
     fileName: fileName, // Add filename for display
+    viewBox: "0 0 1200 800", // Larger viewBox for better spacing
     nodes,
     connections,
     legendItems: [

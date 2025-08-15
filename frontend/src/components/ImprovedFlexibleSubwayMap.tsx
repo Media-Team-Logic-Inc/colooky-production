@@ -213,17 +213,28 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
 
     // Create execution order based on node types and positions
     const executionOrder = createExecutionOrder(scenario.nodes);
+    console.log('🎬 Starting simulation with', executionOrder.length, 'nodes');
+    
+    if (executionOrder.length === 0) {
+      console.warn('🎬 No nodes found for simulation');
+      setIsSimulating(false);
+      return;
+    }
     
     // Animate through the execution order
     let stepIndex = 0;
     simulationInterval.current = setInterval(() => {
+      console.log('🎬 Simulation step', stepIndex + 1, 'of', executionOrder.length);
+      
       if (stepIndex >= executionOrder.length) {
+        console.log('🎬 Simulation complete');
         stopSimulation();
         return;
       }
 
       const currentNode = executionOrder[stepIndex];
       setSimulationStep(stepIndex);
+      console.log('🎬 Executing node:', currentNode.title, currentNode.type);
 
       // Check for errors in this step
       if (currentNode.isError) {
@@ -231,7 +242,7 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
       }
 
       stepIndex++;
-    }, 800); // 800ms between steps
+    }, 1200); // Slower - 1.2s between steps for better visibility
   };
 
   const stopSimulation = () => {
@@ -245,13 +256,15 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
 
   const createExecutionOrder = (nodes: any[]) => {
     // Sort nodes by real execution order: imports → file → functions → classes
-    // Filter out nodes without actual content first
-    const imports = nodes.filter(n => n.type === 'import' && n.content).sort((a, b) => (a.line || 0) - (b.line || 0));
+    // Don't filter by content - include all nodes for simulation
+    const imports = nodes.filter(n => n.type === 'import').sort((a, b) => (a.line || 0) - (b.line || 0));
     const files = nodes.filter(n => n.type === 'file');
-    const functions = nodes.filter(n => n.type === 'function' && n.content).sort((a, b) => (a.line || 0) - (b.line || 0));
-    const classes = nodes.filter(n => n.type === 'class' && n.content).sort((a, b) => (a.line || 0) - (b.line || 0));
+    const functions = nodes.filter(n => n.type === 'function').sort((a, b) => (a.line || 0) - (b.line || 0));
+    const classes = nodes.filter(n => n.type === 'class').sort((a, b) => (a.line || 0) - (b.line || 0));
     
-    return [...imports, ...files, ...functions, ...classes];
+    const order = [...imports, ...files, ...functions, ...classes];
+    console.log('🎬 Execution order created:', order.length, 'nodes', order.map(n => `${n.type}:${n.title}`));
+    return order;
   };
 
   // Check if node is currently executing

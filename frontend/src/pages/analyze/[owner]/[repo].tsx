@@ -916,7 +916,8 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
                     });
                     
                     const intelligentVisualization = generateIntelligentVisualization(analysis, selectedFiles);
-                    return transformToSubwayLayout(enhanceScenarioWithErrors(intelligentVisualization));
+                    // Use intelligent visualization directly instead of overriding with subway layout
+                    return enhanceScenarioWithErrors(intelligentVisualization);
                   })()}
                   onScenarioChange={() => {}}
                   availableScenarios={[analysis.visualization]}
