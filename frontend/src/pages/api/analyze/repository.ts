@@ -196,8 +196,11 @@ async function analyzeCodeStructure(
     analysis.classes += fileAnalysis.classes;
     analysis.imports += fileAnalysis.imports;
     analysis.complexity += fileAnalysis.complexity;
-    analysis.dependencies.push(...fileAnalysis.dependencies);
+    
+    // CRITICAL FIX: Merge the actual elements, not just counts!
     analysis.codeElements.push(...fileAnalysis.elements);
+    analysis.dependencies.push(...fileAnalysis.dependencies);
+    console.log(`🔗 Merged ${fileAnalysis.elements.length} elements from ${file.path}, total now: ${analysis.codeElements.length}`);
 
     onProgress(((i + 1) / fileContents.length) * 100);
   }
@@ -241,14 +244,15 @@ function analyzeFile(file: { path: string; content: string; language: string }) 
     functionCalls: [] as { function: string; line: number; calledFrom: string }[]
   };
   
+  console.log(`🔄 Starting analysis loop for ${lines.length} lines...`);
+  
   for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
     const line = lines[lineIndex];
     const trimmed = line.trim();
     const lineNumber = lineIndex + 1;
     
-    // Debug: Log lines that look like they might contain functions
-    if (trimmed.includes('const ') || trimmed.includes('function ') || trimmed.includes('export ') || 
-        trimmed.includes('=>') || trimmed.includes('useState') || trimmed.includes('use')) {
+    // Debug EVERY non-empty line to see what we're working with
+    if (trimmed.length > 0 && lineNumber <= 20) {
       console.log(`🔍 Line ${lineNumber}: "${trimmed}"`);
     }
     
@@ -413,6 +417,11 @@ function analyzeFile(file: { path: string; content: string; language: string }) 
     elements: analysis.elements.length,
     elementNames: analysis.elements.map(e => `${e.type}:${e.name}`)
   });
+
+  // CRITICAL DEBUG: If we found functions in summary but no elements, something's wrong
+  if (analysis.functions > 0 && analysis.elements.length === 0) {
+    console.error(`🚨 MAJOR ISSUE: Found ${analysis.functions} functions in summary but 0 elements! Regex patterns are failing!`);
+  }
 
   return analysis;
 }
