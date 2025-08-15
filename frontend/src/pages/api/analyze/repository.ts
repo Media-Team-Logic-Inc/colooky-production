@@ -222,6 +222,8 @@ async function analyzeCodeStructure(
 }
 
 function analyzeFile(file: { path: string; content: string; language: string }) {
+  console.log('🔬 Analyzing file:', file.path, 'Language:', file.language, 'Lines:', file.content.split('\n').length);
+  
   const analysis = {
     functions: 0,
     classes: 0,
@@ -257,6 +259,7 @@ function analyzeFile(file: { path: string; content: string; language: string }) 
     for (const pattern of functionMatches) {
       const match = trimmed.match(pattern);
       if (match) {
+        console.log(`🎯 Found function "${match[1]}" at line ${lineNumber} in ${file.path}`);
         analysis.functions++;
         
         // Extract function code snippet (5 lines around the function)
@@ -383,6 +386,14 @@ function analyzeFile(file: { path: string; content: string; language: string }) 
       analysis.complexity += 1;
     }
   }
+
+  console.log(`📊 Analysis complete for ${file.path}:`, {
+    functions: analysis.functions,
+    classes: analysis.classes,
+    imports: analysis.imports,
+    elements: analysis.elements.length,
+    elementNames: analysis.elements.map(e => `${e.type}:${e.name}`)
+  });
 
   return analysis;
 }

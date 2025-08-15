@@ -235,6 +235,10 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
       const currentNode = executionOrder[stepIndex];
       setSimulationStep(stepIndex);
       console.log('🎬 Executing node:', currentNode.title, currentNode.type);
+      
+      // Auto-select the current node and open code viewer during simulation
+      setSelectedNode(currentNode.id);
+      setCodeViewerOpen(true);
 
       // Check for errors in this step
       if (currentNode.isError) {

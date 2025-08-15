@@ -915,6 +915,14 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
                       files: selectedFiles.length
                     });
                     
+                    // DEBUG: Log what we're getting from backend
+                    console.log('🔍 Analysis data received:', {
+                      summary: analysis.summary,
+                      elements: analysis.elements?.length || 0,
+                      elementsPreview: analysis.elements?.slice(0, 3),
+                      dependencies: analysis.dependencies?.length || 0
+                    });
+                    
                     const intelligentVisualization = generateIntelligentVisualization(analysis, selectedFiles);
                     // Use intelligent visualization directly instead of overriding with subway layout
                     return enhanceScenarioWithErrors(intelligentVisualization);
