@@ -24,6 +24,7 @@ export interface FlowNode {
   strokeColor: string;
   stepNumber?: number;
   details: string[];
+  content?: string; // NEW: Add code content
   isError?: boolean; // NEW: Add error detection
 }
 
