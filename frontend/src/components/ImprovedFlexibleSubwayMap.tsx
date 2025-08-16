@@ -26,6 +26,7 @@ export interface FlowNode {
   details: string[];
   content?: string; // NEW: Add code content
   isError?: boolean; // NEW: Add error detection
+  isValidation?: boolean; // NEW: Add validation detection
 }
 
 interface FlowConnection {
@@ -36,6 +37,8 @@ interface FlowConnection {
   label?: string;
   detail?: string;
   isError?: boolean; // NEW: Add error connection detection
+  strokeWidth?: number | string; // Add strokeWidth property
+  strokeDasharray?: string; // Add strokeDasharray property
 }
 
 interface LegendItem {
