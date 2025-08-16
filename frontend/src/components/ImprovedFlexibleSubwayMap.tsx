@@ -278,16 +278,19 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
   };
 
   const createExecutionOrder = (nodes: any[]) => {
-    // Sort nodes by real execution order: imports → file → functions → classes
-    // Don't filter by content - include all nodes for simulation
-    const imports = nodes.filter(n => n.type === 'import').sort((a, b) => (a.line || 0) - (b.line || 0));
-    const files = nodes.filter(n => n.type === 'file');
-    const functions = nodes.filter(n => n.type === 'function').sort((a, b) => (a.line || 0) - (b.line || 0));
-    const classes = nodes.filter(n => n.type === 'class').sort((a, b) => (a.line || 0) - (b.line || 0));
+    // REAL CODE EXECUTION ORDER: Follow actual code flow, not arbitrary types
+    // 1. Start with imports (they execute first when file loads)
+    // 2. Then follow the stepNumber order which represents actual code execution
     
-    const order = [...imports, ...files, ...functions, ...classes];
-    console.log('🎬 Execution order created:', order.length, 'nodes', order.map(n => `${n.type}:${n.title}`));
-    return order;
+    console.log('🔍 All nodes for execution:', nodes.map(n => `Step ${n.stepNumber}: ${n.title}`));
+    
+    // Sort by stepNumber (this represents the actual code execution order)
+    const executionOrder = nodes
+      .filter(n => n.stepNumber) // Only nodes with step numbers
+      .sort((a, b) => (a.stepNumber || 0) - (b.stepNumber || 0));
+    
+    console.log('🎬 REAL execution order (by stepNumber):', executionOrder.map(n => `${n.stepNumber}: ${n.title}`));
+    return executionOrder;
   };
 
   // Check if node is currently executing
@@ -483,8 +486,8 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
     }
   };
 
-  // Use fixed viewBox like the demo for consistent layout
-  const viewBox = scenario.viewBox || "0 0 1000 500";
+  // Use much larger viewBox to accommodate all nodes without clipping
+  const viewBox = scenario.viewBox || "0 0 3500 800";
   const [viewX, viewY, viewWidth, viewHeight] = viewBox.split(' ').map(Number);
 
   return (
