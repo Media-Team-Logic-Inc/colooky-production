@@ -81,6 +81,7 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
   const [isSimulating, setIsSimulating] = useState(false);
   const [simulationStep, setSimulationStep] = useState(0);
   const [simulationErrors, setSimulationErrors] = useState<string[]>([]);
+  const [isPaused, setIsPaused] = useState(false);
   const visualizationRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const simulationInterval = useRef<NodeJS.Timeout | null>(null);
@@ -200,17 +201,34 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
     return dragged ? dragged : { x: node.x, y: node.y };
   };
 
-  // Code execution simulation
+  // Code execution simulation with pause/resume
   const runSimulation = () => {
-    if (isSimulating) {
-      stopSimulation();
+    if (isSimulating && !isPaused) {
+      // Pause simulation
+      setIsPaused(true);
+      if (simulationInterval.current) {
+        clearInterval(simulationInterval.current);
+        simulationInterval.current = null;
+      }
+      return;
+    }
+    
+    if (isSimulating && isPaused) {
+      // Resume simulation
+      setIsPaused(false);
+      startSimulationFromStep(simulationStep);
       return;
     }
 
+    // Start new simulation
     setIsSimulating(true);
     setSimulationStep(0);
     setSimulationErrors([]);
+    setIsPaused(false);
+    startSimulationFromStep(0);
+  };
 
+  const startSimulationFromStep = (startStep: number) => {
     // Create execution order based on node types and positions
     const executionOrder = createExecutionOrder(scenario.nodes);
     console.log('🎬 Starting simulation with', executionOrder.length, 'nodes');
@@ -221,8 +239,8 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
       return;
     }
     
-    // Animate through the execution order
-    let stepIndex = 0;
+    // Animate through the execution order starting from specified step
+    let stepIndex = startStep;
     simulationInterval.current = setInterval(() => {
       console.log('🎬 Simulation step', stepIndex + 1, 'of', executionOrder.length);
       
@@ -240,10 +258,10 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
       setSelectedNode(currentNode.id);
       setCodeViewerOpen(true);
 
-      // Check for errors in this step
-      if (currentNode.isError) {
-        setSimulationErrors(prev => [...prev, currentNode.title]);
-      }
+      // REMOVE FAKE ERROR DETECTION: Don't show errors unless they're real
+      // if (currentNode.isError) {
+      //   setSimulationErrors(prev => [...prev, currentNode.title]);
+      // }
 
       stepIndex++;
     }, 1200); // Slower - 1.2s between steps for better visibility
@@ -251,6 +269,7 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
 
   const stopSimulation = () => {
     setIsSimulating(false);
+    setIsPaused(false);
     setSimulationStep(0);
     if (simulationInterval.current) {
       clearInterval(simulationInterval.current);
@@ -482,19 +501,27 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
           {/* Simulation Button - FEATURED! */}
           <button
             onClick={runSimulation}
-            className={`p-3 ${isSimulating ? 'bg-red-600 hover:bg-red-700 border-red-500' : 'bg-purple-600 hover:bg-purple-700 border-purple-500'} border rounded-lg transition-colors shadow-lg`}
-            title={isSimulating ? "Stop Simulation" : "Run Code Simulation"}
+            className={`p-3 ${isPaused ? 'bg-yellow-600 hover:bg-yellow-700 border-yellow-500' : isSimulating ? 'bg-orange-600 hover:bg-orange-700 border-orange-500' : 'bg-purple-600 hover:bg-purple-700 border-purple-500'} border rounded-lg transition-colors shadow-lg`}
+            title={isPaused ? "Resume Simulation" : isSimulating ? "Pause Simulation" : "Run Code Simulation"}
           >
-            {isSimulating ? <Square className="w-5 h-5 text-white" /> : <Play className="w-5 h-5 text-white" />}
+            {isPaused ? <Play className="w-5 h-5 text-white" /> : isSimulating ? <Square className="w-5 h-5 text-white" /> : <Play className="w-5 h-5 text-white" />}
           </button>
           
-          {isSimulating && (
-            <div className="bg-purple-600/20 border border-purple-500 rounded-lg p-2 text-xs text-purple-300">
-              <div className="font-medium">🎬 Simulating...</div>
+          {/* Stop button when simulation is running */}
+          {(isSimulating || isPaused) && (
+            <button
+              onClick={stopSimulation}
+              className="p-3 bg-red-600 hover:bg-red-700 border border-red-500 rounded-lg transition-colors shadow-lg"
+              title="Stop Simulation"
+            >
+              <Square className="w-5 h-5 text-white" />
+            </button>
+          )}
+          
+          {(isSimulating || isPaused) && (
+            <div className={`${isPaused ? 'bg-yellow-600/20 border-yellow-500' : 'bg-purple-600/20 border-purple-500'} border rounded-lg p-2 text-xs ${isPaused ? 'text-yellow-300' : 'text-purple-300'}`}>
+              <div className="font-medium">{isPaused ? '⏸️ Paused' : '🎬 Running'}</div>
               <div>Step {simulationStep + 1}</div>
-              {simulationErrors.length > 0 && (
-                <div className="text-red-400 mt-1">⚠️ {simulationErrors.length} errors</div>
-              )}
             </div>
           )}
           
