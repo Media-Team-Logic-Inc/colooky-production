@@ -487,7 +487,7 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
   };
 
   // Use much larger viewBox to accommodate all nodes without clipping
-  const viewBox = scenario.viewBox || "0 0 3500 800";
+  const viewBox = scenario.viewBox || "0 0 3500 1200"; // Increased height to prevent bottom clipping
   const [viewX, viewY, viewWidth, viewHeight] = viewBox.split(' ').map(Number);
 
   return (
@@ -702,12 +702,13 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
                     className="connection"
                     fill="none"
                     stroke={connection.isError ? '#ef4444' : connection.color}
-                    strokeWidth="3"
-                    opacity={connection.isError ? 0.7 : 0.8}
+                    strokeWidth={connection.strokeWidth || "3"}
+                    opacity={connection.isError ? 0.9 : 0.8}
                     markerEnd={`url(#arrowhead-${(connection.isError ? 'ef4444' : connection.color.replace('#', ''))})`}
                     style={{
-                      strokeDasharray: connection.animated ? '8 4' : 'none',
-                      animation: connection.animated ? 'dash 2s linear infinite' : 'none'
+                      strokeDasharray: connection.strokeDasharray || (connection.animated ? '8 4' : 'none'),
+                      animation: connection.animated && connection.isError ? 'error-dash 1.5s linear infinite' : 
+                                connection.animated ? 'dash 2s linear infinite' : 'none'
                     }}
                   />
                   {connection.label && (
@@ -937,6 +938,11 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
         @keyframes dash {
           to {
             stroke-dashoffset: -12;
+          }
+        }
+        @keyframes error-dash {
+          to {
+            stroke-dashoffset: -15;
           }
         }
       `}</style>

@@ -432,10 +432,10 @@ async function generateVisualization(analysis: any): Promise<any> {
   const legendItems = [
     { color: '#3b82f6', label: 'Functions' },
     { color: '#10b981', label: 'Classes' },
-    { color: '#f59e0b', label: 'Imports' },
+    { color: '#f59e0b', label: 'Imports/Validation' },
     { color: '#87CEEB', label: 'Exports' }, // Baby blue for exports
-    { color: '#8b5cf6', label: 'Function Calls' },
-    { color: '#ef4444', label: 'Cross-file Dependencies' }
+    { color: '#ef4444', label: 'Error Handling' },
+    { color: '#8b5cf6', label: 'Function Calls' }
   ];
 
   // Group elements by file for better layout
@@ -488,13 +488,21 @@ async function generateVisualization(analysis: any): Promise<any> {
       const nodeX = fileX + (elementIndex % columnsPerFile) * elementSpacing;
       const nodeY = fileY + Math.floor(elementIndex / columnsPerFile) * verticalSpacing;
       
+      // Detect error handling functions
+      const isErrorFunction = /error|catch|throw|fail|reject|invalid|exception|abort/i.test(element.name);
+      const isValidationFunction = /valid|check|verify|confirm|test|assert/i.test(element.name);
+      
       const nodeColor = 
+        isErrorFunction ? '#ef4444' : // Red for error functions
+        isValidationFunction ? '#f59e0b' : // Orange for validation functions
         element.type === 'function' ? '#3b82f6' :
         element.type === 'class' ? '#10b981' :
         element.type === 'import' ? '#f59e0b' :
         element.type === 'export' ? '#87CEEB' : '#8b5cf6'; // Baby blue for exports
         
       const strokeColor = 
+        isErrorFunction ? '#f87171' : // Light red stroke for error functions
+        isValidationFunction ? '#fbbf24' : // Light orange stroke for validation
         element.type === 'function' ? '#60a5fa' :
         element.type === 'class' ? '#34d399' :
         element.type === 'import' ? '#fbbf24' :
@@ -514,10 +522,15 @@ async function generateVisualization(analysis: any): Promise<any> {
         color: nodeColor,
         strokeColor: strokeColor,
         stepNumber: globalIndex + 1,
+        isError: isErrorFunction, // Add error flag for proper rendering
+        isValidation: isValidationFunction, // Add validation flag
         details: element.details || [
           `${element.type}: ${element.name}`,
           `File: ${element.file}:${element.line}`,
-          `Language: ${element.language}`
+          `Language: ${element.language}`,
+          isErrorFunction ? 'Type: Error Handler' : 
+          isValidationFunction ? 'Type: Validation' : 
+          `Type: ${element.type}`
         ]
       });
       globalIndex++;
@@ -551,25 +564,58 @@ async function generateVisualization(analysis: any): Promise<any> {
     }
   });
 
-  // Add basic sequential connections between elements in the same file for visual flow
+  // Add intelligent flow connections with error handling detection
   Object.keys(fileGroups).forEach(filePath => {
     const fileElements = fileGroups[filePath];
+    
     for (let i = 0; i < fileElements.length - 1; i++) {
       const currentNode = nodes.find(n => n.id === fileElements[i].id);
       const nextNode = nodes.find(n => n.id === fileElements[i + 1].id);
       
       if (currentNode && nextNode) {
-        const connectionColor = 
-          currentNode.title.includes('📥') || nextNode.title.includes('📥') ? '#f59e0b' :
-          currentNode.title.includes('📤') || nextNode.title.includes('📤') ? '#e11d48' : '#64b5f6';
+        // Detect error handling patterns
+        const isErrorFunction = /error|catch|throw|fail|reject|invalid|exception|abort/i.test(nextNode.title);
+        const isValidationFunction = /valid|check|verify|confirm|test|assert/i.test(nextNode.title);
+        const isSuccessFunction = /success|complete|done|finish|resolve|ok|save|create|update/i.test(nextNode.title);
+        
+        // Create main success path (blue solid arrow)
+        if (!isErrorFunction) {
+          connections.push({
+            from: { x: currentNode.x + currentNode.width, y: currentNode.y + currentNode.height / 2 },
+            to: { x: nextNode.x, y: nextNode.y + nextNode.height / 2 },
+            color: isSuccessFunction ? '#10b981' : '#3b82f6', // Green for success, blue for normal flow
+            label: isSuccessFunction ? 'Success' : 'Flow',
+            detail: `Normal execution: ${currentNode.title} → ${nextNode.title}`,
+            strokeWidth: 3,
+            animated: false
+          });
+        }
+        
+        // For validation functions, add both success and error paths
+        if (isValidationFunction) {
+          // Look for error functions that might be called on validation failure
+          const errorFunctions = fileElements.slice(i + 1).filter(el => 
+            /error|catch|throw|fail|reject|invalid|exception/i.test(el.name)
+          );
           
-        connections.push({
-          from: { x: currentNode.x + currentNode.width, y: currentNode.y + currentNode.height / 2 },
-          to: { x: nextNode.x, y: nextNode.y + nextNode.height / 2 },
-          color: connectionColor,
-          label: 'Flow',
-          detail: `Code flow in ${filePath}: ${currentNode.title} → ${nextNode.title}`
-        });
+          if (errorFunctions.length > 0) {
+            const errorNode = nodes.find(n => n.id === errorFunctions[0].id);
+            if (errorNode) {
+              // Add error path (red dashed arrow)
+              connections.push({
+                from: { x: currentNode.x + currentNode.width/2, y: currentNode.y + currentNode.height },
+                to: { x: errorNode.x + errorNode.width/2, y: errorNode.y },
+                color: '#ef4444',
+                label: 'Error',
+                detail: `Error handling: ${currentNode.title} → ${errorNode.title}`,
+                strokeWidth: 3,
+                strokeDasharray: "10,5", // Dashed line for error paths
+                animated: true, // Animated red ants effect
+                isError: true
+              });
+            }
+          }
+        }
       }
     }
   });
