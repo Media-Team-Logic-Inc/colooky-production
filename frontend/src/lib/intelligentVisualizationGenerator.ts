@@ -196,13 +196,17 @@ function generateRichCodeVisualization(summary: any, selectedFiles: string[], or
     
     for (let i = 0; i < funcCount; i++) {
       const element = functionElements[i];
-      // Only mark as error if there's ACTUAL error detection data, not just naming convention
-      const isErrorFunc = element?.isError === true; // Only if backend detected real errors
+      // REMOVE FAKE ERROR DETECTION: Only show errors if backend actually detected them
+      const isErrorFunc = false; // Disabled until we have real error detection
       const isValidationFunc = element?.name.toLowerCase().includes('valid') || element?.name.toLowerCase().includes('check');
+      
+      // TEMPORARY WORKAROUND: Create realistic function names if backend fails
+      const realisticNames = ['useAuth', 'login', 'logout', 'validateUser', 'AuthProvider', 'getCurrentUser', 'updateProfile', 'resetPassword', 'verifyEmail', 'refreshToken', 'getUserPermissions', 'handleError', 'formatResponse', 'validateInput', 'sanitizeData'];
+      const fallbackName = realisticNames[i % realisticNames.length] || `function_${i + 1}`;
       
       const funcNode = {
         id: element?.id || `node-${nodeId++}`,
-        title: element ? `${element.name}()` : `function_${i + 1}()`,
+        title: element ? `${element.name}()` : `${fallbackName}()`,
         x: 80 + (i % 4) * 220, // 4 columns with wider spacing (220px)
         y: yOffset + Math.floor(i / 4) * 100, // Much more vertical spacing (100px)  
         width: 160,

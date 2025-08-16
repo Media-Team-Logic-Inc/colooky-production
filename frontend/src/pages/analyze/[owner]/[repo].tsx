@@ -949,6 +949,9 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
                       dependencies: analysis.dependencies?.length || 0
                     });
                     
+                    // EMERGENCY DEBUG: Show the actual raw analysis object
+                    console.log('🚨 RAW ANALYSIS OBJECT:', JSON.stringify(analysis, null, 2));
+                    
                     const intelligentVisualization = generateIntelligentVisualization(analysis, selectedFiles);
                     // Use intelligent visualization directly instead of overriding with subway layout
                     return enhanceScenarioWithErrors(intelligentVisualization);
