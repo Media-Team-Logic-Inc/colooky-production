@@ -430,12 +430,14 @@ async function generateVisualization(analysis: any): Promise<any> {
   const nodes: any[] = [];
   const connections: any[] = [];
   const legendItems = [
-    { color: '#3b82f6', label: 'Functions' },
-    { color: '#10b981', label: 'Classes' },
-    { color: '#f59e0b', label: 'Imports/Validation' },
-    { color: '#87CEEB', label: 'Exports' }, // Baby blue for exports
-    { color: '#ef4444', label: 'Error Handling' },
-    { color: '#8b5cf6', label: 'Function Calls' }
+    { color: '#f59e0b', label: 'Imports' },
+    { color: '#8b5cf6', label: 'Interfaces/Types' },
+    { color: '#06b6d4', label: 'Context' },
+    { color: '#10b981', label: 'Provider' },
+    { color: '#3b82f6', label: 'Hooks & Auth Methods' },
+    { color: '#6b7280', label: 'Utilities' },
+    { color: '#87CEEB', label: 'Exports' },
+    { color: '#ef4444', label: 'Error Handling' }
   ];
 
   // Group elements by file for better layout
@@ -450,71 +452,85 @@ async function generateVisualization(analysis: any): Promise<any> {
   let globalIndex = 0;
   const filePositions: { [key: string]: { x: number; y: number } } = {};
   
-  // Create intelligent layout based on file count and elements
-  const totalFiles = Object.keys(fileGroups).length;
+  // Create intelligent semantic layout based on code architecture
   const totalElements = analysis.elements.length;
   
-  // Adjust layout based on content size
-  let columnsPerFile, elementSpacing, fileSpacing, verticalSpacing;
+  // Group elements by semantic purpose for better layout
+  const elementsByType = {
+    imports: analysis.elements.filter(e => e.type === 'import'),
+    exports: analysis.elements.filter(e => e.type === 'export'),
+    contexts: analysis.elements.filter(e => e.name.toLowerCase().includes('context')),
+    providers: analysis.elements.filter(e => e.name.toLowerCase().includes('provider')),
+    hooks: analysis.elements.filter(e => e.name.startsWith('use')),
+    authMethods: analysis.elements.filter(e => /sign|auth|login|logout|verify/i.test(e.name)),
+    profileMethods: analysis.elements.filter(e => /profile|update|switch|fetch/i.test(e.name)),
+    utilities: analysis.elements.filter(e => 
+      !e.name.toLowerCase().includes('context') && 
+      !e.name.toLowerCase().includes('provider') &&
+      !e.name.startsWith('use') &&
+      !/sign|auth|login|logout|verify|profile|update|switch|fetch/i.test(e.name) &&
+      e.type === 'function'
+    ),
+    interfaces: analysis.elements.filter(e => e.type === 'class' || e.name.includes('Type') || e.name.includes('Interface'))
+  };
   
-  if (totalElements <= 5) {
-    // Small analysis: horizontal spread like demo
-    columnsPerFile = totalElements; // All in one row
-    elementSpacing = 300;
-    fileSpacing = 500; 
-    verticalSpacing = 150;
-  } else if (totalElements <= 15) {
-    // Medium analysis: horizontal focus with 2 rows max
-    columnsPerFile = Math.ceil(totalElements / 2);
-    elementSpacing = 250;
-    fileSpacing = 400;
-    verticalSpacing = 120;
-  } else {
-    // Large analysis: more compact but still horizontal
-    columnsPerFile = Math.ceil(totalElements / 3);
-    elementSpacing = 180;
-    fileSpacing = 350;
-    verticalSpacing = 90;
-  }
+  console.log('🏗️ Semantic grouping:', {
+    imports: elementsByType.imports.length,
+    contexts: elementsByType.contexts.length,
+    providers: elementsByType.providers.length,
+    hooks: elementsByType.hooks.length,
+    authMethods: elementsByType.authMethods.length,
+    profileMethods: elementsByType.profileMethods.length,
+    utilities: elementsByType.utilities.length
+  });
 
-  Object.keys(fileGroups).forEach((filePath, fileIndex) => {
-    const fileElements = fileGroups[filePath];
-    const fileX = 100 + (fileIndex % 4) * fileSpacing;
-    const fileY = 100 + Math.floor(fileIndex / 4) * 200;
-    filePositions[filePath] = { x: fileX, y: fileY };
-    
-    // Create nodes for each element within the file
-    fileElements.forEach((element: any, elementIndex: number) => {
-      const nodeX = fileX + (elementIndex % columnsPerFile) * elementSpacing;
-      const nodeY = fileY + Math.floor(elementIndex / columnsPerFile) * verticalSpacing;
+  // Create semantic architecture layout
+  const layoutGroups = [
+    { name: 'imports', elements: elementsByType.imports, y: 50, color: '#f59e0b' },
+    { name: 'interfaces', elements: elementsByType.interfaces, y: 150, color: '#8b5cf6' },
+    { name: 'contexts', elements: elementsByType.contexts, y: 250, color: '#06b6d4' },
+    { name: 'providers', elements: elementsByType.providers, y: 350, color: '#10b981' },
+    { name: 'hooks', elements: elementsByType.hooks, y: 450, color: '#3b82f6' },
+    { name: 'authMethods', elements: elementsByType.authMethods, y: 550, color: '#3b82f6' },
+    { name: 'profileMethods', elements: elementsByType.profileMethods, y: 650, color: '#3b82f6' },
+    { name: 'utilities', elements: elementsByType.utilities, y: 750, color: '#6b7280' },
+    { name: 'exports', elements: elementsByType.exports, y: 850, color: '#87CEEB' }
+  ];
+
+  layoutGroups.forEach(group => {
+    group.elements.forEach((element: any, elementIndex: number) => {
+      // Horizontal spacing for elements in the same group
+      const nodeX = 150 + elementIndex * 220; // More horizontal spacing
+      const nodeY = group.y;
       
       // Detect error handling functions
       const isErrorFunction = /error|catch|throw|fail|reject|invalid|exception|abort/i.test(element.name);
       const isValidationFunction = /valid|check|verify|confirm|test|assert/i.test(element.name);
       
+      // Use group color as base, but override for special cases
       const nodeColor = 
         isErrorFunction ? '#ef4444' : // Red for error functions
         isValidationFunction ? '#f59e0b' : // Orange for validation functions
-        element.type === 'function' ? '#3b82f6' :
-        element.type === 'class' ? '#10b981' :
-        element.type === 'import' ? '#f59e0b' :
-        element.type === 'export' ? '#87CEEB' : '#8b5cf6'; // Baby blue for exports
+        group.color; // Use semantic group color
         
       const strokeColor = 
         isErrorFunction ? '#f87171' : // Light red stroke for error functions
         isValidationFunction ? '#fbbf24' : // Light orange stroke for validation
-        element.type === 'function' ? '#60a5fa' :
-        element.type === 'class' ? '#34d399' :
-        element.type === 'import' ? '#fbbf24' :
-        element.type === 'export' ? '#B0E0E6' : '#a78bfa'; // Light baby blue stroke
+        nodeColor === '#f59e0b' ? '#fbbf24' :
+        nodeColor === '#8b5cf6' ? '#a78bfa' :
+        nodeColor === '#06b6d4' ? '#38bdf8' :
+        nodeColor === '#10b981' ? '#34d399' :
+        nodeColor === '#3b82f6' ? '#60a5fa' :
+        nodeColor === '#6b7280' ? '#9ca3af' :
+        '#B0E0E6'; // Default light blue
 
-      // Adjust node size based on analysis size
-      const nodeWidth = totalElements <= 5 ? 180 : totalElements <= 15 ? 140 : 105;
-      const nodeHeight = totalElements <= 5 ? 50 : 40;
+      // Adjust node size for better readability
+      const nodeWidth = 180;
+      const nodeHeight = 45;
       
       nodes.push({
         id: element.id,
-        title: element.name.length > (nodeWidth/8) ? element.name.substring(0, Math.floor(nodeWidth/8)) + '...' : element.name,
+        title: element.name.length > 20 ? element.name.substring(0, 18) + '...' : element.name,
         x: nodeX,
         y: nodeY,
         width: nodeWidth,
@@ -522,9 +538,11 @@ async function generateVisualization(analysis: any): Promise<any> {
         color: nodeColor,
         strokeColor: strokeColor,
         stepNumber: globalIndex + 1,
-        isError: isErrorFunction, // Add error flag for proper rendering
-        isValidation: isValidationFunction, // Add validation flag
+        isError: isErrorFunction,
+        isValidation: isValidationFunction,
+        group: group.name, // Add semantic group info
         details: element.details || [
+          `Group: ${group.name}`,
           `${element.type}: ${element.name}`,
           `File: ${element.file}:${element.line}`,
           `Language: ${element.language}`,
@@ -564,61 +582,106 @@ async function generateVisualization(analysis: any): Promise<any> {
     }
   });
 
-  // Add intelligent flow connections with error handling detection
-  Object.keys(fileGroups).forEach(filePath => {
-    const fileElements = fileGroups[filePath];
-    
-    for (let i = 0; i < fileElements.length - 1; i++) {
-      const currentNode = nodes.find(n => n.id === fileElements[i].id);
-      const nextNode = nodes.find(n => n.id === fileElements[i + 1].id);
-      
-      if (currentNode && nextNode) {
-        // Detect error handling patterns
-        const isErrorFunction = /error|catch|throw|fail|reject|invalid|exception|abort/i.test(nextNode.title);
-        const isValidationFunction = /valid|check|verify|confirm|test|assert/i.test(nextNode.title);
-        const isSuccessFunction = /success|complete|done|finish|resolve|ok|save|create|update/i.test(nextNode.title);
-        
-        // Create main success path (blue solid arrow)
-        if (!isErrorFunction) {
-          connections.push({
-            from: { x: currentNode.x + currentNode.width, y: currentNode.y + currentNode.height / 2 },
-            to: { x: nextNode.x, y: nextNode.y + nextNode.height / 2 },
-            color: isSuccessFunction ? '#10b981' : '#3b82f6', // Green for success, blue for normal flow
-            label: isSuccessFunction ? 'Success' : 'Flow',
-            detail: `Normal execution: ${currentNode.title} → ${nextNode.title}`,
-            strokeWidth: 3,
-            animated: false
-          });
-        }
-        
-        // For validation functions, add both success and error paths
-        if (isValidationFunction) {
-          // Look for error functions that might be called on validation failure
-          const errorFunctions = fileElements.slice(i + 1).filter(el => 
-            /error|catch|throw|fail|reject|invalid|exception/i.test(el.name)
-          );
-          
-          if (errorFunctions.length > 0) {
-            const errorNode = nodes.find(n => n.id === errorFunctions[0].id);
-            if (errorNode) {
-              // Add error path (red dashed arrow)
-              connections.push({
-                from: { x: currentNode.x + currentNode.width/2, y: currentNode.y + currentNode.height },
-                to: { x: errorNode.x + errorNode.width/2, y: errorNode.y },
-                color: '#ef4444',
-                label: 'Error',
-                detail: `Error handling: ${currentNode.title} → ${errorNode.title}`,
-                strokeWidth: 3,
-                strokeDasharray: "10,5", // Dashed line for error paths
-                animated: true, // Animated red ants effect
-                isError: true
-              });
-            }
-          }
-        }
+  // Create semantic architecture flow connections
+  const semanticConnections = [];
+  
+  // 1. Imports flow to interfaces
+  if (elementsByType.imports.length > 0 && elementsByType.interfaces.length > 0) {
+    const importNode = nodes.find(n => elementsByType.imports.some(e => e.id === n.id));
+    const interfaceNode = nodes.find(n => elementsByType.interfaces.some(e => e.id === n.id));
+    if (importNode && interfaceNode) {
+      semanticConnections.push({
+        from: { x: importNode.x + importNode.width/2, y: importNode.y + importNode.height },
+        to: { x: interfaceNode.x + interfaceNode.width/2, y: interfaceNode.y },
+        color: '#8b5cf6',
+        label: 'Types',
+        detail: 'Imports provide type definitions',
+        strokeWidth: 3
+      });
+    }
+  }
+  
+  // 2. Interfaces flow to contexts
+  if (elementsByType.interfaces.length > 0 && elementsByType.contexts.length > 0) {
+    const interfaceNode = nodes.find(n => elementsByType.interfaces.some(e => e.id === n.id));
+    const contextNode = nodes.find(n => elementsByType.contexts.some(e => e.id === n.id));
+    if (interfaceNode && contextNode) {
+      semanticConnections.push({
+        from: { x: interfaceNode.x + interfaceNode.width/2, y: interfaceNode.y + interfaceNode.height },
+        to: { x: contextNode.x + contextNode.width/2, y: contextNode.y },
+        color: '#06b6d4',
+        label: 'Context',
+        detail: 'Interface defines context type',
+        strokeWidth: 3
+      });
+    }
+  }
+  
+  // 3. Context flows to provider
+  if (elementsByType.contexts.length > 0 && elementsByType.providers.length > 0) {
+    const contextNode = nodes.find(n => elementsByType.contexts.some(e => e.id === n.id));
+    const providerNode = nodes.find(n => elementsByType.providers.some(e => e.id === n.id));
+    if (contextNode && providerNode) {
+      semanticConnections.push({
+        from: { x: contextNode.x + contextNode.width/2, y: contextNode.y + contextNode.height },
+        to: { x: providerNode.x + providerNode.width/2, y: providerNode.y },
+        color: '#10b981',
+        label: 'Provider',
+        detail: 'Context creates provider component',
+        strokeWidth: 4 // Thicker for main architecture flow
+      });
+    }
+  }
+  
+  // 4. Provider flows to hooks
+  if (elementsByType.providers.length > 0 && elementsByType.hooks.length > 0) {
+    const providerNode = nodes.find(n => elementsByType.providers.some(e => e.id === n.id));
+    const hookNode = nodes.find(n => elementsByType.hooks.some(e => e.id === n.id));
+    if (providerNode && hookNode) {
+      semanticConnections.push({
+        from: { x: providerNode.x + providerNode.width/2, y: providerNode.y + providerNode.height },
+        to: { x: hookNode.x + hookNode.width/2, y: hookNode.y },
+        color: '#3b82f6',
+        label: 'Hook',
+        detail: 'Provider enables hook usage',
+        strokeWidth: 4 // Thicker for main architecture flow
+      });
+    }
+  }
+  
+  // 5. Add error handling flows for auth methods
+  elementsByType.authMethods.forEach(authMethod => {
+    const authNode = nodes.find(n => n.id === authMethod.id);
+    if (authNode) {
+      // Add success path to profile methods
+      const profileNode = nodes.find(n => elementsByType.profileMethods.some(e => e.id === n.id));
+      if (profileNode) {
+        semanticConnections.push({
+          from: { x: authNode.x + authNode.width, y: authNode.y + authNode.height/2 },
+          to: { x: profileNode.x, y: profileNode.y + profileNode.height/2 },
+          color: '#10b981',
+          label: 'Success',
+          detail: `${authMethod.name} success → profile management`,
+          strokeWidth: 3
+        });
       }
+      
+      // Add error handling path
+      semanticConnections.push({
+        from: { x: authNode.x + authNode.width/2, y: authNode.y + authNode.height },
+        to: { x: authNode.x + authNode.width/2, y: authNode.y + authNode.height + 60 },
+        color: '#ef4444',
+        label: 'Error',
+        detail: `${authMethod.name} error handling (try/catch)`,
+        strokeWidth: 3,
+        strokeDasharray: "10,5",
+        animated: true,
+        isError: true
+      });
     }
   });
+  
+  connections.push(...semanticConnections);
 
   // Add cross-file connections for imports/exports
   nodes.forEach(importNode => {
@@ -662,9 +725,10 @@ async function generateVisualization(analysis: any): Promise<any> {
   }
 
   return {
-    id: 'repository-analysis',
-    title: `Code Flow Analysis - ${analysis.summary.main_language}`,
-    description: `Detailed analysis showing ${analysis.summary.functions} functions, ${analysis.summary.classes} classes, and ${analysis.dependencies.length} dependencies with line-level connections`,
+    id: 'semantic-architecture-analysis',
+    title: `Semantic Architecture Flow - ${analysis.summary.main_language}`,
+    description: `Intelligent architecture visualization showing code flow: imports → interfaces → context → provider → hooks → methods`,
+    viewBox: "0 0 3500 1000", // Larger viewBox for semantic layout
     nodes,
     connections,
     legendItems
