@@ -42,12 +42,29 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     return null;
   }
 
-  // For demo purposes, skip subscription tier checks
-  // In a full implementation, you would fetch subscription data from your backend
-  if (requiredTier && requiredTier.length > 0) {
-    // TODO: Implement subscription tier checking by fetching from backend
-    // For now, allow all authenticated users to access any tier
-    console.log(`Protected route requires tier: ${requiredTier.join(', ')}`);
+  // Check subscription tier access
+  if (requiredTier && requiredTier.length > 0 && profile) {
+    const userTier = profile.subscription_tier || 'free';
+    const hasAccess = requiredTier.includes(userTier);
+    
+    if (!hasAccess) {
+      return (
+        <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+          <div className="text-center">
+            <h2 className="text-2xl font-bold text-white mb-4">Upgrade Required</h2>
+            <p className="text-slate-400 mb-6">
+              This feature requires a {requiredTier.join(' or ')} subscription.
+            </p>
+            <button 
+              onClick={() => window.location.href = '/pricing'}
+              className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg"
+            >
+              View Pricing
+            </button>
+          </div>
+        </div>
+      );
+    }
   }
 
   return <>{children}</>;
