@@ -659,14 +659,23 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
           )}
           {/* Header */}
           <div className="mb-8">
-            <div className="flex items-center gap-4 mb-4">
-              <Link 
-                href="/repositories" 
-                className="flex items-center gap-2 text-blue-400 hover:text-blue-300 transition-colors"
+            {/* Breadcrumb Navigation */}
+            <div className="flex items-center gap-2 mb-4 text-sm">
+              <Link
+                href="/repositories"
+                className="text-blue-400 hover:text-blue-300 transition-colors flex items-center gap-1"
               >
-                <ArrowLeft className="w-4 h-4" />
-                Back to Repositories
+                <ArrowLeft className="w-3 h-3" />
+                Repositories
               </Link>
+              <span className="text-slate-400">→</span>
+              <span className="text-white font-medium">{repository.owner}/{repository.name}</span>
+              {currentStep === 'results' && selectedFiles.length === 1 && (
+                <>
+                  <span className="text-slate-400">→</span>
+                  <span className="text-blue-400">{selectedFiles[0].split('/').pop()}</span>
+                </>
+              )}
             </div>
             
             <div className="flex items-center gap-4">
@@ -988,13 +997,14 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
                     setAnalysis(null);
                     setSelectedFiles([]);
                   }}
-                  className="px-6 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-medium transition-colors"
+                  className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
                 >
-                  ← Back to File Selection
+                  <ArrowLeft className="w-4 h-4" />
+                  Analyze More Files
                 </button>
                 <Link
                   href={`/analytics/${repository.owner}/${repository.name}`}
-                  className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
+                  className="px-6 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-medium transition-colors"
                 >
                   View Full Analytics
                 </Link>
