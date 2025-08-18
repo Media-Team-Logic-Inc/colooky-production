@@ -155,6 +155,8 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
   };
 
   // Drag and drop handlers
+  const [dragStartTime, setDragStartTime] = useState<number>(0);
+  
   const handleMouseDown = (e: React.MouseEvent, nodeId: string, originalX: number, originalY: number) => {
     e.preventDefault();
     e.stopPropagation();
@@ -171,6 +173,7 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
     const svgX = (e.clientX - rect.left) * scaleX + viewX;
     const svgY = (e.clientY - rect.top) * scaleY + viewY;
 
+    setDragStartTime(Date.now());
     setIsDragging(nodeId);
     setDragStart({ x: svgX, y: svgY });
   };
@@ -222,10 +225,23 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
   };
 
   const handleMouseUp = () => {
+    // Clean up all drag states immediately
+    const wasDragging = isDragging;
+    const dragDuration = Date.now() - dragStartTime;
+    
     setIsDragging(null);
     setDragStart(null);
     setIsPanning(false);
     setPanStart(null);
+    setDragStartTime(0);
+    
+    // If it was a very short drag (< 200ms), treat as click
+    if (wasDragging && dragDuration < 200) {
+      const node = scenario.nodes.find(n => n.id === wasDragging);
+      if (node) {
+        setTimeout(() => handleNodeClick(node), 10); // Small delay to ensure clean state
+      }
+    }
   };
 
   // Handle canvas panning (when not clicking on nodes)
@@ -834,7 +850,14 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
                         e.currentTarget.style.filter = 'brightness(1)';
                       }
                     }}
-                    onClick={() => !isDraggingThis && handleNodeClick(node)}
+                    onClick={(e) => {
+                      // Only handle click if we're not in a drag state
+                      if (!isDraggingThis && !isDragging) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleNodeClick(node);
+                      }
+                    }}
                   >
                     {/* Simulation glow effect */}
                     {isExecuting && (

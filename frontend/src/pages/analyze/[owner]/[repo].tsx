@@ -5,6 +5,7 @@ import Head from 'next/head';
 import Link from 'next/link';
 import Header from '../../../components/layout/Header';
 import ImprovedFlexibleSubwayMap from '../../../components/ImprovedFlexibleSubwayMap';
+import FileDirectoryTree from '../../../components/FileDirectoryTree';
 import { enhanceScenarioWithErrors, addStepNumbers } from '../../../lib/errorDetection';
 import { transformToSubwayLayout } from '../../../lib/subwayLayoutGenerator';
 import { generateDetailedVisualization, hasDetailedAnalysisData } from '../../../lib/detailedScenarioGenerator';
@@ -850,105 +851,36 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
             </div>
           )}
 
-          {/* Step 3: Results */}
+          {/* Step 3: Results - Responsive Layout */}
           {currentStep === 'results' && analysis?.visualization && (
-            <div>
-              <div className="mb-8">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle className="w-6 h-6 text-green-400" />
-                    <h2 className="text-2xl font-bold text-white">Analysis Complete!</h2>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => exportAnalysis('json')}
-                      className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors"
-                    >
-                      Export JSON
-                    </button>
-                    <button
-                      onClick={() => exportAnalysis('csv')}
-                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
-                    >
-                      Export CSV
-                    </button>
+            <div className="flex gap-6">
+              {/* Main Visualization Area */}
+              <div className="flex-1">
+                <div className="mb-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle className="w-6 h-6 text-green-400" />
+                      <h2 className="text-2xl font-bold text-white">Analysis Complete!</h2>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => exportAnalysis('json')}
+                        className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors"
+                      >
+                        Export JSON
+                      </button>
+                      <button
+                        onClick={() => exportAnalysis('csv')}
+                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
+                      >
+                        Export CSV
+                      </button>
+                    </div>
                   </div>
                 </div>
-                
-                {analysis.summary && (
-                  <>
-                    {/* Compact Statistics Grid - 50% smaller */}
-                    <div className="grid grid-cols-3 md:grid-cols-6 gap-2 mb-3">
-                      <div className="bg-slate-800 border border-slate-700 rounded-md p-2 text-center">
-                        <div className="text-lg font-bold text-blue-400">
-                          {analysis.summary.supported_files}
-                        </div>
-                        <div className="text-xs text-slate-400">Analyzed Files</div>
-                      </div>
-                      <div className="bg-slate-800 border border-slate-700 rounded-md p-2 text-center">
-                        <div className="text-lg font-bold text-green-400">
-                          {analysis.summary.functions}
-                        </div>
-                        <div className="text-xs text-slate-400">Functions</div>
-                      </div>
-                      <div className="bg-slate-800 border border-slate-700 rounded-md p-2 text-center">
-                        <div className="text-lg font-bold text-purple-400">
-                          {analysis.summary.classes}
-                        </div>
-                        <div className="text-xs text-slate-400">Classes</div>
-                      </div>
-                      <div className="bg-slate-800 border border-slate-700 rounded-md p-2 text-center">
-                        <div className="text-lg font-bold text-orange-400">
-                          {analysis.summary.imports}
-                        </div>
-                        <div className="text-xs text-slate-400">Imports</div>
-                      </div>
-                      <div className="bg-slate-800 border border-slate-700 rounded-md p-2 text-center">
-                        <div className="text-lg font-bold text-yellow-400">
-                          {analysis.summary.complexity_score}
-                        </div>
-                        <div className="text-xs text-slate-400">Complexity</div>
-                      </div>
-                      <div className="bg-slate-800 border border-slate-700 rounded-md p-2 text-center">
-                        <div className="text-sm font-bold text-slate-300">
-                          {analysis.summary.main_language}
-                        </div>
-                        <div className="text-xs text-slate-400">Language</div>
-                      </div>
-                    </div>
 
-                    {/* Compact Code Insights */}
-                    <div className="bg-slate-800 border border-slate-700 rounded-lg p-3 mb-4">
-                      <h3 className="text-sm font-semibold text-white mb-2">🔍 Code Insights</h3>
-                      <div className="grid md:grid-cols-3 gap-2 text-xs">
-                        <div className="bg-slate-700 rounded p-2">
-                          <div className="text-blue-400 font-medium">Architecture Pattern</div>
-                          <div className="text-slate-300">
-                            {analysis.summary.functions > analysis.summary.classes * 3 ? 'Functional-oriented' : 
-                             analysis.summary.classes > analysis.summary.functions ? 'Object-oriented' : 'Hybrid approach'}
-                          </div>
-                        </div>
-                        <div className="bg-slate-700 rounded p-2">
-                          <div className="text-green-400 font-medium">Code Density</div>
-                          <div className="text-slate-300">
-                            {Math.round((analysis.summary.functions + analysis.summary.classes) / analysis.summary.supported_files)} elements/file
-                          </div>
-                        </div>
-                        <div className="bg-slate-700 rounded p-2">
-                          <div className="text-purple-400 font-medium">Dependency Style</div>
-                          <div className="text-slate-300">
-                            {analysis.summary.imports > analysis.summary.supported_files * 2 ? 'Highly modular' : 
-                             analysis.summary.imports < analysis.summary.supported_files ? 'Self-contained' : 'Balanced imports'}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </>
-                )}
-              </div>
-
-              {/* Repository Visualization - Full Width with Code Viewer Below */}
-              <div className="w-full">
+                {/* Repository Visualization - Takes remaining space */}
+                <div className="flex-1 min-w-0">
                 <ImprovedFlexibleSubwayMap 
                   scenario={(() => {
                     // Generate intelligent visualization based on content type and complexity
@@ -998,8 +930,90 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
                   }}
                 />
               </div>
+              
+              {/* Right Sidebar - Statistics & Insights */}
+              <div className="w-80 flex-shrink-0">
+                {analysis.summary && (
+                  <div className="bg-slate-800 border border-slate-700 rounded-lg p-4 sticky top-6">
+                    <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                      📊 Analysis Summary
+                    </h3>
+                    
+                    {/* Compact Statistics - Vertical Layout */}
+                    <div className="space-y-3 mb-6">
+                      <div className="flex justify-between items-center p-2 bg-slate-700 rounded">
+                        <span className="text-slate-300 text-sm">Files</span>
+                        <span className="text-blue-400 font-bold">{analysis.summary.supported_files}</span>
+                      </div>
+                      <div className="flex justify-between items-center p-2 bg-slate-700 rounded">
+                        <span className="text-slate-300 text-sm">Functions</span>
+                        <span className="text-green-400 font-bold">{analysis.summary.functions}</span>
+                      </div>
+                      <div className="flex justify-between items-center p-2 bg-slate-700 rounded">
+                        <span className="text-slate-300 text-sm">Classes</span>
+                        <span className="text-purple-400 font-bold">{analysis.summary.classes}</span>
+                      </div>
+                      <div className="flex justify-between items-center p-2 bg-slate-700 rounded">
+                        <span className="text-slate-300 text-sm">Imports</span>
+                        <span className="text-orange-400 font-bold">{analysis.summary.imports}</span>
+                      </div>
+                      <div className="flex justify-between items-center p-2 bg-slate-700 rounded">
+                        <span className="text-slate-300 text-sm">Language</span>
+                        <span className="text-cyan-400 font-bold">{analysis.summary.main_language}</span>
+                      </div>
+                    </div>
 
-              <div className="mt-8 flex justify-center gap-4">
+                    {/* Code Insights - Vertical Layout */}
+                    <div>
+                      <h4 className="text-sm font-semibold text-white mb-3">🔍 Code Insights</h4>
+                      <div className="space-y-3 text-xs">
+                        <div className="bg-slate-700 rounded p-3">
+                          <div className="text-blue-400 font-medium mb-1">Architecture Pattern</div>
+                          <div className="text-slate-300">
+                            {analysis.summary.functions > analysis.summary.classes * 3 ? 'Functional-oriented' : 
+                             analysis.summary.classes > analysis.summary.functions ? 'Object-oriented' : 'Hybrid approach'}
+                          </div>
+                        </div>
+                        <div className="bg-slate-700 rounded p-3">
+                          <div className="text-green-400 font-medium mb-1">Code Density</div>
+                          <div className="text-slate-300">
+                            {Math.round((analysis.summary.functions + analysis.summary.classes) / analysis.summary.supported_files)} elements/file
+                          </div>
+                        </div>
+                        <div className="bg-slate-700 rounded p-3">
+                          <div className="text-purple-400 font-medium mb-1">Dependency Style</div>
+                          <div className="text-slate-300">
+                            {analysis.summary.imports > analysis.summary.supported_files * 2 ? 'Highly modular' : 
+                             analysis.summary.imports < analysis.summary.supported_files ? 'Self-contained' : 'Balanced imports'}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* File Directory Tree */}
+                    <div className="mt-6 border-t border-slate-600 pt-4">
+                      <h4 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
+                        🗂️ Repository Files
+                      </h4>
+                      <FileDirectoryTree 
+                        owner={repository.owner}
+                        repo={repository.name}
+                        onFileSelect={(filePath) => {
+                          setSelectedFiles([filePath]);
+                          setCurrentStep('results');
+                          setAnalysis(null);
+                          // Trigger new analysis for selected file
+                          analyzeFiles([filePath]);
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+              
+            </div>
+
+            <div className="mt-8 flex justify-center gap-4">
                 <button
                   onClick={() => {
                     setCurrentStep('select');
