@@ -853,8 +853,9 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
 
           {/* Step 3: Results - Responsive Layout */}
           {currentStep === 'results' && analysis?.visualization && (
-            {/* Header */}
-            <div className="mb-6">
+            <div>
+              {/* Header */}
+              <div className="mb-6">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                   <CheckCircle className="w-6 h-6 text-green-400" />
@@ -1062,6 +1063,7 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
                   All Repositories
                 </Link>
               </div>
+            </div>
             </div>
           )}
         </main>
