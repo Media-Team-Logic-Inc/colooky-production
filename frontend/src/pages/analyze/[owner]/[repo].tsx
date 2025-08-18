@@ -878,11 +878,9 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
                 </div>
               </div>
 
-            <div className="flex gap-6">
-              {/* Main Visualization Area */}
-              <div className="flex-1">
-                {/* Repository Visualization */}
-                <div className="h-96 bg-slate-800 rounded-lg">
+            {/* Main Visualization - Full Width */}
+            <div className="mb-8">
+              <div className="h-96 bg-slate-800 border border-slate-700 rounded-lg p-4">
                 <ImprovedFlexibleSubwayMap 
                   scenario={(() => {
                     // Generate intelligent visualization based on content type and complexity
@@ -931,82 +929,79 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
                     }
                   }}
                 />
-                </div>
-              </div>
-              
-              {/* Right Sidebar - Statistics & Insights */}
-              <div className="w-64 flex-shrink-0">
-                {analysis.summary && (
-                  <div className="bg-slate-800 border border-slate-700 rounded-lg p-4 sticky top-6">
-                    <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                      📊 Analysis Summary
-                    </h3>
-                    
-                    {/* Compact Statistics - Vertical Layout */}
-                    <div className="space-y-3 mb-6">
-                      <div className="flex justify-between items-center p-2 bg-slate-700 rounded">
-                        <span className="text-slate-300 text-sm">Files</span>
-                        <span className="text-blue-400 font-bold">{analysis.summary.supported_files}</span>
-                      </div>
-                      <div className="flex justify-between items-center p-2 bg-slate-700 rounded">
-                        <span className="text-slate-300 text-sm">Functions</span>
-                        <span className="text-green-400 font-bold">{analysis.summary.functions}</span>
-                      </div>
-                      <div className="flex justify-between items-center p-2 bg-slate-700 rounded">
-                        <span className="text-slate-300 text-sm">Classes</span>
-                        <span className="text-purple-400 font-bold">{analysis.summary.classes}</span>
-                      </div>
-                      <div className="flex justify-between items-center p-2 bg-slate-700 rounded">
-                        <span className="text-slate-300 text-sm">Imports</span>
-                        <span className="text-orange-400 font-bold">{analysis.summary.imports}</span>
-                      </div>
-                      <div className="flex justify-between items-center p-2 bg-slate-700 rounded">
-                        <span className="text-slate-300 text-sm">Language</span>
-                        <span className="text-cyan-400 font-bold">{analysis.summary.main_language}</span>
-                      </div>
-                    </div>
-
-                    {/* Code Insights - Vertical Layout */}
-                    <div>
-                      <h4 className="text-sm font-semibold text-white mb-3">🔍 Code Insights</h4>
-                      <div className="space-y-3 text-xs">
-                        <div className="bg-slate-700 rounded p-3">
-                          <div className="text-blue-400 font-medium mb-1">Architecture Pattern</div>
-                          <div className="text-slate-300">
-                            {analysis.summary.functions > analysis.summary.classes * 3 ? 'Functional-oriented' : 
-                             analysis.summary.classes > analysis.summary.functions ? 'Object-oriented' : 'Hybrid approach'}
-                          </div>
-                        </div>
-                        <div className="bg-slate-700 rounded p-3">
-                          <div className="text-green-400 font-medium mb-1">Code Density</div>
-                          <div className="text-slate-300">
-                            {Math.round((analysis.summary.functions + analysis.summary.classes) / analysis.summary.supported_files)} elements/file
-                          </div>
-                        </div>
-                        <div className="bg-slate-700 rounded p-3">
-                          <div className="text-purple-400 font-medium mb-1">Dependency Style</div>
-                          <div className="text-slate-300">
-                            {analysis.summary.imports > analysis.summary.supported_files * 2 ? 'Highly modular' : 
-                             analysis.summary.imports < analysis.summary.supported_files ? 'Self-contained' : 'Balanced imports'}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
 
-            {/* File Directory Tree & Code Viewer - Full Width Below */}
-            <div className="mt-8">
-              <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+            {/* Summary Cards - Horizontal Grid */}
+            {analysis.summary && (
+              <div className="mb-8">
+                <h3 className="text-lg font-semibold text-white mb-6 flex items-center gap-2">
+                  📊 Analysis Summary
+                </h3>
+                
+                {/* Statistics Grid - Responsive Cards */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 mb-6">
+                  <div className="bg-slate-800 border border-slate-700 rounded-lg p-3 sm:p-4 text-center">
+                    <div className="text-xl sm:text-2xl font-bold text-blue-400 mb-1">{analysis.summary.supported_files}</div>
+                    <div className="text-slate-300 text-xs sm:text-sm">Files</div>
+                  </div>
+                  <div className="bg-slate-800 border border-slate-700 rounded-lg p-3 sm:p-4 text-center">
+                    <div className="text-xl sm:text-2xl font-bold text-green-400 mb-1">{analysis.summary.functions}</div>
+                    <div className="text-slate-300 text-xs sm:text-sm">Functions</div>
+                  </div>
+                  <div className="bg-slate-800 border border-slate-700 rounded-lg p-3 sm:p-4 text-center">
+                    <div className="text-xl sm:text-2xl font-bold text-purple-400 mb-1">{analysis.summary.classes}</div>
+                    <div className="text-slate-300 text-xs sm:text-sm">Classes</div>
+                  </div>
+                  <div className="bg-slate-800 border border-slate-700 rounded-lg p-3 sm:p-4 text-center">
+                    <div className="text-xl sm:text-2xl font-bold text-orange-400 mb-1">{analysis.summary.imports}</div>
+                    <div className="text-slate-300 text-xs sm:text-sm">Imports</div>
+                  </div>
+                  <div className="bg-slate-800 border border-slate-700 rounded-lg p-3 sm:p-4 text-center col-span-2 sm:col-span-1">
+                    <div className="text-base sm:text-lg font-bold text-cyan-400 mb-1 truncate">{analysis.summary.main_language}</div>
+                    <div className="text-slate-300 text-xs sm:text-sm">Language</div>
+                  </div>
+                </div>
+
+                {/* Code Insights - Responsive Cards */}
+                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+                  <div className="bg-slate-800 border border-slate-700 rounded-lg p-4">
+                    <div className="text-blue-400 font-medium mb-2">Architecture Pattern</div>
+                    <div className="text-slate-300 text-sm">
+                      {analysis.summary.functions > analysis.summary.classes * 3 ? 'Functional-oriented' : 
+                       analysis.summary.classes > analysis.summary.functions ? 'Object-oriented' : 'Hybrid approach'}
+                    </div>
+                  </div>
+                  <div className="bg-slate-800 border border-slate-700 rounded-lg p-4">
+                    <div className="text-green-400 font-medium mb-2">Code Density</div>
+                    <div className="text-slate-300 text-sm">
+                      {Math.round((analysis.summary.functions + analysis.summary.classes) / analysis.summary.supported_files)} elements/file
+                    </div>
+                  </div>
+                  <div className="bg-slate-800 border border-slate-700 rounded-lg p-4">
+                    <div className="text-purple-400 font-medium mb-2">Dependency Style</div>
+                    <div className="text-slate-300 text-sm">
+                      {analysis.summary.imports > analysis.summary.supported_files * 2 ? 'Highly modular' : 
+                       analysis.summary.imports < analysis.summary.supported_files ? 'Self-contained' : 'Balanced imports'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* File Directory Tree & Code Viewer - Improved Layout */}
+            <div className="mb-8">
+              <h3 className="text-lg font-semibold text-white mb-6 flex items-center gap-2">
                 🗂️ Development Panel
               </h3>
-              <div className="flex gap-6 h-80">
-                {/* File Tree - Left Side */}
-                <div className="w-1/3 bg-slate-800 border border-slate-700 rounded-lg p-4">
-                  <div className="text-sm font-medium text-slate-300 mb-3">Repository Files</div>
-                  <div className="h-full overflow-auto">
+              <div className="grid lg:grid-cols-5 gap-4 lg:gap-6">
+                {/* File Tree - Responsive and Better Proportions */}
+                <div className="lg:col-span-2 bg-slate-800 border border-slate-700 rounded-lg order-2 lg:order-1">
+                  <div className="border-b border-slate-700 p-3 lg:p-4">
+                    <div className="text-sm font-medium text-slate-300">Repository Files</div>
+                    <div className="text-xs text-slate-400 mt-1 hidden sm:block">• Green files are analyzable • Click to analyze individual files</div>
+                  </div>
+                  <div className="p-3 lg:p-4 h-64 lg:h-80 overflow-auto">
                     <FileDirectoryTree 
                       owner={repository.owner}
                       repo={repository.name}
@@ -1020,17 +1015,30 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
                   </div>
                 </div>
                 
-                {/* Code Viewer - Right Side */}
-                <div className="w-2/3 bg-slate-800 border border-slate-700 rounded-lg p-4">
-                  <div className="text-sm font-medium text-slate-300 mb-3">Code Preview</div>
-                  <div className="h-full overflow-auto">
+                {/* Code Viewer - Responsive and Larger Space */}
+                <div className="lg:col-span-3 bg-slate-800 border border-slate-700 rounded-lg order-1 lg:order-2">
+                  <div className="border-b border-slate-700 p-3 lg:p-4">
+                    <div className="text-sm font-medium text-slate-300">Code Preview</div>
+                    <div className="text-xs text-slate-400 mt-1 truncate">
+                      {selectedFileContent ? 
+                        `${selectedFileContent.path} (${selectedFileContent.language})` : 
+                        "Click a node in the visualization or file in the tree to view code"
+                      }
+                    </div>
+                  </div>
+                  <div className="p-3 lg:p-4 h-64 lg:h-80 overflow-auto">
                     {selectedFileContent ? (
-                      <pre className="text-xs text-slate-300 whitespace-pre-wrap">
-                        <code>{selectedFileContent.content}</code>
-                      </pre>
+                      <div className="relative">
+                        <pre className="text-xs text-slate-300 whitespace-pre-wrap font-mono leading-relaxed">
+                          <code>{selectedFileContent.content}</code>
+                        </pre>
+                      </div>
                     ) : (
                       <div className="h-full flex items-center justify-center text-slate-400">
-                        Click a node or file to view code
+                        <div className="text-center">
+                          <File className="w-8 lg:w-12 h-8 lg:h-12 mx-auto mb-2 opacity-50" />
+                          <div className="text-sm lg:text-base">Click a node or file to view code</div>
+                        </div>
                       </div>
                     )}
                   </div>
