@@ -857,24 +857,24 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
               {/* Header */}
               <div className="mb-6">
                 <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <CheckCircle className="w-6 h-6 text-green-400" />
-                  <h2 className="text-2xl font-bold text-white">Analysis Complete!</h2>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => exportAnalysis('json')}
-                    className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors"
-                  >
-                    Export JSON
-                  </button>
-                  <button
-                    onClick={() => exportAnalysis('csv')}
-                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
-                  >
-                    Export CSV
-                  </button>
-                </div>
+                  <div className="flex items-center gap-2">
+                    <CheckCircle className="w-6 h-6 text-green-400" />
+                    <h2 className="text-2xl font-bold text-white">Analysis Complete!</h2>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => exportAnalysis('json')}
+                      className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors"
+                    >
+                      Export JSON
+                    </button>
+                    <button
+                      onClick={() => exportAnalysis('csv')}
+                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
+                    >
+                      Export CSV
+                    </button>
+                  </div>
                 </div>
               </div>
 
