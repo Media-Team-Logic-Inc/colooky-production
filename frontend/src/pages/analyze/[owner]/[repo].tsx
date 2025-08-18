@@ -1000,10 +1000,9 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
                         repo={repository.name}
                         onFileSelect={(filePath) => {
                           setSelectedFiles([filePath]);
-                          setCurrentStep('results');
                           setAnalysis(null);
                           // Trigger new analysis for selected file
-                          analyzeFiles([filePath]);
+                          startAnalysis();
                         }}
                       />
                     </div>
