@@ -853,34 +853,35 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
 
           {/* Step 3: Results - Responsive Layout */}
           {currentStep === 'results' && analysis?.visualization && (
-            <div className="flex gap-6 min-h-screen">
-              {/* Main Visualization Area */}
-              <div className="flex-1 min-h-0">
-                <div className="mb-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-2">
-                      <CheckCircle className="w-6 h-6 text-green-400" />
-                      <h2 className="text-2xl font-bold text-white">Analysis Complete!</h2>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => exportAnalysis('json')}
-                        className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors"
-                      >
-                        Export JSON
-                      </button>
-                      <button
-                        onClick={() => exportAnalysis('csv')}
-                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
-                      >
-                        Export CSV
-                      </button>
-                    </div>
-                  </div>
+            {/* Header */}
+            <div className="mb-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="w-6 h-6 text-green-400" />
+                  <h2 className="text-2xl font-bold text-white">Analysis Complete!</h2>
                 </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => exportAnalysis('json')}
+                    className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors"
+                  >
+                    Export JSON
+                  </button>
+                  <button
+                    onClick={() => exportAnalysis('csv')}
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
+                  >
+                    Export CSV
+                  </button>
+                </div>
+              </div>
+            </div>
 
-                {/* Repository Visualization - Takes remaining space */}
-                <div className="flex-1 min-w-0 h-96">
+            <div className="flex gap-6">
+              {/* Main Visualization Area */}
+              <div className="flex-1">
+                {/* Repository Visualization */}
+                <div className="h-96 bg-slate-800 rounded-lg">
                 <ImprovedFlexibleSubwayMap 
                   scenario={(() => {
                     // Generate intelligent visualization based on content type and complexity
@@ -929,6 +930,7 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
                     }
                   }}
                 />
+                </div>
               </div>
               
               {/* Right Sidebar - Statistics & Insights */}
@@ -989,49 +991,50 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
                         </div>
                       </div>
                     </div>
-                    
-                    {/* File Directory Tree & Code Viewer - Side by Side */}
-                    <div className="mt-6 border-t border-slate-600 pt-4">
-                      <h4 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
-                        🗂️ Development Panel
-                      </h4>
-                      <div className="flex gap-4 h-80">
-                        {/* File Tree - Left Side */}
-                        <div className="w-1/2 bg-slate-700 rounded p-3">
-                          <div className="text-xs font-medium text-slate-300 mb-2">Repository Files</div>
-                          <FileDirectoryTree 
-                            owner={repository.owner}
-                            repo={repository.name}
-                            onFileSelect={(filePath) => {
-                              setSelectedFiles([filePath]);
-                              setAnalysis(null);
-                              // Trigger new analysis for selected file
-                              startAnalysis();
-                            }}
-                          />
-                        </div>
-                        
-                        {/* Code Viewer - Right Side */}
-                        <div className="w-1/2 bg-slate-700 rounded p-3">
-                          <div className="text-xs font-medium text-slate-300 mb-2">Code Preview</div>
-                          {selectedFileContent ? (
-                            <div className="h-full overflow-auto">
-                              <pre className="text-xs text-slate-300 whitespace-pre-wrap">
-                                <code>{selectedFileContent.content}</code>
-                              </pre>
-                            </div>
-                          ) : (
-                            <div className="h-full flex items-center justify-center text-xs text-slate-400">
-                              Click a node or file to view code
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
                   </div>
                 )}
               </div>
-              
+            </div>
+
+            {/* File Directory Tree & Code Viewer - Full Width Below */}
+            <div className="mt-8">
+              <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                🗂️ Development Panel
+              </h3>
+              <div className="flex gap-6 h-80">
+                {/* File Tree - Left Side */}
+                <div className="w-1/3 bg-slate-800 border border-slate-700 rounded-lg p-4">
+                  <div className="text-sm font-medium text-slate-300 mb-3">Repository Files</div>
+                  <div className="h-full overflow-auto">
+                    <FileDirectoryTree 
+                      owner={repository.owner}
+                      repo={repository.name}
+                      onFileSelect={(filePath) => {
+                        setSelectedFiles([filePath]);
+                        setAnalysis(null);
+                        // Trigger new analysis for selected file
+                        startAnalysis();
+                      }}
+                    />
+                  </div>
+                </div>
+                
+                {/* Code Viewer - Right Side */}
+                <div className="w-2/3 bg-slate-800 border border-slate-700 rounded-lg p-4">
+                  <div className="text-sm font-medium text-slate-300 mb-3">Code Preview</div>
+                  <div className="h-full overflow-auto">
+                    {selectedFileContent ? (
+                      <pre className="text-xs text-slate-300 whitespace-pre-wrap">
+                        <code>{selectedFileContent.content}</code>
+                      </pre>
+                    ) : (
+                      <div className="h-full flex items-center justify-center text-slate-400">
+                        Click a node or file to view code
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
 
             <div className="mt-8 flex justify-center gap-4">
