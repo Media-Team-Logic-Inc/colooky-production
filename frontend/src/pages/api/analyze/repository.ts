@@ -489,7 +489,7 @@ async function generateVisualization(analysis: any): Promise<any> {
   console.log('🔍 Sample elements:', {
     sampleFunction: analysis.elements.find(e => e.type === 'function')?.name,
     sampleImport: analysis.elements.find(e => e.type === 'import')?.name,
-    allTypes: [...new Set(analysis.elements.map(e => e.type))]
+    allTypes: Array.from(new Set(analysis.elements.map(e => e.type)))
   });
 
   // Create semantic architecture layout - ONLY for groups that have elements
