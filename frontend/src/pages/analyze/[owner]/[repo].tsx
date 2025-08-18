@@ -669,7 +669,16 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
                 Repositories
               </Link>
               <span className="text-slate-400">→</span>
-              <span className="text-white font-medium">{repository.owner}/{repository.name}</span>
+              <button
+                onClick={() => {
+                  setCurrentStep('select');
+                  setAnalysis(null);
+                  setSelectedFiles([]);
+                }}
+                className="text-white font-medium hover:text-blue-400 transition-colors cursor-pointer"
+              >
+                {repository.owner}/{repository.name}
+              </button>
               {currentStep === 'results' && selectedFiles.length === 1 && (
                 <>
                   <span className="text-slate-400">→</span>

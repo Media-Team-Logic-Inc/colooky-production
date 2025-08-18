@@ -484,23 +484,23 @@ async function generateVisualization(analysis: any): Promise<any> {
     utilities: elementsByType.utilities.length
   });
 
-  // Create semantic architecture layout
+  // Create semantic architecture layout with tighter spacing
   const layoutGroups = [
     { name: 'imports', elements: elementsByType.imports, y: 50, color: '#f59e0b' },
-    { name: 'interfaces', elements: elementsByType.interfaces, y: 150, color: '#8b5cf6' },
-    { name: 'contexts', elements: elementsByType.contexts, y: 250, color: '#06b6d4' },
-    { name: 'providers', elements: elementsByType.providers, y: 350, color: '#10b981' },
-    { name: 'hooks', elements: elementsByType.hooks, y: 450, color: '#3b82f6' },
-    { name: 'authMethods', elements: elementsByType.authMethods, y: 550, color: '#3b82f6' },
-    { name: 'profileMethods', elements: elementsByType.profileMethods, y: 650, color: '#3b82f6' },
-    { name: 'utilities', elements: elementsByType.utilities, y: 750, color: '#6b7280' },
-    { name: 'exports', elements: elementsByType.exports, y: 850, color: '#87CEEB' }
+    { name: 'interfaces', elements: elementsByType.interfaces, y: 120, color: '#8b5cf6' },
+    { name: 'contexts', elements: elementsByType.contexts, y: 190, color: '#06b6d4' },
+    { name: 'providers', elements: elementsByType.providers, y: 260, color: '#10b981' },
+    { name: 'hooks', elements: elementsByType.hooks, y: 330, color: '#3b82f6' },
+    { name: 'authMethods', elements: elementsByType.authMethods, y: 400, color: '#3b82f6' },
+    { name: 'profileMethods', elements: elementsByType.profileMethods, y: 470, color: '#3b82f6' },
+    { name: 'utilities', elements: elementsByType.utilities, y: 540, color: '#6b7280' },
+    { name: 'exports', elements: elementsByType.exports, y: 610, color: '#87CEEB' }
   ];
 
   layoutGroups.forEach(group => {
     group.elements.forEach((element: any, elementIndex: number) => {
-      // Horizontal spacing for elements in the same group
-      const nodeX = 150 + elementIndex * 220; // More horizontal spacing
+      // Horizontal spacing for elements in the same group - reduced spacing
+      const nodeX = 100 + elementIndex * 180; // Tighter horizontal spacing
       const nodeY = group.y;
       
       // Detect error handling functions
@@ -541,6 +541,7 @@ async function generateVisualization(analysis: any): Promise<any> {
         isError: isErrorFunction,
         isValidation: isValidationFunction,
         group: group.name, // Add semantic group info
+        content: element.content, // Add actual code content for code viewer
         details: element.details || [
           `Group: ${group.name}`,
           `${element.type}: ${element.name}`,
@@ -585,69 +586,63 @@ async function generateVisualization(analysis: any): Promise<any> {
   // Create semantic architecture flow connections
   const semanticConnections = [];
   
-  // 1. Imports flow to interfaces
-  if (elementsByType.imports.length > 0 && elementsByType.interfaces.length > 0) {
+  // 1. Imports flow to interfaces (or directly to context if no interfaces)
+  if (elementsByType.imports.length > 0) {
     const importNode = nodes.find(n => elementsByType.imports.some(e => e.id === n.id));
-    const interfaceNode = nodes.find(n => elementsByType.interfaces.some(e => e.id === n.id));
-    if (importNode && interfaceNode) {
+    let targetNode = nodes.find(n => elementsByType.interfaces.some(e => e.id === n.id));
+    
+    // If no interfaces, connect to context
+    if (!targetNode && elementsByType.contexts.length > 0) {
+      targetNode = nodes.find(n => elementsByType.contexts.some(e => e.id === n.id));
+    }
+    
+    // If no context, connect to provider
+    if (!targetNode && elementsByType.providers.length > 0) {
+      targetNode = nodes.find(n => elementsByType.providers.some(e => e.id === n.id));
+    }
+    if (importNode && targetNode) {
       semanticConnections.push({
         from: { x: importNode.x + importNode.width/2, y: importNode.y + importNode.height },
-        to: { x: interfaceNode.x + interfaceNode.width/2, y: interfaceNode.y },
-        color: '#8b5cf6',
-        label: 'Types',
-        detail: 'Imports provide type definitions',
-        strokeWidth: 3
-      });
-    }
-  }
-  
-  // 2. Interfaces flow to contexts
-  if (elementsByType.interfaces.length > 0 && elementsByType.contexts.length > 0) {
-    const interfaceNode = nodes.find(n => elementsByType.interfaces.some(e => e.id === n.id));
-    const contextNode = nodes.find(n => elementsByType.contexts.some(e => e.id === n.id));
-    if (interfaceNode && contextNode) {
-      semanticConnections.push({
-        from: { x: interfaceNode.x + interfaceNode.width/2, y: interfaceNode.y + interfaceNode.height },
-        to: { x: contextNode.x + contextNode.width/2, y: contextNode.y },
-        color: '#06b6d4',
-        label: 'Context',
-        detail: 'Interface defines context type',
-        strokeWidth: 3
-      });
-    }
-  }
-  
-  // 3. Context flows to provider
-  if (elementsByType.contexts.length > 0 && elementsByType.providers.length > 0) {
-    const contextNode = nodes.find(n => elementsByType.contexts.some(e => e.id === n.id));
-    const providerNode = nodes.find(n => elementsByType.providers.some(e => e.id === n.id));
-    if (contextNode && providerNode) {
-      semanticConnections.push({
-        from: { x: contextNode.x + contextNode.width/2, y: contextNode.y + contextNode.height },
-        to: { x: providerNode.x + providerNode.width/2, y: providerNode.y },
-        color: '#10b981',
-        label: 'Provider',
-        detail: 'Context creates provider component',
-        strokeWidth: 4 // Thicker for main architecture flow
-      });
-    }
-  }
-  
-  // 4. Provider flows to hooks
-  if (elementsByType.providers.length > 0 && elementsByType.hooks.length > 0) {
-    const providerNode = nodes.find(n => elementsByType.providers.some(e => e.id === n.id));
-    const hookNode = nodes.find(n => elementsByType.hooks.some(e => e.id === n.id));
-    if (providerNode && hookNode) {
-      semanticConnections.push({
-        from: { x: providerNode.x + providerNode.width/2, y: providerNode.y + providerNode.height },
-        to: { x: hookNode.x + hookNode.width/2, y: hookNode.y },
+        to: { x: targetNode.x + targetNode.width/2, y: targetNode.y },
         color: '#3b82f6',
-        label: 'Hook',
-        detail: 'Provider enables hook usage',
-        strokeWidth: 4 // Thicker for main architecture flow
+        label: 'Flow',
+        detail: 'Architecture flow from imports',
+        strokeWidth: 3,
+        animated: false
       });
     }
   }
+  
+  // Create main architectural flow connections between groups
+  const groupFlow = [
+    { from: 'imports', to: 'contexts', color: '#06b6d4', label: 'Setup' },
+    { from: 'contexts', to: 'providers', color: '#10b981', label: 'Provider' },
+    { from: 'providers', to: 'hooks', color: '#3b82f6', label: 'Hook' },
+    { from: 'hooks', to: 'authMethods', color: '#3b82f6', label: 'Auth' },
+    { from: 'authMethods', to: 'profileMethods', color: '#10b981', label: 'Profile' }
+  ];
+
+  groupFlow.forEach(flow => {
+    const fromGroup = elementsByType[flow.from];
+    const toGroup = elementsByType[flow.to];
+    
+    if (fromGroup.length > 0 && toGroup.length > 0) {
+      const fromNode = nodes.find(n => fromGroup.some(e => e.id === n.id));
+      const toNode = nodes.find(n => toGroup.some(e => e.id === n.id));
+      
+      if (fromNode && toNode) {
+        semanticConnections.push({
+          from: { x: fromNode.x + fromNode.width/2, y: fromNode.y + fromNode.height },
+          to: { x: toNode.x + toNode.width/2, y: toNode.y },
+          color: flow.color,
+          label: flow.label,
+          detail: `Architecture flow: ${flow.from} → ${flow.to}`,
+          strokeWidth: 4,
+          animated: false
+        });
+      }
+    }
+  });
   
   // 5. Add error handling flows for auth methods
   elementsByType.authMethods.forEach(authMethod => {
@@ -728,7 +723,7 @@ async function generateVisualization(analysis: any): Promise<any> {
     id: 'semantic-architecture-analysis',
     title: `Semantic Architecture Flow - ${analysis.summary.main_language}`,
     description: `Intelligent architecture visualization showing code flow: imports → interfaces → context → provider → hooks → methods`,
-    viewBox: "0 0 3500 1000", // Larger viewBox for semantic layout
+    viewBox: "0 0 4500 800", // Wider viewBox to prevent horizontal clipping, shorter for tighter spacing
     nodes,
     connections,
     legendItems

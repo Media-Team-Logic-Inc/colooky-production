@@ -73,6 +73,9 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
 }) => {
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
   const [legendCollapsed, setLegendCollapsed] = useState(false);
+  const [legendPosition, setLegendPosition] = useState({ x: 0, y: 0 });
+  const [isDraggingLegend, setIsDraggingLegend] = useState(false);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [codeViewerOpen, setCodeViewerOpen] = useState(false);
   const [zoom, setZoom] = useState(1);
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
@@ -90,6 +93,42 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
   const simulationInterval = useRef<NodeJS.Timeout | null>(null);
 
   const selectedNodeInfo = scenario.nodes.find(node => node.id === selectedNode);
+
+  // Legend drag handlers
+  const handleLegendMouseDown = (e: React.MouseEvent) => {
+    if ((e.target as HTMLElement).tagName === 'BUTTON') return; // Don't drag when clicking collapse button
+    setIsDraggingLegend(true);
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    setDragOffset({
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top
+    });
+  };
+
+  const handleLegendMouseMove = (e: MouseEvent) => {
+    if (isDraggingLegend) {
+      setLegendPosition({
+        x: e.clientX - dragOffset.x,
+        y: e.clientY - dragOffset.y
+      });
+    }
+  };
+
+  const handleLegendMouseUp = () => {
+    setIsDraggingLegend(false);
+  };
+
+  // Add legend drag event listeners
+  React.useEffect(() => {
+    if (isDraggingLegend) {
+      document.addEventListener('mousemove', handleLegendMouseMove);
+      document.addEventListener('mouseup', handleLegendMouseUp);
+      return () => {
+        document.removeEventListener('mousemove', handleLegendMouseMove);
+        document.removeEventListener('mouseup', handleLegendMouseUp);
+      };
+    }
+  }, [isDraggingLegend, dragOffset]);
 
   // Enhanced node click handler
   const handleNodeClick = (node: FlowNode) => {
@@ -576,11 +615,19 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
         </div>
 
         {/* Legend */}
-        <div className={`absolute top-6 right-6 z-20 transition-all duration-300 ${
-          legendCollapsed ? 'w-10' : 'w-auto'
-        }`}>
+        <div 
+          className={`absolute z-20 transition-all duration-300 ${
+            legendCollapsed ? 'w-10' : 'w-auto'
+          } ${isDraggingLegend ? 'cursor-grabbing' : 'cursor-grab'}`}
+          style={{
+            top: legendPosition.y === 0 ? 24 : legendPosition.y,
+            right: legendPosition.x === 0 ? 24 : 'auto',
+            left: legendPosition.x === 0 ? 'auto' : legendPosition.x
+          }}
+          onMouseDown={handleLegendMouseDown}
+        >
           <div className="bg-slate-800/95 border border-slate-600 rounded-lg backdrop-blur-sm">
-            <div className="flex items-center justify-between p-3">
+            <div className="flex items-center justify-between p-3 select-none">
               <span className={`text-white font-medium ${legendCollapsed ? 'hidden' : 'block'}`}>
                 Legend
               </span>
