@@ -856,7 +856,7 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
             <div>
               {/* Header */}
               <div className="mb-6">
-              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                   <CheckCircle className="w-6 h-6 text-green-400" />
                   <h2 className="text-2xl font-bold text-white">Analysis Complete!</h2>
@@ -875,8 +875,8 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
                     Export CSV
                   </button>
                 </div>
+                </div>
               </div>
-            </div>
 
             <div className="flex gap-6">
               {/* Main Visualization Area */}
