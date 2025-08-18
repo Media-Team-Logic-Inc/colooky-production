@@ -481,21 +481,39 @@ async function generateVisualization(analysis: any): Promise<any> {
     hooks: elementsByType.hooks.length,
     authMethods: elementsByType.authMethods.length,
     profileMethods: elementsByType.profileMethods.length,
-    utilities: elementsByType.utilities.length
+    utilities: elementsByType.utilities.length,
+    interfaces: elementsByType.interfaces.length,
+    exports: elementsByType.exports.length
+  });
+  
+  console.log('🔍 Sample elements:', {
+    sampleFunction: analysis.elements.find(e => e.type === 'function')?.name,
+    sampleImport: analysis.elements.find(e => e.type === 'import')?.name,
+    allTypes: [...new Set(analysis.elements.map(e => e.type))]
   });
 
-  // Create semantic architecture layout with tighter spacing
-  const layoutGroups = [
-    { name: 'imports', elements: elementsByType.imports, y: 50, color: '#f59e0b' },
-    { name: 'interfaces', elements: elementsByType.interfaces, y: 120, color: '#8b5cf6' },
-    { name: 'contexts', elements: elementsByType.contexts, y: 190, color: '#06b6d4' },
-    { name: 'providers', elements: elementsByType.providers, y: 260, color: '#10b981' },
-    { name: 'hooks', elements: elementsByType.hooks, y: 330, color: '#3b82f6' },
-    { name: 'authMethods', elements: elementsByType.authMethods, y: 400, color: '#3b82f6' },
-    { name: 'profileMethods', elements: elementsByType.profileMethods, y: 470, color: '#3b82f6' },
-    { name: 'utilities', elements: elementsByType.utilities, y: 540, color: '#6b7280' },
-    { name: 'exports', elements: elementsByType.exports, y: 610, color: '#87CEEB' }
+  // Create semantic architecture layout - ONLY for groups that have elements
+  const allLayoutGroups = [
+    { name: 'imports', elements: elementsByType.imports, color: '#f59e0b' },
+    { name: 'interfaces', elements: elementsByType.interfaces, color: '#8b5cf6' },
+    { name: 'contexts', elements: elementsByType.contexts, color: '#06b6d4' },
+    { name: 'providers', elements: elementsByType.providers, color: '#10b981' },
+    { name: 'hooks', elements: elementsByType.hooks, color: '#3b82f6' },
+    { name: 'authMethods', elements: elementsByType.authMethods, color: '#3b82f6' },
+    { name: 'profileMethods', elements: elementsByType.profileMethods, color: '#3b82f6' },
+    { name: 'utilities', elements: elementsByType.utilities, color: '#6b7280' },
+    { name: 'exports', elements: elementsByType.exports, color: '#87CEEB' }
   ];
+  
+  // Filter to only groups with elements and assign tight Y positions
+  const layoutGroups = allLayoutGroups
+    .filter(group => group.elements.length > 0)
+    .map((group, index) => ({
+      ...group,
+      y: 50 + index * 80 // Tight 80px spacing between existing groups
+    }));
+    
+  console.log('📐 Layout groups (only non-empty):', layoutGroups.map(g => `${g.name}: ${g.elements.length} elements at y=${g.y}`));
 
   layoutGroups.forEach(group => {
     group.elements.forEach((element: any, elementIndex: number) => {
@@ -613,41 +631,44 @@ async function generateVisualization(analysis: any): Promise<any> {
     }
   }
   
-  // Create main architectural flow connections between groups
-  const groupFlow = [
-    { from: 'imports', to: 'contexts', color: '#06b6d4', label: 'Setup' },
-    { from: 'contexts', to: 'providers', color: '#10b981', label: 'Provider' },
-    { from: 'providers', to: 'hooks', color: '#3b82f6', label: 'Hook' },
-    { from: 'hooks', to: 'authMethods', color: '#3b82f6', label: 'Auth' },
-    { from: 'authMethods', to: 'profileMethods', color: '#10b981', label: 'Profile' }
-  ];
-
-  groupFlow.forEach(flow => {
-    const fromGroup = elementsByType[flow.from];
-    const toGroup = elementsByType[flow.to];
-    
-    if (fromGroup.length > 0 && toGroup.length > 0) {
-      const fromNode = nodes.find(n => fromGroup.some(e => e.id === n.id));
-      const toNode = nodes.find(n => toGroup.some(e => e.id === n.id));
-      
-      if (fromNode && toNode) {
-        semanticConnections.push({
-          from: { x: fromNode.x + fromNode.width/2, y: fromNode.y + fromNode.height },
-          to: { x: toNode.x + toNode.width/2, y: toNode.y },
-          color: flow.color,
-          label: flow.label,
-          detail: `Architecture flow: ${flow.from} → ${flow.to}`,
-          strokeWidth: 4,
-          animated: false
-        });
-      }
-    }
-  });
+  // Create flexible architectural flow - connect existing groups dynamically
+  console.log('🔗 Connecting existing groups:', layoutGroups.map(g => g.name));
   
-  // 5. Add error handling flows for auth methods
+  // Connect consecutive existing groups
+  for (let i = 0; i < layoutGroups.length - 1; i++) {
+    const currentGroup = layoutGroups[i];
+    const nextGroup = layoutGroups[i + 1];
+    
+    const currentNode = nodes.find(n => currentGroup.elements.some(e => e.id === n.id));
+    const nextNode = nodes.find(n => nextGroup.elements.some(e => e.id === n.id));
+    
+    if (currentNode && nextNode) {
+      console.log(`🔗 Creating connection: ${currentGroup.name} → ${nextGroup.name}`);
+      semanticConnections.push({
+        from: { x: currentNode.x + currentNode.width/2, y: currentNode.y + currentNode.height },
+        to: { x: nextNode.x + nextNode.width/2, y: nextNode.y },
+        color: nextGroup.color,
+        label: 'Flow',
+        detail: `Architecture flow: ${currentGroup.name} → ${nextGroup.name}`,
+        strokeWidth: 4,
+        animated: false
+      });
+    } else {
+      console.log(`❌ Missing nodes for connection: ${currentGroup.name} → ${nextGroup.name}`, {
+        currentNode: !!currentNode,
+        nextNode: !!nextNode
+      });
+    }
+  }
+  
+  // 5. Add REAL error handling flows - only for functions with actual try/catch or error keywords
   elementsByType.authMethods.forEach(authMethod => {
     const authNode = nodes.find(n => n.id === authMethod.id);
     if (authNode) {
+      // Only add error path if the function actually contains error handling keywords
+      const hasRealErrorHandling = authMethod.content && 
+        /try\s*\{|catch\s*\(|throw\s+|\.catch\(|error\s*[=:]/i.test(authMethod.content);
+      
       // Add success path to profile methods
       const profileNode = nodes.find(n => elementsByType.profileMethods.some(e => e.id === n.id));
       if (profileNode) {
@@ -661,18 +682,20 @@ async function generateVisualization(analysis: any): Promise<any> {
         });
       }
       
-      // Add error handling path
-      semanticConnections.push({
-        from: { x: authNode.x + authNode.width/2, y: authNode.y + authNode.height },
-        to: { x: authNode.x + authNode.width/2, y: authNode.y + authNode.height + 60 },
-        color: '#ef4444',
-        label: 'Error',
-        detail: `${authMethod.name} error handling (try/catch)`,
-        strokeWidth: 3,
-        strokeDasharray: "10,5",
-        animated: true,
-        isError: true
-      });
+      // ONLY add error path if there's REAL error handling in the code
+      if (hasRealErrorHandling) {
+        semanticConnections.push({
+          from: { x: authNode.x + authNode.width/2, y: authNode.y + authNode.height },
+          to: { x: authNode.x + authNode.width/2, y: authNode.y + authNode.height + 60 },
+          color: '#ef4444',
+          label: 'Error',
+          detail: `${authMethod.name} has try/catch error handling`,
+          strokeWidth: 3,
+          strokeDasharray: "10,5",
+          animated: true,
+          isError: true
+        });
+      }
     }
   });
   
