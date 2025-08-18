@@ -853,9 +853,9 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
 
           {/* Step 3: Results - Responsive Layout */}
           {currentStep === 'results' && analysis?.visualization && (
-            <div className="flex gap-6">
+            <div className="flex gap-6 min-h-screen">
               {/* Main Visualization Area */}
-              <div className="flex-1">
+              <div className="flex-1 min-h-0">
                 <div className="mb-6">
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-2">
@@ -880,7 +880,7 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
                 </div>
 
                 {/* Repository Visualization - Takes remaining space */}
-                <div className="flex-1 min-w-0">
+                <div className="flex-1 min-w-0 h-96">
                 <ImprovedFlexibleSubwayMap 
                   scenario={(() => {
                     // Generate intelligent visualization based on content type and complexity
@@ -932,7 +932,7 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
               </div>
               
               {/* Right Sidebar - Statistics & Insights */}
-              <div className="w-80 flex-shrink-0">
+              <div className="w-64 flex-shrink-0">
                 {analysis.summary && (
                   <div className="bg-slate-800 border border-slate-700 rounded-lg p-4 sticky top-6">
                     <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
@@ -990,21 +990,43 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
                       </div>
                     </div>
                     
-                    {/* File Directory Tree */}
+                    {/* File Directory Tree & Code Viewer - Side by Side */}
                     <div className="mt-6 border-t border-slate-600 pt-4">
                       <h4 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
-                        🗂️ Repository Files
+                        🗂️ Development Panel
                       </h4>
-                      <FileDirectoryTree 
-                        owner={repository.owner}
-                        repo={repository.name}
-                        onFileSelect={(filePath) => {
-                          setSelectedFiles([filePath]);
-                          setAnalysis(null);
-                          // Trigger new analysis for selected file
-                          startAnalysis();
-                        }}
-                      />
+                      <div className="flex gap-4 h-80">
+                        {/* File Tree - Left Side */}
+                        <div className="w-1/2 bg-slate-700 rounded p-3">
+                          <div className="text-xs font-medium text-slate-300 mb-2">Repository Files</div>
+                          <FileDirectoryTree 
+                            owner={repository.owner}
+                            repo={repository.name}
+                            onFileSelect={(filePath) => {
+                              setSelectedFiles([filePath]);
+                              setAnalysis(null);
+                              // Trigger new analysis for selected file
+                              startAnalysis();
+                            }}
+                          />
+                        </div>
+                        
+                        {/* Code Viewer - Right Side */}
+                        <div className="w-1/2 bg-slate-700 rounded p-3">
+                          <div className="text-xs font-medium text-slate-300 mb-2">Code Preview</div>
+                          {selectedFileContent ? (
+                            <div className="h-full overflow-auto">
+                              <pre className="text-xs text-slate-300 whitespace-pre-wrap">
+                                <code>{selectedFileContent.content}</code>
+                              </pre>
+                            </div>
+                          ) : (
+                            <div className="h-full flex items-center justify-center text-xs text-slate-400">
+                              Click a node or file to view code
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 )}
