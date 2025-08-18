@@ -1064,7 +1064,6 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
                 </Link>
               </div>
             </div>
-            </div>
           )}
         </main>
       </div>
