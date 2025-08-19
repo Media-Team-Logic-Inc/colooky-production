@@ -183,18 +183,30 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
     const nodesCenterX = (minX + maxX) / 2;
     const nodesCenterY = (minY + maxY) / 2;
     
-    // Calculate viewport center (assuming typical container size)
-    const viewportWidth = 800;  // Approximate container width
-    const viewportHeight = 400; // Approximate container height
+    // Get the actual container dimensions dynamically
+    const container = document.querySelector('.subway-container');
+    const containerRect = container?.getBoundingClientRect();
+    
+    // Use actual container size or fallback
+    const viewportWidth = containerRect?.width || 800;
+    const viewportHeight = containerRect?.height || 384; // h-96 = 384px
     const viewportCenterX = viewportWidth / 2;
     const viewportCenterY = viewportHeight / 2;
     
-    // Calculate offset needed to center nodes in viewport
+    // Calculate offset to center nodes in viewport, accounting for current zoom
     const offsetX = viewportCenterX - (nodesCenterX * zoom);
     const offsetY = viewportCenterY - (nodesCenterY * zoom);
     
     setPanOffset({ x: offsetX, y: offsetY });
-    console.log('🎯 Auto-centered visualization on nodes:', { nodesCenterX, nodesCenterY, offsetX, offsetY });
+    console.log('🎯 Auto-centered visualization on nodes:', { 
+      nodesCenterX, 
+      nodesCenterY, 
+      viewportWidth, 
+      viewportHeight, 
+      zoom, 
+      offsetX, 
+      offsetY 
+    });
   };
 
   // Zoom controls - Increased max zoom for better legibility
@@ -202,8 +214,11 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
   const handleZoomOut = () => setZoom(prev => Math.max(prev - 0.3, 0.1));
   const handleZoomReset = () => {
     setZoom(1);
-    setPanOffset({ x: 0, y: 0 });
     setDraggedNodes({}); // Reset node positions
+    // Center the nodes after resetting zoom
+    setTimeout(() => {
+      centerOnNodes();
+    }, 50);
   };
 
   // Drag and drop handlers
@@ -631,7 +646,7 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
     <div className="w-full h-full flex flex-col bg-slate-900 rounded-lg overflow-hidden">
       {/* Visualization Area - Fits within parent container */}
       <div 
-        className="relative flex-1 overflow-hidden"
+        className="subway-container relative flex-1 overflow-hidden"
         style={{ background: 'linear-gradient(135deg, #0f1419 0%, #1a1f29 100%)' }}
       >
         {/* Controls */}
