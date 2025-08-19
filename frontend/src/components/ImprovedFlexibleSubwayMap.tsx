@@ -77,7 +77,15 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
   const [isDraggingLegend, setIsDraggingLegend] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [codeViewerOpen, setCodeViewerOpen] = useState(false);
-  const [zoom, setZoom] = useState(1.5); // Increased default zoom for better visibility
+  const [zoom, setZoom] = useState(() => {
+    // Dynamic zoom based on node count for better default visibility
+    const nodeCount = scenario?.nodes?.length || 0;
+    if (nodeCount <= 3) return 3.0;      // Very zoomed in for small files
+    if (nodeCount <= 7) return 2.5;      // Zoomed in for medium files  
+    if (nodeCount <= 15) return 2.0;     // Moderate zoom for larger files
+    if (nodeCount <= 25) return 1.5;     // Default zoom for big files
+    return 1.0;                          // Wide view for huge files
+  });
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
   const [draggedNodes, setDraggedNodes] = useState<{[key: string]: {x: number, y: number}}>({});
   const [isDragging, setIsDragging] = useState<string | null>(null);
@@ -312,9 +320,20 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
       setSimulationStep(stepIndex);
       console.log('🎬 Executing node:', currentNode.title, currentNode.type);
       
-      // Auto-select the current node and open code viewer during simulation
+      // Auto-select the current node and trigger code highlighting during simulation
       setSelectedNode(currentNode.id);
       setCodeViewerOpen(true);
+      
+      // Trigger onNodeClick to highlight code in the main dashboard
+      if (onNodeClick) {
+        onNodeClick({
+          id: currentNode.id,
+          title: currentNode.title,
+          details: currentNode.details,
+          content: (currentNode as any).content,
+          isError: currentNode.isError
+        });
+      }
 
       // REMOVE FAKE ERROR DETECTION: Don't show errors unless they're real
       // if (currentNode.isError) {

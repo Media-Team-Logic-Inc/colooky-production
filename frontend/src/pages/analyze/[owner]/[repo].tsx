@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { GetServerSideProps } from 'next';
 import { getSession } from 'next-auth/react';
 import Head from 'next/head';
@@ -103,6 +103,7 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
   const [currentStep, setCurrentStep] = useState<'select' | 'analyze' | 'results'>('select');
   const [showCodeViewer, setShowCodeViewer] = useState(false);
   const [selectedFileContent, setSelectedFileContent] = useState<{path: string, content: string, language: string, highlightLine?: number} | null>(null);
+  const codePreviewRef = useRef<HTMLDivElement>(null);
   const [codeViewerFile, setCodeViewerFile] = useState<string | null>(null);
 
   // Supported file extensions for analysis
@@ -435,6 +436,16 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
           });
           setCodeViewerFile(filePath);
           setShowCodeViewer(true);
+          
+          // Auto-scroll to highlighted line after content loads
+          if (highlightLine && codePreviewRef.current) {
+            setTimeout(() => {
+              const highlightedLine = codePreviewRef.current?.querySelector(`[data-line-number="${highlightLine}"]`);
+              if (highlightedLine) {
+                highlightedLine.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              }
+            }, 100);
+          }
         }
       }
     } catch (error) {
@@ -878,130 +889,132 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
                 </div>
               </div>
 
-            {/* Main Visualization - Full Width */}
-            <div className="mb-8">
-              <div className="h-96 bg-slate-800 border border-slate-700 rounded-lg p-4">
-                <ImprovedFlexibleSubwayMap 
-                  scenario={(() => {
-                    // Generate intelligent visualization based on content type and complexity
-                    console.log('🎨 Generating intelligent visualization for analysis:', {
-                      functions: analysis.summary?.functions || 0,
-                      classes: analysis.summary?.classes || 0,
-                      imports: analysis.summary?.imports || 0,
-                      files: selectedFiles.length
-                    });
+            <div className="flex gap-6">
+              {/* Main Visualization - Takes most space */}
+              <div className="flex-1">
+                <div className="h-96 bg-slate-800 border border-slate-700 rounded-lg p-4">
+                  <ImprovedFlexibleSubwayMap 
+                    scenario={(() => {
+                      // Generate intelligent visualization based on content type and complexity
+                      console.log('🎨 Generating intelligent visualization for analysis:', {
+                        functions: analysis.summary?.functions || 0,
+                        classes: analysis.summary?.classes || 0,
+                        imports: analysis.summary?.imports || 0,
+                        files: selectedFiles.length
+                      });
+                      
+                      // DEBUG: Log what we're getting from backend
+                      console.log('🔍 Analysis data received:', {
+                        summary: analysis.summary,
+                        elements: analysis.elements?.length || 0,
+                        elementsPreview: analysis.elements?.slice(0, 3),
+                        dependencies: analysis.dependencies?.length || 0
+                      });
+                      
+                      // EMERGENCY DEBUG: Show the actual raw analysis object
+                      console.log('🚨 RAW ANALYSIS OBJECT:', JSON.stringify(analysis, null, 2));
+                      
+                      // CRITICAL FIX: Use the REAL backend visualization instead of generating fake one
+                      console.log('🚀 Using REAL backend visualization with actual function names!');
+                      return analysis.visualization;
+                    })()}
+                    onScenarioChange={() => {}}
+                    availableScenarios={[analysis.visualization]}
+                    repositoryInfo={{
+                      owner: repository.owner,
+                      name: repository.name,
+                      full_name: repository.full_name
+                    }}
+                    analysisInfo={{
+                      selectedFiles: selectedFiles,
+                      fileCount: selectedFiles.length,
+                      analysisType: selectedFiles.length === 1 ? 'single-file' : 'multi-file'
+                    }}
+                    onNodeClick={(node) => {
+                      // Extract file path and line number from node details
+                      const fileDetail = node.details?.find((detail: string) => detail.startsWith('File: '));
+                      if (fileDetail) {
+                        const fileInfo = fileDetail.replace('File: ', '');
+                        const [filePath, lineNumber] = fileInfo.split(':');
+                        const highlightLine = lineNumber ? parseInt(lineNumber) : undefined;
+                        viewFileContent(filePath, highlightLine);
+                      }
+                    }}
+                  />
+                </div>
+              </div>
+              
+              {/* Right Sidebar - Stats Summary */}
+              <div className="w-80 flex-shrink-0">
+                {analysis.summary && (
+                  <div className="bg-slate-800 border border-slate-700 rounded-lg p-4 sticky top-6">
+                    <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                      📊 Analysis Summary
+                    </h3>
                     
-                    // DEBUG: Log what we're getting from backend
-                    console.log('🔍 Analysis data received:', {
-                      summary: analysis.summary,
-                      elements: analysis.elements?.length || 0,
-                      elementsPreview: analysis.elements?.slice(0, 3),
-                      dependencies: analysis.dependencies?.length || 0
-                    });
-                    
-                    // EMERGENCY DEBUG: Show the actual raw analysis object
-                    console.log('🚨 RAW ANALYSIS OBJECT:', JSON.stringify(analysis, null, 2));
-                    
-                    // CRITICAL FIX: Use the REAL backend visualization instead of generating fake one
-                    console.log('🚀 Using REAL backend visualization with actual function names!');
-                    return analysis.visualization;
-                  })()}
-                  onScenarioChange={() => {}}
-                  availableScenarios={[analysis.visualization]}
-                  repositoryInfo={{
-                    owner: repository.owner,
-                    name: repository.name,
-                    full_name: repository.full_name
-                  }}
-                  analysisInfo={{
-                    selectedFiles: selectedFiles,
-                    fileCount: selectedFiles.length,
-                    analysisType: selectedFiles.length === 1 ? 'single-file' : 'multi-file'
-                  }}
-                  onNodeClick={(node) => {
-                    // Extract file path and line number from node details
-                    const fileDetail = node.details?.find((detail: string) => detail.startsWith('File: '));
-                    if (fileDetail) {
-                      const fileInfo = fileDetail.replace('File: ', '');
-                      const [filePath, lineNumber] = fileInfo.split(':');
-                      const highlightLine = lineNumber ? parseInt(lineNumber) : undefined;
-                      viewFileContent(filePath, highlightLine);
-                    }
-                  }}
-                />
+                    {/* Statistics Grid - Compact Vertical Layout */}
+                    <div className="space-y-3 mb-6">
+                      <div className="flex justify-between items-center p-3 bg-slate-700 rounded-lg">
+                        <span className="text-slate-300 text-sm">Files</span>
+                        <span className="text-2xl font-bold text-blue-400">{analysis.summary.supported_files}</span>
+                      </div>
+                      <div className="flex justify-between items-center p-3 bg-slate-700 rounded-lg">
+                        <span className="text-slate-300 text-sm">Functions</span>
+                        <span className="text-2xl font-bold text-green-400">{analysis.summary.functions}</span>
+                      </div>
+                      <div className="flex justify-between items-center p-3 bg-slate-700 rounded-lg">
+                        <span className="text-slate-300 text-sm">Classes</span>
+                        <span className="text-2xl font-bold text-purple-400">{analysis.summary.classes}</span>
+                      </div>
+                      <div className="flex justify-between items-center p-3 bg-slate-700 rounded-lg">
+                        <span className="text-slate-300 text-sm">Imports</span>
+                        <span className="text-2xl font-bold text-orange-400">{analysis.summary.imports}</span>
+                      </div>
+                      <div className="flex justify-between items-center p-3 bg-slate-700 rounded-lg">
+                        <span className="text-slate-300 text-sm">Language</span>
+                        <span className="text-lg font-bold text-cyan-400 truncate">{analysis.summary.main_language}</span>
+                      </div>
+                    </div>
+
+                    {/* Code Insights - Compact Vertical Layout */}
+                    <div className="space-y-3">
+                      <h4 className="text-sm font-semibold text-white mb-3">🔍 Code Insights</h4>
+                      <div className="bg-slate-700 rounded-lg p-3">
+                        <div className="text-blue-400 font-medium mb-1 text-sm">Architecture Pattern</div>
+                        <div className="text-slate-300 text-xs">
+                          {analysis.summary.functions > analysis.summary.classes * 3 ? 'Functional-oriented' : 
+                           analysis.summary.classes > analysis.summary.functions ? 'Object-oriented' : 'Hybrid approach'}
+                        </div>
+                      </div>
+                      <div className="bg-slate-700 rounded-lg p-3">
+                        <div className="text-green-400 font-medium mb-1 text-sm">Code Density</div>
+                        <div className="text-slate-300 text-xs">
+                          {Math.round((analysis.summary.functions + analysis.summary.classes) / analysis.summary.supported_files)} elements/file
+                        </div>
+                      </div>
+                      <div className="bg-slate-700 rounded-lg p-3">
+                        <div className="text-purple-400 font-medium mb-1 text-sm">Dependency Style</div>
+                        <div className="text-slate-300 text-xs">
+                          {analysis.summary.imports > analysis.summary.supported_files * 2 ? 'Highly modular' : 
+                           analysis.summary.imports < analysis.summary.supported_files ? 'Self-contained' : 'Balanced imports'}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
-            {/* Summary Cards - Horizontal Grid */}
-            {analysis.summary && (
-              <div className="mb-8">
-                <h3 className="text-lg font-semibold text-white mb-6 flex items-center gap-2">
-                  📊 Analysis Summary
-                </h3>
-                
-                {/* Statistics Grid - Responsive Cards */}
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 mb-6">
-                  <div className="bg-slate-800 border border-slate-700 rounded-lg p-3 sm:p-4 text-center">
-                    <div className="text-xl sm:text-2xl font-bold text-blue-400 mb-1">{analysis.summary.supported_files}</div>
-                    <div className="text-slate-300 text-xs sm:text-sm">Files</div>
-                  </div>
-                  <div className="bg-slate-800 border border-slate-700 rounded-lg p-3 sm:p-4 text-center">
-                    <div className="text-xl sm:text-2xl font-bold text-green-400 mb-1">{analysis.summary.functions}</div>
-                    <div className="text-slate-300 text-xs sm:text-sm">Functions</div>
-                  </div>
-                  <div className="bg-slate-800 border border-slate-700 rounded-lg p-3 sm:p-4 text-center">
-                    <div className="text-xl sm:text-2xl font-bold text-purple-400 mb-1">{analysis.summary.classes}</div>
-                    <div className="text-slate-300 text-xs sm:text-sm">Classes</div>
-                  </div>
-                  <div className="bg-slate-800 border border-slate-700 rounded-lg p-3 sm:p-4 text-center">
-                    <div className="text-xl sm:text-2xl font-bold text-orange-400 mb-1">{analysis.summary.imports}</div>
-                    <div className="text-slate-300 text-xs sm:text-sm">Imports</div>
-                  </div>
-                  <div className="bg-slate-800 border border-slate-700 rounded-lg p-3 sm:p-4 text-center col-span-2 sm:col-span-1">
-                    <div className="text-base sm:text-lg font-bold text-cyan-400 mb-1 truncate">{analysis.summary.main_language}</div>
-                    <div className="text-slate-300 text-xs sm:text-sm">Language</div>
-                  </div>
-                </div>
-
-                {/* Code Insights - Responsive Cards */}
-                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-                  <div className="bg-slate-800 border border-slate-700 rounded-lg p-4">
-                    <div className="text-blue-400 font-medium mb-2">Architecture Pattern</div>
-                    <div className="text-slate-300 text-sm">
-                      {analysis.summary.functions > analysis.summary.classes * 3 ? 'Functional-oriented' : 
-                       analysis.summary.classes > analysis.summary.functions ? 'Object-oriented' : 'Hybrid approach'}
-                    </div>
-                  </div>
-                  <div className="bg-slate-800 border border-slate-700 rounded-lg p-4">
-                    <div className="text-green-400 font-medium mb-2">Code Density</div>
-                    <div className="text-slate-300 text-sm">
-                      {Math.round((analysis.summary.functions + analysis.summary.classes) / analysis.summary.supported_files)} elements/file
-                    </div>
-                  </div>
-                  <div className="bg-slate-800 border border-slate-700 rounded-lg p-4">
-                    <div className="text-purple-400 font-medium mb-2">Dependency Style</div>
-                    <div className="text-slate-300 text-sm">
-                      {analysis.summary.imports > analysis.summary.supported_files * 2 ? 'Highly modular' : 
-                       analysis.summary.imports < analysis.summary.supported_files ? 'Self-contained' : 'Balanced imports'}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* File Directory Tree & Code Viewer - Improved Layout */}
-            <div className="mb-8">
-              <h3 className="text-lg font-semibold text-white mb-6 flex items-center gap-2">
-                🗂️ Development Panel
-              </h3>
-              <div className="grid lg:grid-cols-5 gap-4 lg:gap-6">
-                {/* File Tree - Responsive and Better Proportions */}
-                <div className="lg:col-span-2 bg-slate-800 border border-slate-700 rounded-lg order-2 lg:order-1">
-                  <div className="border-b border-slate-700 p-3 lg:p-4">
+            {/* Development Panel - Repository Files & Code Preview Side by Side */}
+            <div className="mt-8">
+              <div className="grid lg:grid-cols-2 gap-6">
+                {/* Repository Files - Left Side */}
+                <div className="bg-slate-800 border border-slate-700 rounded-lg">
+                  <div className="border-b border-slate-700 p-4">
                     <div className="text-sm font-medium text-slate-300">Repository Files</div>
-                    <div className="text-xs text-slate-400 mt-1 hidden sm:block">• Green files are analyzable • Click to analyze individual files</div>
+                    <div className="text-xs text-slate-400 mt-1">• Green files are analyzable • Click to analyze individual files</div>
                   </div>
-                  <div className="p-3 lg:p-4 h-64 lg:h-80 overflow-auto">
+                  <div className="p-4 h-80 overflow-auto">
                     <FileDirectoryTree 
                       owner={repository.owner}
                       repo={repository.name}
@@ -1015,9 +1028,9 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
                   </div>
                 </div>
                 
-                {/* Code Viewer - Responsive and Larger Space */}
-                <div className="lg:col-span-3 bg-slate-800 border border-slate-700 rounded-lg order-1 lg:order-2">
-                  <div className="border-b border-slate-700 p-3 lg:p-4">
+                {/* Code Preview - Right Side */}
+                <div className="bg-slate-800 border border-slate-700 rounded-lg">
+                  <div className="border-b border-slate-700 p-4">
                     <div className="text-sm font-medium text-slate-300">Code Preview</div>
                     <div className="text-xs text-slate-400 mt-1 truncate">
                       {selectedFileContent ? 
@@ -1026,18 +1039,36 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
                       }
                     </div>
                   </div>
-                  <div className="p-3 lg:p-4 h-64 lg:h-80 overflow-auto">
+                  <div ref={codePreviewRef} className="p-4 h-80 overflow-auto">
                     {selectedFileContent ? (
                       <div className="relative">
                         <pre className="text-xs text-slate-300 whitespace-pre-wrap font-mono leading-relaxed">
-                          <code>{selectedFileContent.content}</code>
+                          <code>
+                            {selectedFileContent.content.split('\n').map((line, index) => {
+                              const lineNumber = index + 1;
+                              const isHighlighted = selectedFileContent.highlightLine === lineNumber;
+                              return (
+                                <div 
+                                  key={lineNumber}
+                                  data-line-number={lineNumber}
+                                  className={`${isHighlighted ? 'bg-yellow-400/20 border-l-4 border-yellow-400 pl-2 -ml-2' : ''}`}
+                                  style={isHighlighted ? { animation: 'pulse 2s infinite' } : {}}
+                                >
+                                  <span className="text-slate-500 text-xs mr-3 select-none inline-block w-8 text-right">
+                                    {lineNumber}
+                                  </span>
+                                  {line}
+                                </div>
+                              );
+                            })}
+                          </code>
                         </pre>
                       </div>
                     ) : (
                       <div className="h-full flex items-center justify-center text-slate-400">
                         <div className="text-center">
-                          <File className="w-8 lg:w-12 h-8 lg:h-12 mx-auto mb-2 opacity-50" />
-                          <div className="text-sm lg:text-base">Click a node or file to view code</div>
+                          <File className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                          <div>Click a node or file to view code</div>
                         </div>
                       </div>
                     )}
