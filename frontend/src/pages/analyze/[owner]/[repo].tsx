@@ -3,6 +3,7 @@ import { GetServerSideProps } from 'next';
 import { getSession } from 'next-auth/react';
 import Head from 'next/head';
 import Link from 'next/link';
+import { saveAnalysisHistory, deleteAnalysisHistory, getUserAnalysisHistory, AnalysisHistory } from '../../../lib/supabase';
 import Header from '../../../components/layout/Header';
 import ImprovedFlexibleSubwayMap from '../../../components/ImprovedFlexibleSubwayMap';
 import FileDirectoryTree from '../../../components/FileDirectoryTree';
@@ -106,6 +107,9 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
   const codePreviewRef = useRef<HTMLDivElement>(null);
   const [codeViewerFile, setCodeViewerFile] = useState<string | null>(null);
   const [selectedNodeInfo, setSelectedNodeInfo] = useState<any>(null);
+  const [analysisHistory, setAnalysisHistory] = useState<AnalysisHistory[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
+  const [savedAnalysisId, setSavedAnalysisId] = useState<string | null>(null);
 
   // Supported file extensions for analysis
   const supportedExtensions = new Set([
@@ -575,6 +579,58 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
     poll();
   };
 
+  // Save analysis to Supabase
+  const saveAnalysis = async () => {
+    if (!analysis || !user) {
+      console.warn('No analysis to save or user not authenticated');
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const analysisData = {
+        user_id: user.id,
+        repository_owner: repository.owner,
+        repository_name: repository.name,
+        repository_full_name: repository.full_name,
+        files_analyzed: selectedFiles,
+        analysis_type: selectedFiles.length === 1 ? 'single-file' : 'multi-file',
+        scenario_data: analysis
+      };
+
+      const savedAnalysis = await saveAnalysisHistory(analysisData);
+      if (savedAnalysis) {
+        setSavedAnalysisId(savedAnalysis.id);
+        // Refresh analysis history
+        const history = await getUserAnalysisHistory(user.id, 20);
+        setAnalysisHistory(history);
+        console.log('Analysis saved successfully:', savedAnalysis.id);
+      }
+    } catch (error) {
+      console.error('Error saving analysis:', error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Delete saved analysis
+  const deleteSavedAnalysis = async () => {
+    if (!savedAnalysisId || !user) return;
+
+    try {
+      const success = await deleteAnalysisHistory(savedAnalysisId);
+      if (success) {
+        setSavedAnalysisId(null);
+        // Refresh analysis history
+        const history = await getUserAnalysisHistory(user.id, 20);
+        setAnalysisHistory(history);
+        console.log('Analysis deleted successfully');
+      }
+    } catch (error) {
+      console.error('Error deleting analysis:', error);
+    }
+  };
+
   const renderFileTree = (nodes: FileTreeNode[], level = 0) => {
     return nodes.map((node) => (
       <div key={node.path} style={{ marginLeft: level * 16 }}>
@@ -886,14 +942,36 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
                     >
                       Export CSV
                     </button>
+                    
+                    {/* Save/Delete Analysis Buttons */}
+                    <div className="border-l border-slate-600 pl-2 ml-2 flex items-center gap-2">
+                      {savedAnalysisId ? (
+                        <button
+                          onClick={deleteSavedAnalysis}
+                          className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors"
+                          title="Delete saved analysis"
+                        >
+                          Delete Saved
+                        </button>
+                      ) : (
+                        <button
+                          onClick={saveAnalysis}
+                          disabled={isSaving}
+                          className="px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-400 text-white rounded-lg text-sm font-medium transition-colors"
+                          title="Save analysis to your history"
+                        >
+                          {isSaving ? 'Saving...' : 'Save Analysis'}
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
 
-            <div className="flex gap-4">
+            <div className="flex gap-4 mb-8">
               {/* Main Visualization - Takes most space */}
               <div className="flex-1">
-                <div className="h-96 bg-slate-800 border border-slate-700 rounded-lg p-4">
+                <div className="h-96 bg-slate-800 border border-slate-700 rounded-lg p-4 relative overflow-hidden">
                   <ImprovedFlexibleSubwayMap 
                     scenario={(() => {
                       // Generate intelligent visualization based on content type and complexity
@@ -1059,7 +1137,7 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
             </div>
 
             {/* Development Panel - Repository Files & Code Preview Side by Side */}
-            <div className="mt-8">
+            <div>
               <div className="grid lg:grid-cols-2 gap-6">
                 {/* Code Preview - Left Side (Switched) */}
                 <div className="bg-slate-800 border border-slate-700 rounded-lg">

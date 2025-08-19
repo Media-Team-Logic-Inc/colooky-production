@@ -264,3 +264,22 @@ export const getUserAnalysisHistory = async (userId: string, limit = 10): Promis
 
   return data || [];
 };
+
+export const deleteAnalysisHistory = async (analysisId: string): Promise<boolean> => {
+  if (!supabaseAdmin) {
+    console.warn('Supabase admin client not configured, cannot delete analysis history');
+    return false;
+  }
+
+  const { error } = await supabaseAdmin
+    .from('analysis_history')
+    .delete()
+    .eq('id', analysisId);
+
+  if (error) {
+    console.error('Error deleting analysis history:', error);
+    return false;
+  }
+
+  return true;
+};

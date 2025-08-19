@@ -577,16 +577,14 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
   const [viewX, viewY, viewWidth, viewHeight] = viewBox.split(' ').map(Number);
 
   return (
-    <div className="h-screen flex flex-col bg-slate-900">
-      {/* Visualization Area - Takes full height when code viewer closed */}
+    <div className="w-full h-full flex flex-col bg-slate-900 rounded-lg overflow-hidden">
+      {/* Visualization Area - Fits within parent container */}
       <div 
-        className={`relative overflow-hidden transition-all duration-300 ${
-          codeViewerOpen ? 'h-1/2' : 'flex-1'
-        }`}
+        className="relative flex-1 overflow-hidden"
         style={{ background: 'linear-gradient(135deg, #0f1419 0%, #1a1f29 100%)' }}
       >
         {/* Controls */}
-        <div className="absolute top-6 left-6 flex flex-col gap-2 z-20">
+        <div className="absolute top-6 left-6 flex flex-col gap-2 z-10">
           {/* Simulation Button - FEATURED! */}
           <button
             onClick={runSimulation}
@@ -660,7 +658,7 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
 
         {/* Legend */}
         <div 
-          className={`absolute z-20 transition-all duration-300 ${
+          className={`absolute z-10 transition-all duration-300 ${
             legendCollapsed ? 'w-10' : 'w-auto'
           } ${isDraggingLegend ? 'cursor-grabbing' : 'cursor-grab'}`}
           style={{
