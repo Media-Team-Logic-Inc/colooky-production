@@ -3,7 +3,7 @@ import { GetServerSideProps } from 'next';
 import { getSession } from 'next-auth/react';
 import Head from 'next/head';
 import Link from 'next/link';
-import { saveAnalysisHistory, deleteAnalysisHistory, getUserAnalysisHistory, AnalysisHistory } from '../../../lib/supabase';
+import { AnalysisHistory } from '../../../lib/supabase';
 import Header from '../../../components/layout/Header';
 import ImprovedFlexibleSubwayMap from '../../../components/ImprovedFlexibleSubwayMap';
 import FileDirectoryTree from '../../../components/FileDirectoryTree';
@@ -579,7 +579,7 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
     poll();
   };
 
-  // Save analysis to Supabase
+  // Save analysis via API route
   const saveAnalysis = async () => {
     if (!analysis || !user) {
       console.warn('No analysis to save or user not authenticated');
@@ -589,7 +589,6 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
     setIsSaving(true);
     try {
       const analysisData = {
-        user_id: user.id,
         repository_owner: repository.owner,
         repository_name: repository.name,
         repository_full_name: repository.full_name,
@@ -598,13 +597,22 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
         scenario_data: analysis
       };
 
-      const savedAnalysis = await saveAnalysisHistory(analysisData);
-      if (savedAnalysis) {
+      const response = await fetch('/api/analysis/save', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(analysisData),
+      });
+
+      if (response.ok) {
+        const savedAnalysis = await response.json();
         setSavedAnalysisId(savedAnalysis.id);
         // Refresh analysis history
-        const history = await getUserAnalysisHistory(user.id, 20);
-        setAnalysisHistory(history);
+        await fetchAnalysisHistory();
         console.log('Analysis saved successfully:', savedAnalysis.id);
+      } else {
+        console.error('Failed to save analysis');
       }
     } catch (error) {
       console.error('Error saving analysis:', error);
@@ -613,21 +621,42 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
     }
   };
 
-  // Delete saved analysis
+  // Delete saved analysis via API route
   const deleteSavedAnalysis = async () => {
-    if (!savedAnalysisId || !user) return;
+    if (!savedAnalysisId) return;
 
     try {
-      const success = await deleteAnalysisHistory(savedAnalysisId);
-      if (success) {
+      const response = await fetch('/api/analysis/delete', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ analysisId: savedAnalysisId }),
+      });
+
+      if (response.ok) {
         setSavedAnalysisId(null);
         // Refresh analysis history
-        const history = await getUserAnalysisHistory(user.id, 20);
-        setAnalysisHistory(history);
+        await fetchAnalysisHistory();
         console.log('Analysis deleted successfully');
+      } else {
+        console.error('Failed to delete analysis');
       }
     } catch (error) {
       console.error('Error deleting analysis:', error);
+    }
+  };
+
+  // Fetch analysis history via API route
+  const fetchAnalysisHistory = async () => {
+    try {
+      const response = await fetch('/api/analysis/history?limit=20');
+      if (response.ok) {
+        const history = await response.json();
+        setAnalysisHistory(history);
+      }
+    } catch (error) {
+      console.error('Error fetching analysis history:', error);
     }
   };
 

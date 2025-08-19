@@ -88,7 +88,7 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
     if (nodeCount <= 25) return 2.5;     // Default zoom for big files
     return 2.0;                          // Wide view for huge files (still readable)
   });
-  const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
+  const [panOffset, setPanOffset] = useState({ x: 400, y: 200 }); // Start with reasonable center position
   const [draggedNodes, setDraggedNodes] = useState<{[key: string]: {x: number, y: number}}>({});
   const [isDragging, setIsDragging] = useState<string | null>(null);
   const [dragStart, setDragStart] = useState<{x: number, y: number} | null>(null);
@@ -167,45 +167,60 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
   const centerOnNodes = () => {
     if (!scenario?.nodes || scenario.nodes.length === 0) return;
     
-    // Calculate bounding box of all nodes
+    // Calculate bounding box of all nodes using their original positions
     let minX = Infinity, maxX = -Infinity;
     let minY = Infinity, maxY = -Infinity;
     
     scenario.nodes.forEach(node => {
-      const position = getNodePosition(node);
-      minX = Math.min(minX, position.x);
-      maxX = Math.max(maxX, position.x + node.width);
-      minY = Math.min(minY, position.y);
-      maxY = Math.max(maxY, position.y + node.height);
+      // Use original node positions, not adjusted ones
+      const x = node.x || 0;
+      const y = node.y || 0;
+      const width = node.width || 200;
+      const height = node.height || 80;
+      
+      minX = Math.min(minX, x);
+      maxX = Math.max(maxX, x + width);
+      minY = Math.min(minY, y);
+      maxY = Math.max(maxY, y + height);
     });
+    
+    // If we got infinite values, use defaults
+    if (minX === Infinity) {
+      minX = 0;
+      maxX = 800;
+      minY = 0;
+      maxY = 400;
+    }
     
     // Calculate center point of all nodes
     const nodesCenterX = (minX + maxX) / 2;
     const nodesCenterY = (minY + maxY) / 2;
     
-    // Get the actual container dimensions dynamically
+    // Get the actual container dimensions
     const container = document.querySelector('.subway-container');
     const containerRect = container?.getBoundingClientRect();
     
-    // Use actual container size or fallback
+    // Use actual container size or reasonable fallbacks
     const viewportWidth = containerRect?.width || 800;
-    const viewportHeight = containerRect?.height || 384; // h-96 = 384px
+    const viewportHeight = containerRect?.height || 384;
     const viewportCenterX = viewportWidth / 2;
     const viewportCenterY = viewportHeight / 2;
     
-    // Calculate offset to center nodes in viewport, accounting for current zoom
+    // Calculate offset to center nodes in viewport
+    // Simple approach: viewport center minus node center (accounting for zoom)
     const offsetX = viewportCenterX - (nodesCenterX * zoom);
     const offsetY = viewportCenterY - (nodesCenterY * zoom);
     
+    // Apply the offset
     setPanOffset({ x: offsetX, y: offsetY });
-    console.log('🎯 Auto-centered visualization on nodes:', { 
-      nodesCenterX, 
-      nodesCenterY, 
-      viewportWidth, 
-      viewportHeight, 
-      zoom, 
-      offsetX, 
-      offsetY 
+    
+    console.log('🎯 Centering visualization:', { 
+      nodeCount: scenario.nodes.length,
+      nodesBounds: { minX, maxX, minY, maxY },
+      nodesCenter: { nodesCenterX, nodesCenterY },
+      viewport: { viewportWidth, viewportHeight },
+      zoom,
+      finalOffset: { offsetX, offsetY }
     });
   };
 
@@ -451,13 +466,16 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
   // Auto-center visualization when scenario changes
   React.useEffect(() => {
     if (scenario?.nodes && scenario.nodes.length > 0 && !isInitialized) {
-      // Small delay to ensure component is rendered
+      // Immediate centering, then set initialized
+      centerOnNodes();
+      setIsInitialized(true);
+      
+      // Also center again after a small delay to ensure DOM is ready
       setTimeout(() => {
         centerOnNodes();
-        setIsInitialized(true);
-      }, 100);
+      }, 200);
     }
-  }, [scenario, isInitialized, zoom]);
+  }, [scenario, isInitialized]);
 
   // Cleanup simulation on unmount
   React.useEffect(() => {

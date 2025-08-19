@@ -1,8 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Validate environment variables with fallbacks for development
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
+// Validate environment variables - server-side only for production
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
 
 if (!supabaseUrl || !supabaseAnonKey) {
   console.warn('⚠️  Supabase environment variables not configured. Database features will be disabled.');
@@ -14,9 +14,9 @@ export const supabase = supabaseUrl && supabaseAnonKey ? createClient(
 ) : null;
 
 // Service role client for server-side operations
-export const supabaseAdmin = supabaseUrl && (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY || supabaseAnonKey) ? createClient(
+export const supabaseAdmin = supabaseUrl && (process.env.SUPABASE_SERVICE_ROLE_KEY || supabaseAnonKey) ? createClient(
   supabaseUrl,
-  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY || supabaseAnonKey
+  process.env.SUPABASE_SERVICE_ROLE_KEY || supabaseAnonKey
 ) : null;
 
 // Database schema types
@@ -225,12 +225,12 @@ export const updateUserSettings = async (userId: string, settings: Partial<UserS
 };
 
 export const saveAnalysisHistory = async (analysisData: Partial<AnalysisHistory>): Promise<AnalysisHistory | null> => {
-  if (!supabase) {
-    console.warn('Supabase client not configured, cannot save analysis history');
+  if (!supabaseAdmin) {
+    console.warn('Supabase admin client not configured, cannot save analysis history');
     return null;
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('analysis_history')
     .insert([analysisData])
     .select()
@@ -245,12 +245,12 @@ export const saveAnalysisHistory = async (analysisData: Partial<AnalysisHistory>
 };
 
 export const getUserAnalysisHistory = async (userId: string, limit = 10): Promise<AnalysisHistory[]> => {
-  if (!supabase) {
-    console.warn('Supabase client not configured, cannot fetch analysis history');
+  if (!supabaseAdmin) {
+    console.warn('Supabase admin client not configured, cannot fetch analysis history');
     return [];
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('analysis_history')
     .select('*')
     .eq('user_id', userId)
@@ -266,12 +266,12 @@ export const getUserAnalysisHistory = async (userId: string, limit = 10): Promis
 };
 
 export const deleteAnalysisHistory = async (analysisId: string): Promise<boolean> => {
-  if (!supabase) {
-    console.warn('Supabase client not configured, cannot delete analysis history');
+  if (!supabaseAdmin) {
+    console.warn('Supabase admin client not configured, cannot delete analysis history');
     return false;
   }
 
-  const { error } = await supabase
+  const { error } = await supabaseAdmin
     .from('analysis_history')
     .delete()
     .eq('id', analysisId);
