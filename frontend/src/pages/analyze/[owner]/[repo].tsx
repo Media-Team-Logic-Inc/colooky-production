@@ -105,6 +105,7 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
   const [selectedFileContent, setSelectedFileContent] = useState<{path: string, content: string, language: string, highlightLine?: number} | null>(null);
   const codePreviewRef = useRef<HTMLDivElement>(null);
   const [codeViewerFile, setCodeViewerFile] = useState<string | null>(null);
+  const [selectedNodeInfo, setSelectedNodeInfo] = useState<any>(null);
 
   // Supported file extensions for analysis
   const supportedExtensions = new Set([
@@ -940,67 +941,119 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
                         viewFileContent(filePath, highlightLine);
                       }
                     }}
+                    onNodeSelect={(node) => {
+                      setSelectedNodeInfo(node);
+                    }}
                   />
                 </div>
               </div>
               
-              {/* Right Sidebar - Stats Summary (Narrower) */}
-              <div className="w-64 flex-shrink-0">
+              {/* Right Sidebar - Compact Stats & Insights */}
+              <div className="w-56 flex-shrink-0 space-y-4">
                 {analysis.summary && (
-                  <div className="bg-slate-800 border border-slate-700 rounded-lg p-3 sticky top-6">
-                    <h3 className="text-base font-semibold text-white mb-3 flex items-center gap-2">
-                      📊 Summary
-                    </h3>
-                    
-                    {/* Statistics Grid - Compact Vertical Layout */}
-                    <div className="space-y-2 mb-4">
-                      <div className="flex justify-between items-center p-2 bg-slate-700 rounded">
-                        <span className="text-slate-300 text-xs">Files</span>
-                        <span className="text-lg font-bold text-blue-400">{analysis.summary.supported_files}</span>
+                  <>
+                    <div className="bg-slate-800 border border-slate-700 rounded-lg p-3">
+                      <div className="flex items-center justify-between mb-3">
+                        <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+                          📊 Summary
+                        </h3>
+                        <h4 className="text-sm font-semibold text-white flex items-center gap-2">
+                          🔍 Insights
+                        </h4>
                       </div>
-                      <div className="flex justify-between items-center p-2 bg-slate-700 rounded">
-                        <span className="text-slate-300 text-xs">Functions</span>
-                        <span className="text-lg font-bold text-green-400">{analysis.summary.functions}</span>
-                      </div>
-                      <div className="flex justify-between items-center p-2 bg-slate-700 rounded">
-                        <span className="text-slate-300 text-xs">Classes</span>
-                        <span className="text-lg font-bold text-purple-400">{analysis.summary.classes}</span>
-                      </div>
-                      <div className="flex justify-between items-center p-2 bg-slate-700 rounded">
-                        <span className="text-slate-300 text-xs">Imports</span>
-                        <span className="text-lg font-bold text-orange-400">{analysis.summary.imports}</span>
-                      </div>
-                      <div className="flex justify-between items-center p-2 bg-slate-700 rounded">
-                        <span className="text-slate-300 text-xs">Language</span>
-                        <span className="text-sm font-bold text-cyan-400 truncate">{analysis.summary.main_language}</span>
+                      
+                      <div className="flex gap-3">
+                        {/* Statistics - Left Side */}
+                        <div className="flex-1 space-y-2">
+                          <div className="flex justify-between items-center p-1.5 bg-slate-700 rounded text-xs">
+                            <span className="text-slate-300">Files</span>
+                            <span className="font-bold text-blue-400">{analysis.summary.supported_files}</span>
+                          </div>
+                          <div className="flex justify-between items-center p-1.5 bg-slate-700 rounded text-xs">
+                            <span className="text-slate-300">Funcs</span>
+                            <span className="font-bold text-green-400">{analysis.summary.functions}</span>
+                          </div>
+                          <div className="flex justify-between items-center p-1.5 bg-slate-700 rounded text-xs">
+                            <span className="text-slate-300">Classes</span>
+                            <span className="font-bold text-purple-400">{analysis.summary.classes}</span>
+                          </div>
+                          <div className="flex justify-between items-center p-1.5 bg-slate-700 rounded text-xs">
+                            <span className="text-slate-300">Imports</span>
+                            <span className="font-bold text-orange-400">{analysis.summary.imports}</span>
+                          </div>
+                          <div className="flex justify-between items-center p-1.5 bg-slate-700 rounded text-xs">
+                            <span className="text-slate-300">Lang</span>
+                            <span className="font-bold text-cyan-400 truncate">{analysis.summary.main_language}</span>
+                          </div>
+                        </div>
+
+                        {/* Insights - Right Side */}
+                        <div className="flex-1 space-y-2">
+                          <div className="bg-slate-700 rounded p-1.5">
+                            <div className="text-blue-400 font-medium text-xs">Architecture</div>
+                            <div className="text-slate-300 text-xs">
+                              {analysis.summary.functions > analysis.summary.classes * 3 ? 'Functional' : 
+                               analysis.summary.classes > analysis.summary.functions ? 'OOP' : 'Hybrid'}
+                            </div>
+                          </div>
+                          <div className="bg-slate-700 rounded p-1.5">
+                            <div className="text-green-400 font-medium text-xs">Density</div>
+                            <div className="text-slate-300 text-xs">
+                              {Math.round((analysis.summary.functions + analysis.summary.classes) / analysis.summary.supported_files)} elem/file
+                            </div>
+                          </div>
+                          <div className="bg-slate-700 rounded p-1.5">
+                            <div className="text-purple-400 font-medium text-xs">Dependencies</div>
+                            <div className="text-slate-300 text-xs">
+                              {analysis.summary.imports > analysis.summary.supported_files * 2 ? 'Modular' : 
+                               analysis.summary.imports < analysis.summary.supported_files ? 'Self-contained' : 'Balanced'}
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     </div>
 
-                    {/* Code Insights - Compact Vertical Layout */}
-                    <div className="space-y-2">
-                      <h4 className="text-xs font-semibold text-white mb-2">🔍 Insights</h4>
-                      <div className="bg-slate-700 rounded p-2">
-                        <div className="text-blue-400 font-medium mb-1 text-xs">Architecture</div>
-                        <div className="text-slate-300 text-xs">
-                          {analysis.summary.functions > analysis.summary.classes * 3 ? 'Functional' : 
-                           analysis.summary.classes > analysis.summary.functions ? 'OOP' : 'Hybrid'}
+                    {/* Node Details - Positioned below stats */}
+                    {selectedNodeInfo && (
+                      <div className="bg-slate-800 border border-slate-700 rounded-lg p-3">
+                        <div className="flex items-center justify-between mb-2">
+                          <h4 className="text-sm font-semibold text-white truncate">
+                            {selectedNodeInfo.title}
+                          </h4>
+                          <button
+                            onClick={() => setSelectedNodeInfo(null)}
+                            className="text-slate-400 hover:text-white transition-colors"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                        
+                        <div className="max-h-32 overflow-auto">
+                          {selectedNodeInfo.isError && (
+                            <div className="p-2 bg-red-900/30 border border-red-500/50 rounded mb-2">
+                              <div className="flex items-center gap-2 text-red-400 font-medium text-xs">
+                                <div className="w-1.5 h-1.5 bg-red-400 rounded-full"></div>
+                                Error Detected
+                              </div>
+                            </div>
+                          )}
+                          
+                          <div className="space-y-1">
+                            {selectedNodeInfo.details.slice(0, 4).map((detail: string, index: number) => (
+                              <div key={index} className="text-slate-300 text-xs">
+                                <span className="text-slate-500">•</span> {detail}
+                              </div>
+                            ))}
+                            {selectedNodeInfo.details.length > 4 && (
+                              <div className="text-slate-400 text-xs italic">
+                                +{selectedNodeInfo.details.length - 4} more details...
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
-                      <div className="bg-slate-700 rounded p-2">
-                        <div className="text-green-400 font-medium mb-1 text-xs">Density</div>
-                        <div className="text-slate-300 text-xs">
-                          {Math.round((analysis.summary.functions + analysis.summary.classes) / analysis.summary.supported_files)} elem/file
-                        </div>
-                      </div>
-                      <div className="bg-slate-700 rounded p-2">
-                        <div className="text-purple-400 font-medium mb-1 text-xs">Dependencies</div>
-                        <div className="text-slate-300 text-xs">
-                          {analysis.summary.imports > analysis.summary.supported_files * 2 ? 'Modular' : 
-                           analysis.summary.imports < analysis.summary.supported_files ? 'Self-contained' : 'Balanced'}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                    )}
+                  </>
                 )}
               </div>
             </div>
@@ -1008,27 +1061,7 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
             {/* Development Panel - Repository Files & Code Preview Side by Side */}
             <div className="mt-8">
               <div className="grid lg:grid-cols-2 gap-6">
-                {/* Repository Files - Left Side */}
-                <div className="bg-slate-800 border border-slate-700 rounded-lg">
-                  <div className="border-b border-slate-700 p-4">
-                    <div className="text-sm font-medium text-slate-300">Repository Files</div>
-                    <div className="text-xs text-slate-400 mt-1">• Green files are analyzable • Click to analyze individual files</div>
-                  </div>
-                  <div className="p-4 h-80 overflow-auto">
-                    <FileDirectoryTree 
-                      owner={repository.owner}
-                      repo={repository.name}
-                      onFileSelect={(filePath) => {
-                        setSelectedFiles([filePath]);
-                        setAnalysis(null);
-                        // Trigger new analysis for selected file
-                        startAnalysis();
-                      }}
-                    />
-                  </div>
-                </div>
-                
-                {/* Code Preview - Right Side */}
+                {/* Code Preview - Left Side (Switched) */}
                 <div className="bg-slate-800 border border-slate-700 rounded-lg">
                   <div className="border-b border-slate-700 p-4">
                     <div className="text-sm font-medium text-slate-300">Code Preview</div>
@@ -1072,6 +1105,26 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
                         </div>
                       </div>
                     )}
+                  </div>
+                </div>
+                
+                {/* Repository Files - Right Side (Switched) */}
+                <div className="bg-slate-800 border border-slate-700 rounded-lg">
+                  <div className="border-b border-slate-700 p-4">
+                    <div className="text-sm font-medium text-slate-300">Repository Files</div>
+                    <div className="text-xs text-slate-400 mt-1">• Green files are analyzable • Click to analyze individual files</div>
+                  </div>
+                  <div className="p-4 h-80 overflow-auto">
+                    <FileDirectoryTree 
+                      owner={repository.owner}
+                      repo={repository.name}
+                      onFileSelect={(filePath) => {
+                        setSelectedFiles([filePath]);
+                        setAnalysis(null);
+                        // Trigger new analysis for selected file
+                        startAnalysis();
+                      }}
+                    />
                   </div>
                 </div>
               </div>

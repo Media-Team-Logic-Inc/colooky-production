@@ -51,6 +51,7 @@ interface ImprovedFlexibleSubwayMapProps {
   onScenarioChange?: (scenarioId: string) => void;
   availableScenarios?: FlowScenario[];
   onNodeClick?: (nodeDetails: any) => void;
+  onNodeSelect?: (nodeDetails: any) => void;
   repositoryInfo?: {
     owner: string;
     name: string;
@@ -68,6 +69,7 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
   onScenarioChange,
   availableScenarios = [],
   onNodeClick,
+  onNodeSelect,
   repositoryInfo,
   analysisInfo
 }) => {
@@ -80,11 +82,11 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
   const [zoom, setZoom] = useState(() => {
     // Dynamic zoom based on node count for better default visibility
     const nodeCount = scenario?.nodes?.length || 0;
-    if (nodeCount <= 3) return 3.0;      // Very zoomed in for small files
-    if (nodeCount <= 7) return 2.5;      // Zoomed in for medium files  
-    if (nodeCount <= 15) return 2.0;     // Moderate zoom for larger files
-    if (nodeCount <= 25) return 1.5;     // Default zoom for big files
-    return 1.0;                          // Wide view for huge files
+    if (nodeCount <= 3) return 4.0;      // Very zoomed in for small files
+    if (nodeCount <= 7) return 3.5;      // Zoomed in for medium files  
+    if (nodeCount <= 15) return 3.0;     // Moderate zoom for larger files
+    if (nodeCount <= 25) return 2.5;     // Default zoom for big files
+    return 2.0;                          // Wide view for huge files (still readable)
   });
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
   const [draggedNodes, setDraggedNodes] = useState<{[key: string]: {x: number, y: number}}>({});
@@ -142,20 +144,27 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
   const handleNodeClick = (node: FlowNode) => {
     setSelectedNode(node.id);
     setCodeViewerOpen(true);
+    
+    const nodeDetails = {
+      id: node.id,
+      title: node.title,
+      details: node.details,
+      content: (node as any).content,
+      isError: node.isError
+    };
+    
     if (onNodeClick) {
-      onNodeClick({
-        id: node.id,
-        title: node.title,
-        details: node.details,
-        content: (node as any).content, // Include code content
-        isError: node.isError
-      });
+      onNodeClick(nodeDetails);
+    }
+    
+    if (onNodeSelect) {
+      onNodeSelect(nodeDetails);
     }
   };
 
-  // Zoom controls
-  const handleZoomIn = () => setZoom(prev => Math.min(prev + 0.2, 3));
-  const handleZoomOut = () => setZoom(prev => Math.max(prev - 0.2, 0.1));
+  // Zoom controls - Increased max zoom for better legibility
+  const handleZoomIn = () => setZoom(prev => Math.min(prev + 0.3, 6.0));
+  const handleZoomOut = () => setZoom(prev => Math.max(prev - 0.3, 0.1));
   const handleZoomReset = () => {
     setZoom(1);
     setPanOffset({ x: 0, y: 0 });
@@ -841,7 +850,7 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
                         textAnchor="middle"
                         dominantBaseline="middle"
                         className="fill-white font-bold"
-                        style={{ fontSize: '10px' }}
+                        style={{ fontSize: '12px' }}
                       >
                         {node.stepNumber}
                       </text>
@@ -927,8 +936,8 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
                       dominantBaseline="middle"
                       fill="#fff"
                       style={{ 
-                        fontSize: node.isError ? '10px' : '12px',
-                        fontWeight: isExecuting ? '700' : '500',
+                        fontSize: node.isError ? '13px' : '14px',
+                        fontWeight: isExecuting ? '700' : '600',
                         pointerEvents: 'none' // Prevent text from interfering with drag
                       }}
                     >
@@ -968,47 +977,6 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
         </div>
       </div>
 
-      {/* Node Details - Small overlay that doesn't interfere with dev panels */}
-      {codeViewerOpen && selectedNodeInfo && (
-        <div className="absolute bottom-4 left-4 w-80 max-h-48 bg-slate-800/95 border border-slate-600 rounded-lg backdrop-blur-sm z-30 shadow-xl">
-          <div className="flex items-center justify-between p-3 border-b border-slate-600">
-            <h3 className="text-white font-medium text-sm truncate">
-              {selectedNodeInfo.title}
-            </h3>
-            <button
-              onClick={() => setCodeViewerOpen(false)}
-              className="text-slate-400 hover:text-white transition-colors ml-2"
-            >
-              <ChevronDown className="w-4 h-4" />
-            </button>
-          </div>
-          
-          <div className="p-3 overflow-auto max-h-32">
-            {selectedNodeInfo.isError && (
-              <div className="p-2 bg-red-900/30 border border-red-500/50 rounded mb-2">
-                <div className="flex items-center gap-2 text-red-400 font-medium text-xs">
-                  <div className="w-1.5 h-1.5 bg-red-400 rounded-full"></div>
-                  Error Detected
-                </div>
-              </div>
-            )}
-            
-            {/* Show node details */}
-            <div className="space-y-1">
-              {selectedNodeInfo.details.slice(0, 3).map((detail, index) => (
-                <div key={index} className="text-slate-300 text-xs">
-                  <span className="text-slate-500">•</span> {detail}
-                </div>
-              ))}
-              {selectedNodeInfo.details.length > 3 && (
-                <div className="text-slate-400 text-xs italic">
-                  +{selectedNodeInfo.details.length - 3} more details...
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
 
       <style jsx>{`
         @keyframes dash {
