@@ -968,60 +968,44 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
         </div>
       </div>
 
-      {/* Code Viewer - Below visualization when open */}
-      {codeViewerOpen && (
-        <div className="h-1/2 bg-slate-800 border-t border-slate-600 flex flex-col">
-          <div className="flex items-center justify-between p-4 border-b border-slate-600">
-            <h3 className="text-white font-medium">
-              {selectedNodeInfo ? selectedNodeInfo.title : 'Node Details'}
+      {/* Node Details - Small overlay that doesn't interfere with dev panels */}
+      {codeViewerOpen && selectedNodeInfo && (
+        <div className="absolute bottom-4 left-4 w-80 max-h-48 bg-slate-800/95 border border-slate-600 rounded-lg backdrop-blur-sm z-30 shadow-xl">
+          <div className="flex items-center justify-between p-3 border-b border-slate-600">
+            <h3 className="text-white font-medium text-sm truncate">
+              {selectedNodeInfo.title}
             </h3>
             <button
               onClick={() => setCodeViewerOpen(false)}
-              className="text-slate-400 hover:text-white transition-colors"
+              className="text-slate-400 hover:text-white transition-colors ml-2"
             >
-              <ChevronDown className="w-5 h-5" />
+              <ChevronDown className="w-4 h-4" />
             </button>
           </div>
           
-          <div className="flex-1 p-4 overflow-auto">
-            {selectedNodeInfo ? (
-              <div className="space-y-4">
-                {selectedNodeInfo.isError && (
-                  <div className="p-3 bg-red-900/30 border border-red-500/50 rounded-lg">
-                    <div className="flex items-center gap-2 text-red-400 font-medium">
-                      <div className="w-2 h-2 bg-red-400 rounded-full"></div>
-                      Error Detected
-                    </div>
-                  </div>
-                )}
-                
-                {/* Show code content if available */}
-                {selectedNodeInfo.content && (
-                  <div className="bg-slate-900 border border-slate-600 rounded-lg p-4">
-                    <h4 className="text-slate-200 font-medium mb-3">Code</h4>
-                    <pre className="text-sm text-slate-300 font-mono overflow-x-auto whitespace-pre-wrap">
-                      {selectedNodeInfo.content}
-                    </pre>
-                  </div>
-                )}
-                
-                {/* Show node details */}
-                <div className="bg-slate-800 border border-slate-600 rounded-lg p-4">
-                  <h4 className="text-slate-200 font-medium mb-3">Details</h4>
-                  <div className="space-y-2">
-                    {selectedNodeInfo.details.map((detail, index) => (
-                      <div key={index} className="text-slate-300 text-sm">
-                        <span className="text-slate-500">•</span> {detail}
-                      </div>
-                    ))}
-                  </div>
+          <div className="p-3 overflow-auto max-h-32">
+            {selectedNodeInfo.isError && (
+              <div className="p-2 bg-red-900/30 border border-red-500/50 rounded mb-2">
+                <div className="flex items-center gap-2 text-red-400 font-medium text-xs">
+                  <div className="w-1.5 h-1.5 bg-red-400 rounded-full"></div>
+                  Error Detected
                 </div>
               </div>
-            ) : (
-              <div className="text-slate-400 text-center py-8">
-                Click any node to see details
-              </div>
             )}
+            
+            {/* Show node details */}
+            <div className="space-y-1">
+              {selectedNodeInfo.details.slice(0, 3).map((detail, index) => (
+                <div key={index} className="text-slate-300 text-xs">
+                  <span className="text-slate-500">•</span> {detail}
+                </div>
+              ))}
+              {selectedNodeInfo.details.length > 3 && (
+                <div className="text-slate-400 text-xs italic">
+                  +{selectedNodeInfo.details.length - 3} more details...
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}

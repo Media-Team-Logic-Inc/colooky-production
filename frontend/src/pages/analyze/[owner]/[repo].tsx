@@ -889,7 +889,7 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
                 </div>
               </div>
 
-            <div className="flex gap-6">
+            <div className="flex gap-4">
               {/* Main Visualization - Takes most space */}
               <div className="flex-1">
                 <div className="h-96 bg-slate-800 border border-slate-700 rounded-lg p-4">
@@ -944,59 +944,59 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
                 </div>
               </div>
               
-              {/* Right Sidebar - Stats Summary */}
-              <div className="w-80 flex-shrink-0">
+              {/* Right Sidebar - Stats Summary (Narrower) */}
+              <div className="w-64 flex-shrink-0">
                 {analysis.summary && (
-                  <div className="bg-slate-800 border border-slate-700 rounded-lg p-4 sticky top-6">
-                    <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                      📊 Analysis Summary
+                  <div className="bg-slate-800 border border-slate-700 rounded-lg p-3 sticky top-6">
+                    <h3 className="text-base font-semibold text-white mb-3 flex items-center gap-2">
+                      📊 Summary
                     </h3>
                     
                     {/* Statistics Grid - Compact Vertical Layout */}
-                    <div className="space-y-3 mb-6">
-                      <div className="flex justify-between items-center p-3 bg-slate-700 rounded-lg">
-                        <span className="text-slate-300 text-sm">Files</span>
-                        <span className="text-2xl font-bold text-blue-400">{analysis.summary.supported_files}</span>
+                    <div className="space-y-2 mb-4">
+                      <div className="flex justify-between items-center p-2 bg-slate-700 rounded">
+                        <span className="text-slate-300 text-xs">Files</span>
+                        <span className="text-lg font-bold text-blue-400">{analysis.summary.supported_files}</span>
                       </div>
-                      <div className="flex justify-between items-center p-3 bg-slate-700 rounded-lg">
-                        <span className="text-slate-300 text-sm">Functions</span>
-                        <span className="text-2xl font-bold text-green-400">{analysis.summary.functions}</span>
+                      <div className="flex justify-between items-center p-2 bg-slate-700 rounded">
+                        <span className="text-slate-300 text-xs">Functions</span>
+                        <span className="text-lg font-bold text-green-400">{analysis.summary.functions}</span>
                       </div>
-                      <div className="flex justify-between items-center p-3 bg-slate-700 rounded-lg">
-                        <span className="text-slate-300 text-sm">Classes</span>
-                        <span className="text-2xl font-bold text-purple-400">{analysis.summary.classes}</span>
+                      <div className="flex justify-between items-center p-2 bg-slate-700 rounded">
+                        <span className="text-slate-300 text-xs">Classes</span>
+                        <span className="text-lg font-bold text-purple-400">{analysis.summary.classes}</span>
                       </div>
-                      <div className="flex justify-between items-center p-3 bg-slate-700 rounded-lg">
-                        <span className="text-slate-300 text-sm">Imports</span>
-                        <span className="text-2xl font-bold text-orange-400">{analysis.summary.imports}</span>
+                      <div className="flex justify-between items-center p-2 bg-slate-700 rounded">
+                        <span className="text-slate-300 text-xs">Imports</span>
+                        <span className="text-lg font-bold text-orange-400">{analysis.summary.imports}</span>
                       </div>
-                      <div className="flex justify-between items-center p-3 bg-slate-700 rounded-lg">
-                        <span className="text-slate-300 text-sm">Language</span>
-                        <span className="text-lg font-bold text-cyan-400 truncate">{analysis.summary.main_language}</span>
+                      <div className="flex justify-between items-center p-2 bg-slate-700 rounded">
+                        <span className="text-slate-300 text-xs">Language</span>
+                        <span className="text-sm font-bold text-cyan-400 truncate">{analysis.summary.main_language}</span>
                       </div>
                     </div>
 
                     {/* Code Insights - Compact Vertical Layout */}
-                    <div className="space-y-3">
-                      <h4 className="text-sm font-semibold text-white mb-3">🔍 Code Insights</h4>
-                      <div className="bg-slate-700 rounded-lg p-3">
-                        <div className="text-blue-400 font-medium mb-1 text-sm">Architecture Pattern</div>
+                    <div className="space-y-2">
+                      <h4 className="text-xs font-semibold text-white mb-2">🔍 Insights</h4>
+                      <div className="bg-slate-700 rounded p-2">
+                        <div className="text-blue-400 font-medium mb-1 text-xs">Architecture</div>
                         <div className="text-slate-300 text-xs">
-                          {analysis.summary.functions > analysis.summary.classes * 3 ? 'Functional-oriented' : 
-                           analysis.summary.classes > analysis.summary.functions ? 'Object-oriented' : 'Hybrid approach'}
+                          {analysis.summary.functions > analysis.summary.classes * 3 ? 'Functional' : 
+                           analysis.summary.classes > analysis.summary.functions ? 'OOP' : 'Hybrid'}
                         </div>
                       </div>
-                      <div className="bg-slate-700 rounded-lg p-3">
-                        <div className="text-green-400 font-medium mb-1 text-sm">Code Density</div>
+                      <div className="bg-slate-700 rounded p-2">
+                        <div className="text-green-400 font-medium mb-1 text-xs">Density</div>
                         <div className="text-slate-300 text-xs">
-                          {Math.round((analysis.summary.functions + analysis.summary.classes) / analysis.summary.supported_files)} elements/file
+                          {Math.round((analysis.summary.functions + analysis.summary.classes) / analysis.summary.supported_files)} elem/file
                         </div>
                       </div>
-                      <div className="bg-slate-700 rounded-lg p-3">
-                        <div className="text-purple-400 font-medium mb-1 text-sm">Dependency Style</div>
+                      <div className="bg-slate-700 rounded p-2">
+                        <div className="text-purple-400 font-medium mb-1 text-xs">Dependencies</div>
                         <div className="text-slate-300 text-xs">
-                          {analysis.summary.imports > analysis.summary.supported_files * 2 ? 'Highly modular' : 
-                           analysis.summary.imports < analysis.summary.supported_files ? 'Self-contained' : 'Balanced imports'}
+                          {analysis.summary.imports > analysis.summary.supported_files * 2 ? 'Modular' : 
+                           analysis.summary.imports < analysis.summary.supported_files ? 'Self-contained' : 'Balanced'}
                         </div>
                       </div>
                     </div>
