@@ -225,12 +225,12 @@ export const updateUserSettings = async (userId: string, settings: Partial<UserS
 };
 
 export const saveAnalysisHistory = async (analysisData: Partial<AnalysisHistory>): Promise<AnalysisHistory | null> => {
-  if (!supabaseAdmin) {
-    console.warn('Supabase admin client not configured, cannot save analysis history');
+  if (!supabase) {
+    console.warn('Supabase client not configured, cannot save analysis history');
     return null;
   }
 
-  const { data, error } = await supabaseAdmin
+  const { data, error } = await supabase
     .from('analysis_history')
     .insert([analysisData])
     .select()
@@ -245,12 +245,12 @@ export const saveAnalysisHistory = async (analysisData: Partial<AnalysisHistory>
 };
 
 export const getUserAnalysisHistory = async (userId: string, limit = 10): Promise<AnalysisHistory[]> => {
-  if (!supabaseAdmin) {
-    console.warn('Supabase admin client not configured, cannot fetch analysis history');
+  if (!supabase) {
+    console.warn('Supabase client not configured, cannot fetch analysis history');
     return [];
   }
 
-  const { data, error } = await supabaseAdmin
+  const { data, error } = await supabase
     .from('analysis_history')
     .select('*')
     .eq('user_id', userId)
@@ -266,12 +266,12 @@ export const getUserAnalysisHistory = async (userId: string, limit = 10): Promis
 };
 
 export const deleteAnalysisHistory = async (analysisId: string): Promise<boolean> => {
-  if (!supabaseAdmin) {
-    console.warn('Supabase admin client not configured, cannot delete analysis history');
+  if (!supabase) {
+    console.warn('Supabase client not configured, cannot delete analysis history');
     return false;
   }
 
-  const { error } = await supabaseAdmin
+  const { error } = await supabase
     .from('analysis_history')
     .delete()
     .eq('id', analysisId);

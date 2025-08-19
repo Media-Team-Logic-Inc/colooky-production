@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { ChevronUp, ChevronDown, Move, ZoomIn, ZoomOut, Download, Play, Square } from 'lucide-react';
+import { ChevronUp, ChevronDown, Move, ZoomIn, ZoomOut, Download, Play, Square, Crosshair, RotateCcw, Plus, Minus } from 'lucide-react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
@@ -92,6 +92,7 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
   const [draggedNodes, setDraggedNodes] = useState<{[key: string]: {x: number, y: number}}>({});
   const [isDragging, setIsDragging] = useState<string | null>(null);
   const [dragStart, setDragStart] = useState<{x: number, y: number} | null>(null);
+  const [isInitialized, setIsInitialized] = useState(false);
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState<{x: number, y: number} | null>(null);
   const [isSimulating, setIsSimulating] = useState(false);
@@ -160,6 +161,40 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
     if (onNodeSelect) {
       onNodeSelect(nodeDetails);
     }
+  };
+
+  // Auto-center visualization on nodes
+  const centerOnNodes = () => {
+    if (!scenario?.nodes || scenario.nodes.length === 0) return;
+    
+    // Calculate bounding box of all nodes
+    let minX = Infinity, maxX = -Infinity;
+    let minY = Infinity, maxY = -Infinity;
+    
+    scenario.nodes.forEach(node => {
+      const position = getNodePosition(node);
+      minX = Math.min(minX, position.x);
+      maxX = Math.max(maxX, position.x + node.width);
+      minY = Math.min(minY, position.y);
+      maxY = Math.max(maxY, position.y + node.height);
+    });
+    
+    // Calculate center point of all nodes
+    const nodesCenterX = (minX + maxX) / 2;
+    const nodesCenterY = (minY + maxY) / 2;
+    
+    // Calculate viewport center (assuming typical container size)
+    const viewportWidth = 800;  // Approximate container width
+    const viewportHeight = 400; // Approximate container height
+    const viewportCenterX = viewportWidth / 2;
+    const viewportCenterY = viewportHeight / 2;
+    
+    // Calculate offset needed to center nodes in viewport
+    const offsetX = viewportCenterX - (nodesCenterX * zoom);
+    const offsetY = viewportCenterY - (nodesCenterY * zoom);
+    
+    setPanOffset({ x: offsetX, y: offsetY });
+    console.log('🎯 Auto-centered visualization on nodes:', { nodesCenterX, nodesCenterY, offsetX, offsetY });
   };
 
   // Zoom controls - Increased max zoom for better legibility
@@ -392,6 +427,22 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
     const nodeIndex = executionOrder.findIndex(n => n.id === node.id);
     return nodeIndex >= 0 && nodeIndex < simulationStep;
   };
+
+  // Reset initialization when scenario changes
+  React.useEffect(() => {
+    setIsInitialized(false);
+  }, [scenario?.id]);
+
+  // Auto-center visualization when scenario changes
+  React.useEffect(() => {
+    if (scenario?.nodes && scenario.nodes.length > 0 && !isInitialized) {
+      // Small delay to ensure component is rendered
+      setTimeout(() => {
+        centerOnNodes();
+        setIsInitialized(true);
+      }, 100);
+    }
+  }, [scenario, isInitialized, zoom]);
 
   // Cleanup simulation on unmount
   React.useEffect(() => {
@@ -638,6 +689,14 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
             title="Zoom Out"
           >
             <ZoomOut className="w-4 h-4 text-white" />
+          </button>
+          
+          <button
+            onClick={centerOnNodes}
+            className="p-2 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-lg transition-colors"
+            title="Center on Nodes"
+          >
+            <Crosshair className="w-4 h-4 text-white" />
           </button>
           
           <button
