@@ -199,10 +199,17 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
     const containerHeight = container?.clientHeight || 600;
     
     // Calculate offset to center nodes in viewport (accounting for current zoom)
+    // Use more aggressive centering to ensure visibility
     const offsetX = (containerWidth / 2) / zoom - nodesCenterX;
     const offsetY = (containerHeight / 2) / zoom - nodesCenterY;
     
+    // Apply the offset with additional safety margin
     setPanOffset({ x: offsetX, y: offsetY });
+    
+    // Force a second centering attempt after a short delay for stubborn cases
+    setTimeout(() => {
+      setPanOffset({ x: offsetX, y: offsetY });
+    }, 50);
     
     console.log('🎯 Centering visualization:', { 
       nodeCount: scenario.nodes.length,
@@ -456,16 +463,30 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
   // Auto-center visualization when scenario changes
   React.useEffect(() => {
     if (scenario?.nodes && scenario.nodes.length > 0 && !isInitialized) {
-      // Immediate centering, then set initialized
-      centerOnNodes();
-      setIsInitialized(true);
+      // Multiple attempts at centering with increasing delays
+      const centerAttempts = [0, 100, 300, 500, 1000];
       
-      // Also center again after a small delay to ensure DOM is ready
-      setTimeout(() => {
-        centerOnNodes();
-      }, 200);
+      centerAttempts.forEach((delay) => {
+        setTimeout(() => {
+          centerOnNodes();
+        }, delay);
+      });
+      
+      setIsInitialized(true);
     }
   }, [scenario, isInitialized]);
+
+  // Additional centering when container size changes
+  React.useEffect(() => {
+    const handleResize = () => {
+      if (scenario?.nodes && scenario.nodes.length > 0) {
+        setTimeout(centerOnNodes, 100);
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [scenario]);
 
   // Cleanup simulation on unmount
   React.useEffect(() => {
@@ -747,9 +768,23 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
           <button
             onClick={centerOnNodes}
             className="p-2 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-lg transition-colors"
-            title="Center on Nodes"
+            title="Find & Center Visualization"
           >
             <Crosshair className="w-4 h-4 text-white" />
+          </button>
+          
+          <button
+            onClick={() => {
+              // Emergency "find visualization" with zoom reset
+              setZoom(1);
+              setTimeout(() => centerOnNodes(), 100);
+              setTimeout(() => centerOnNodes(), 300);
+              setTimeout(() => centerOnNodes(), 600);
+            }}
+            className="p-2 bg-purple-800 hover:bg-purple-700 border border-purple-600 rounded-lg transition-colors text-xs text-white"
+            title="Emergency Find Visualization"
+          >
+            Find
           </button>
           
           <button

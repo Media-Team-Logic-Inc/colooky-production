@@ -665,6 +665,33 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
     }
   };
 
+  // Load saved analysis from history
+  const loadSavedAnalysis = (historyItem: AnalysisHistory) => {
+    try {
+      // Restore the file selections
+      setSelectedFiles(historyItem.files_analyzed);
+      
+      // Restore the analysis results
+      setAnalysis(historyItem.scenario_data);
+      setSavedAnalysisId(historyItem.id);
+      
+      // Update current step to results
+      setCurrentStep('results');
+      
+      console.log('✅ Loaded saved analysis:', historyItem.id);
+      
+      // Show success feedback
+      const originalTitle = document.title;
+      document.title = `Loaded: ${historyItem.repository_name}`;
+      setTimeout(() => {
+        document.title = originalTitle;
+      }, 2000);
+      
+    } catch (error) {
+      console.error('Error loading saved analysis:', error);
+    }
+  };
+
   const renderFileTree = (nodes: FileTreeNode[], level = 0) => {
     return nodes.map((node) => (
       <div key={node.path} style={{ marginLeft: level * 16 }}>
@@ -1187,17 +1214,25 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
                         
                         <div className="space-y-1 max-h-40 overflow-auto">
                           {analysisHistory.slice(0, 5).map((item) => (
-                            <div key={item.id} className="p-2 bg-slate-700/50 rounded text-xs">
+                            <div 
+                              key={item.id} 
+                              onClick={() => loadSavedAnalysis(item)}
+                              className="p-2 bg-slate-700/50 hover:bg-slate-600/50 rounded text-xs cursor-pointer transition-colors group"
+                              title="Click to load this analysis"
+                            >
                               <div className="flex items-center justify-between">
-                                <span className="text-slate-300 font-medium truncate">
+                                <span className="text-slate-300 font-medium truncate group-hover:text-white">
                                   {item.repository_name}
                                 </span>
                                 <span className="text-slate-500 text-xs">
                                   {new Date(item.created_at).toLocaleDateString()}
                                 </span>
                               </div>
-                              <div className="text-slate-400 text-xs mt-1">
+                              <div className="text-slate-400 text-xs mt-1 group-hover:text-slate-300">
                                 {item.files_analyzed.length} files • {item.analysis_type}
+                                <span className="ml-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  → Click to load
+                                </span>
                               </div>
                             </div>
                           ))}
