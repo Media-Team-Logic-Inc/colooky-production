@@ -88,7 +88,7 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
     if (nodeCount <= 25) return 2.5;     // Default zoom for big files
     return 2.0;                          // Wide view for huge files (still readable)
   });
-  const [panOffset, setPanOffset] = useState({ x: 400, y: 200 }); // Start with reasonable center position
+  const [panOffset, setPanOffset] = useState({ x: 0, y: 0 }); // Simplified for dynamic viewBox
   const [draggedNodes, setDraggedNodes] = useState<{[key: string]: {x: number, y: number}}>({});
   const [isDragging, setIsDragging] = useState<string | null>(null);
   const [dragStart, setDragStart] = useState<{x: number, y: number} | null>(null);
@@ -163,64 +163,18 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
     }
   };
 
-  // Auto-center visualization on nodes
+  // Auto-center visualization on nodes - simplified approach
   const centerOnNodes = () => {
     if (!scenario?.nodes || scenario.nodes.length === 0) return;
     
-    // Calculate bounding box of all nodes using their original positions
-    let minX = Infinity, maxX = -Infinity;
-    let minY = Infinity, maxY = -Infinity;
+    // With dynamic viewBox, we can use simple centering
+    // Reset to a centered position that should work with the dynamic viewBox
+    setPanOffset({ x: 0, y: 0 });
     
-    scenario.nodes.forEach(node => {
-      // Use original node positions, not adjusted ones
-      const x = node.x || 0;
-      const y = node.y || 0;
-      const width = node.width || 200;
-      const height = node.height || 80;
-      
-      minX = Math.min(minX, x);
-      maxX = Math.max(maxX, x + width);
-      minY = Math.min(minY, y);
-      maxY = Math.max(maxY, y + height);
-    });
-    
-    // If we got infinite values, use defaults
-    if (minX === Infinity) {
-      minX = 0;
-      maxX = 800;
-      minY = 0;
-      maxY = 400;
-    }
-    
-    // Calculate center point of all nodes
-    const nodesCenterX = (minX + maxX) / 2;
-    const nodesCenterY = (minY + maxY) / 2;
-    
-    // Get the actual container dimensions
-    const container = document.querySelector('.subway-container');
-    const containerRect = container?.getBoundingClientRect();
-    
-    // Use actual container size or reasonable fallbacks
-    const viewportWidth = containerRect?.width || 800;
-    const viewportHeight = containerRect?.height || 384;
-    const viewportCenterX = viewportWidth / 2;
-    const viewportCenterY = viewportHeight / 2;
-    
-    // Calculate offset to center nodes in viewport
-    // Simple approach: viewport center minus node center (accounting for zoom)
-    const offsetX = viewportCenterX - (nodesCenterX * zoom);
-    const offsetY = viewportCenterY - (nodesCenterY * zoom);
-    
-    // Apply the offset
-    setPanOffset({ x: offsetX, y: offsetY });
-    
-    console.log('🎯 Centering visualization:', { 
+    console.log('🎯 Centering visualization with dynamic viewBox:', { 
       nodeCount: scenario.nodes.length,
-      nodesBounds: { minX, maxX, minY, maxY },
-      nodesCenter: { nodesCenterX, nodesCenterY },
-      viewport: { viewportWidth, viewportHeight },
       zoom,
-      finalOffset: { offsetX, offsetY }
+      dynamicViewBox: calculateDynamicViewBox()
     });
   };
 
@@ -656,8 +610,38 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
     }
   };
 
-  // Use much larger viewBox to accommodate all nodes without clipping
-  const viewBox = scenario.viewBox || "0 0 3500 1200"; // Increased height to prevent bottom clipping
+  // Calculate dynamic viewBox based on actual node positions
+  const calculateDynamicViewBox = () => {
+    if (!scenario?.nodes || scenario.nodes.length === 0) {
+      return "0 0 1000 600";
+    }
+    
+    let minX = Infinity, maxX = -Infinity;
+    let minY = Infinity, maxY = -Infinity;
+    
+    scenario.nodes.forEach(node => {
+      const x = node.x || 0;
+      const y = node.y || 0;
+      const width = node.width || 200;
+      const height = node.height || 80;
+      
+      minX = Math.min(minX, x);
+      maxX = Math.max(maxX, x + width);
+      minY = Math.min(minY, y);
+      maxY = Math.max(maxY, y + height);
+    });
+    
+    // Add padding around the content
+    const padding = 100;
+    const finalMinX = Math.max(0, minX - padding);
+    const finalMinY = Math.max(0, minY - padding);
+    const finalWidth = (maxX - minX) + (padding * 2);
+    const finalHeight = (maxY - minY) + (padding * 2);
+    
+    return `${finalMinX} ${finalMinY} ${finalWidth} ${finalHeight}`;
+  };
+  
+  const viewBox = scenario.viewBox || calculateDynamicViewBox();
   const [viewX, viewY, viewWidth, viewHeight] = viewBox.split(' ').map(Number);
 
   return (
@@ -793,10 +777,6 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
         <div 
           ref={visualizationRef}
           className="w-full h-full overflow-hidden"
-          style={{
-            transform: `scale(${zoom}) translate(${panOffset.x}px, ${panOffset.y}px)`,
-            transformOrigin: 'center center'
-          }}
         >
           <svg
             ref={svgRef}
@@ -848,7 +828,7 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
               }
 
               // Calculate connection points
-              let fromX, fromY, toX, toY;
+              let fromX: number, fromY: number, toX: number, toY: number;
               
               if (fromNode) {
                 const fromPos = getNodePosition(fromNode);
@@ -871,7 +851,6 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
               // Calculate smooth curve
               const dx = toX - fromX;
               const dy = toY - fromY;
-              const distance = Math.sqrt(dx * dx + dy * dy);
               
               // Better control point calculation
               const controlX = fromX + dx * 0.5;
