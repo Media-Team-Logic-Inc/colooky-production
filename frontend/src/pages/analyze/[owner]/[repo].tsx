@@ -986,9 +986,33 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
               {/* Header */}
               <div className="mb-6">
                 <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle className="w-6 h-6 text-green-400" />
-                    <h2 className="text-2xl font-bold text-white">Analysis Complete!</h2>
+                  <div className="flex items-center gap-6">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle className="w-6 h-6 text-green-400" />
+                      <h2 className="text-2xl font-bold text-white">Analysis Complete!</h2>
+                    </div>
+                    
+                    {/* SUPER PROMINENT Load Saved Analysis Button */}
+                    {user && analysisHistory.length > 0 && (
+                      <div className="flex items-center gap-3">
+                        <span className="text-slate-400 text-lg">or</span>
+                        <button
+                          onClick={() => {
+                            const recentAnalysis = analysisHistory[0];
+                            if (recentAnalysis) {
+                              loadSavedAnalysis(recentAnalysis);
+                            }
+                          }}
+                          className="px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-lg font-bold transition-all shadow-xl hover:shadow-blue-500/25 hover:scale-105 border border-blue-400/30"
+                          title={`Load from ${analysisHistory.length} saved analyses`}
+                        >
+                          📁 Load Saved Analysis
+                          <span className="ml-2 px-2 py-1 bg-blue-800 rounded-full text-sm">
+                            {analysisHistory.length}
+                          </span>
+                        </button>
+                      </div>
+                    )}
                   </div>
                   <div className="flex items-center gap-2">
                     <button

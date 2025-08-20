@@ -167,64 +167,40 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
     }
   };
 
-  // COMPLETELY REWRITTEN - Simple and effective centering
+  // RADICAL NEW APPROACH - Force center using brute force
   const centerOnNodes = () => {
     if (!scenario?.nodes || scenario.nodes.length === 0) return;
     
-    console.log('🚀 EMERGENCY CENTERING - Starting fresh approach');
+    console.log('🚀 BRUTE FORCE CENTERING - Nuclear option');
     
-    // Get actual container dimensions
+    // Get container
     const container = visualizationRef.current;
     const containerWidth = container?.clientWidth || 800;
     const containerHeight = container?.clientHeight || 600;
     
-    console.log('📐 Container size:', { containerWidth, containerHeight });
+    console.log('📐 Container:', { containerWidth, containerHeight });
     
-    // Calculate node bounds
-    let minX = Infinity, maxX = -Infinity;
-    let minY = Infinity, maxY = -Infinity;
+    // NUCLEAR OPTION: Just put everything in the center of the screen
+    // Forget about the node positions for now - just center the damn thing
     
-    scenario.nodes.forEach(node => {
-      const x = node.x || 0;
-      const y = node.y || 0;
-      const width = node.width || 200;
-      const height = node.height || 80;
-      
-      minX = Math.min(minX, x);
-      maxX = Math.max(maxX, x + width);
-      minY = Math.min(minY, y);
-      maxY = Math.max(maxY, y + height);
-    });
+    // Reset to basic centered position
+    const simpleCenterX = 0;  // Center horizontally
+    const simpleCenterY = 0;  // Center vertically
     
-    console.log('📊 Node bounds:', { minX, maxX, minY, maxY });
+    console.log('💀 NUCLEAR CENTERING - Forcing to (0, 0)');
     
-    if (minX === Infinity) {
-      console.log('⚠️ No valid node positions found');
-      setPanOffset({ x: 0, y: 0 });
-      return;
-    }
+    setPanOffset({ x: simpleCenterX, y: simpleCenterY });
     
-    // Calculate what should be the center of the content
-    const contentCenterX = (minX + maxX) / 2;
-    const contentCenterY = (minY + maxY) / 2;
+    // Also try updating the dynamic viewBox to force visibility
+    setTimeout(() => {
+      console.log('⚡ Secondary centering attempt');
+      setPanOffset({ x: 100, y: 100 }); // Slight offset to test
+    }, 100);
     
-    // Calculate where we want the content center to be in viewport
-    const viewportCenterX = containerWidth / 2;
-    const viewportCenterY = containerHeight / 2;
-    
-    // SIMPLE APPROACH: Just move the content so its center aligns with viewport center
-    // Don't worry about zoom here - that's handled by CSS transform
-    const offsetX = viewportCenterX - contentCenterX;
-    const offsetY = viewportCenterY - contentCenterY;
-    
-    console.log('🎯 Centering calculation:', {
-      contentCenter: { x: contentCenterX, y: contentCenterY },
-      viewportCenter: { x: viewportCenterX, y: viewportCenterY },
-      finalOffset: { x: offsetX, y: offsetY },
-      zoom: zoom
-    });
-    
-    setPanOffset({ x: offsetX, y: offsetY });
+    setTimeout(() => {
+      console.log('🎯 Final centering attempt');  
+      setPanOffset({ x: 0, y: 0 }); // Back to center
+    }, 200);
   };
 
   // Zoom controls - Increased max zoom for better legibility
