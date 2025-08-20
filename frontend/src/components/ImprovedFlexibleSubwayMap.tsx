@@ -651,8 +651,8 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
         className="subway-container relative flex-1 overflow-hidden"
         style={{ background: 'linear-gradient(135deg, #0f1419 0%, #1a1f29 100%)' }}
       >
-        {/* Controls */}
-        <div className="absolute top-6 left-6 flex flex-col gap-2 z-10">
+        {/* Controls - Fixed positioning to stay always visible */}
+        <div className="fixed top-6 left-6 flex flex-col gap-2 z-50">
           {/* Simulation Button - FEATURED! */}
           <button
             onClick={runSimulation}
@@ -777,6 +777,10 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
         <div 
           ref={visualizationRef}
           className="w-full h-full overflow-hidden"
+          style={{
+            transform: `scale(${zoom}) translate(${panOffset.x}px, ${panOffset.y}px)`,
+            transformOrigin: 'center center'
+          }}
         >
           <svg
             ref={svgRef}
