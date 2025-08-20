@@ -122,6 +122,11 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
   useEffect(() => {
     loadRepositoryStructure();
     
+    // Load analysis history from database
+    if (user) {
+      fetchAnalysisHistory();
+    }
+    
     // Load persisted file selections
     const persistedSelections = localStorage.getItem(`colooky_selections_${repository.owner}_${repository.name}`);
     if (persistedSelections) {
@@ -1022,9 +1027,18 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
                       // EMERGENCY DEBUG: Show the actual raw analysis object
                       console.log('🚨 RAW ANALYSIS OBJECT:', JSON.stringify(analysis, null, 2));
                       
-                      // CRITICAL FIX: Use the REAL backend visualization instead of generating fake one
+                      // CRITICAL FIX: Use the REAL backend visualization with enhancements
                       console.log('🚀 Using REAL backend visualization with actual function names!');
-                      return analysis.visualization;
+                      
+                      // Apply error detection and step numbers to enhance visualization
+                      let enhancedVisualization = analysis.visualization;
+                      if (enhancedVisualization) {
+                        enhancedVisualization = enhanceScenarioWithErrors(enhancedVisualization, analysis);
+                        enhancedVisualization = addStepNumbers(enhancedVisualization);
+                        console.log('✨ Applied error detection and step numbers to visualization');
+                      }
+                      
+                      return enhancedVisualization;
                     })()}
                     onScenarioChange={() => {}}
                     availableScenarios={[analysis.visualization]}
@@ -1157,6 +1171,36 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
                               </div>
                             )}
                           </div>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Analysis History */}
+                    {user && analysisHistory.length > 0 && (
+                      <div className="bg-slate-800 border border-slate-700 rounded-lg p-3">
+                        <div className="flex items-center justify-between mb-2">
+                          <h4 className="text-sm font-semibold text-white flex items-center gap-2">
+                            🕒 Recent Analyses
+                          </h4>
+                          <span className="text-xs text-slate-400">{analysisHistory.length}</span>
+                        </div>
+                        
+                        <div className="space-y-1 max-h-40 overflow-auto">
+                          {analysisHistory.slice(0, 5).map((item) => (
+                            <div key={item.id} className="p-2 bg-slate-700/50 rounded text-xs">
+                              <div className="flex items-center justify-between">
+                                <span className="text-slate-300 font-medium truncate">
+                                  {item.repository_name}
+                                </span>
+                                <span className="text-slate-500 text-xs">
+                                  {new Date(item.created_at).toLocaleDateString()}
+                                </span>
+                              </div>
+                              <div className="text-slate-400 text-xs mt-1">
+                                {item.files_analyzed.length} files • {item.analysis_type}
+                              </div>
+                            </div>
+                          ))}
                         </div>
                       </div>
                     )}

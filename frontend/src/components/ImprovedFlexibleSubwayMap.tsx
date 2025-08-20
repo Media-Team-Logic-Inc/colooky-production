@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { ChevronUp, ChevronDown, Move, ZoomIn, ZoomOut, Download, Play, Square, Crosshair, RotateCcw, Plus, Minus } from 'lucide-react';
+import { ChevronUp, ChevronDown, Move, ZoomIn, ZoomOut, Download, Play, Square, Pause, Crosshair, RotateCcw, Plus, Minus } from 'lucide-react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
@@ -163,18 +163,54 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
     }
   };
 
-  // Auto-center visualization on nodes - simplified approach
+  // Auto-center visualization on nodes - robust approach with fallback
   const centerOnNodes = () => {
     if (!scenario?.nodes || scenario.nodes.length === 0) return;
     
-    // With dynamic viewBox, we can use simple centering
-    // Reset to a centered position that should work with the dynamic viewBox
-    setPanOffset({ x: 0, y: 0 });
+    // Calculate bounding box of all nodes
+    let minX = Infinity, maxX = -Infinity;
+    let minY = Infinity, maxY = -Infinity;
     
-    console.log('🎯 Centering visualization with dynamic viewBox:', { 
+    scenario.nodes.forEach(node => {
+      const x = node.x || 0;
+      const y = node.y || 0;
+      const width = node.width || 200;
+      const height = node.height || 80;
+      
+      minX = Math.min(minX, x);
+      maxX = Math.max(maxX, x + width);
+      minY = Math.min(minY, y);
+      maxY = Math.max(maxY, y + height);
+    });
+    
+    // Fallback if no valid positions
+    if (minX === Infinity) {
+      setPanOffset({ x: 0, y: 0 });
+      return;
+    }
+    
+    // Calculate center of nodes
+    const nodesCenterX = (minX + maxX) / 2;
+    const nodesCenterY = (minY + maxY) / 2;
+    
+    // Get container dimensions
+    const container = visualizationRef.current;
+    const containerWidth = container?.clientWidth || 800;
+    const containerHeight = container?.clientHeight || 600;
+    
+    // Calculate offset to center nodes in viewport (accounting for current zoom)
+    const offsetX = (containerWidth / 2) / zoom - nodesCenterX;
+    const offsetY = (containerHeight / 2) / zoom - nodesCenterY;
+    
+    setPanOffset({ x: offsetX, y: offsetY });
+    
+    console.log('🎯 Centering visualization:', { 
       nodeCount: scenario.nodes.length,
+      nodesBounds: { minX, maxX, minY, maxY },
+      nodesCenter: { nodesCenterX, nodesCenterY },
+      container: { containerWidth, containerHeight },
       zoom,
-      dynamicViewBox: calculateDynamicViewBox()
+      finalOffset: { x: offsetX, y: offsetY }
     });
   };
 
@@ -659,7 +695,7 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
             className={`p-3 ${isPaused ? 'bg-yellow-600 hover:bg-yellow-700 border-yellow-500' : isSimulating ? 'bg-orange-600 hover:bg-orange-700 border-orange-500' : 'bg-purple-600 hover:bg-purple-700 border-purple-500'} border rounded-lg transition-colors shadow-lg`}
             title={isPaused ? "Resume Simulation" : isSimulating ? "Pause Simulation" : "Run Code Simulation"}
           >
-            {isPaused ? <Play className="w-5 h-5 text-white" /> : isSimulating ? <Square className="w-5 h-5 text-white" /> : <Play className="w-5 h-5 text-white" />}
+            {isPaused ? <Play className="w-5 h-5 text-white" /> : isSimulating ? <Pause className="w-5 h-5 text-white" /> : <Play className="w-5 h-5 text-white" />}
           </button>
           
           {/* Stop button when simulation is running */}
@@ -979,39 +1015,55 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
                       />
                     )}
                     
-                    {/* Node background */}
+                    {/* Background shadow for depth (like demo) */}
+                    <rect
+                      x={position.x + 2}
+                      y={position.y + 2}
+                      width={node.width}
+                      height={node.height}
+                      rx="12"
+                      ry="12"
+                      fill="rgba(0, 0, 0, 0.3)"
+                      style={{ filter: 'blur(4px)' }}
+                    />
+                    
+                    {/* Node background - improved styling to match demo */}
                     <rect
                       className="node-rect"
                       x={position.x}
                       y={position.y}
                       width={node.width}
                       height={node.height}
-                      rx="8"
-                      ry="8"
+                      rx="12"
+                      ry="12"
                       fill={isExecuting ? '#00ff88' : hasExecuted ? '#4ade80' : node.isError ? '#ef4444' : node.color}
-                      stroke={isExecuting ? '#00ff88' : hasExecuted ? '#4ade80' : node.isError ? '#f87171' : node.strokeColor}
-                      strokeWidth={isDraggingThis || isExecuting ? "3" : "2"}
-                      fillOpacity={hasExecuted ? "0.7" : "0.9"}
+                      stroke={isExecuting ? '#00ff88' : hasExecuted ? '#4ade80' : node.isError ? '#f87171' : 'rgba(255, 255, 255, 0.2)'}
+                      strokeWidth={isDraggingThis || isExecuting ? "2" : "1"}
+                      fillOpacity="1"
                       style={{
-                        filter: selectedNode === node.id ? 'drop-shadow(0 0 8px #fbbf24)' : 
-                                isDraggingThis ? 'drop-shadow(0 0 12px rgba(255, 255, 255, 0.5))' :
-                                isExecuting ? 'drop-shadow(0 0 20px #00ff88)' : 'none',
+                        filter: selectedNode === node.id ? 'drop-shadow(0 4px 16px rgba(251, 191, 36, 0.7))' : 
+                                isDraggingThis ? 'drop-shadow(0 8px 24px rgba(255, 255, 255, 0.4))' :
+                                isExecuting ? 'drop-shadow(0 8px 32px rgba(0, 255, 136, 0.6))' : 
+                                'drop-shadow(0 4px 12px rgba(0, 0, 0, 0.3))',
                         transition: 'all 0.3s ease'
                       }}
                     />
                     
-                    {/* Node text */}
+                    {/* Node text - improved typography like demo */}
                     <text
                       className="node-text"
                       x={position.x + node.width / 2}
                       y={position.y + node.height / 2}
                       textAnchor="middle"
                       dominantBaseline="middle"
-                      fill="#fff"
+                      fill="#ffffff"
                       style={{ 
-                        fontSize: node.isError ? '13px' : '14px',
-                        fontWeight: isExecuting ? '700' : '600',
-                        pointerEvents: 'none' // Prevent text from interfering with drag
+                        fontSize: '14px',
+                        fontWeight: '600',
+                        fontFamily: 'system-ui, -apple-system, sans-serif',
+                        letterSpacing: '0.01em',
+                        textShadow: '0 1px 2px rgba(0, 0, 0, 0.5)',
+                        pointerEvents: 'none'
                       }}
                     >
                       {node.title}
