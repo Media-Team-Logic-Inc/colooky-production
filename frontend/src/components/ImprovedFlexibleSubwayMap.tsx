@@ -167,11 +167,20 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
     }
   };
 
-  // Auto-center visualization on nodes - robust approach with fallback
+  // COMPLETELY REWRITTEN - Simple and effective centering
   const centerOnNodes = () => {
     if (!scenario?.nodes || scenario.nodes.length === 0) return;
     
-    // Calculate bounding box of all nodes
+    console.log('🚀 EMERGENCY CENTERING - Starting fresh approach');
+    
+    // Get actual container dimensions
+    const container = visualizationRef.current;
+    const containerWidth = container?.clientWidth || 800;
+    const containerHeight = container?.clientHeight || 600;
+    
+    console.log('📐 Container size:', { containerWidth, containerHeight });
+    
+    // Calculate node bounds
     let minX = Infinity, maxX = -Infinity;
     let minY = Infinity, maxY = -Infinity;
     
@@ -187,52 +196,35 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
       maxY = Math.max(maxY, y + height);
     });
     
-    // Fallback if no valid positions
+    console.log('📊 Node bounds:', { minX, maxX, minY, maxY });
+    
     if (minX === Infinity) {
+      console.log('⚠️ No valid node positions found');
       setPanOffset({ x: 0, y: 0 });
       return;
     }
     
-    // Calculate center of nodes
-    const nodesCenterX = (minX + maxX) / 2;
-    const nodesCenterY = (minY + maxY) / 2;
+    // Calculate what should be the center of the content
+    const contentCenterX = (minX + maxX) / 2;
+    const contentCenterY = (minY + maxY) / 2;
     
-    // Get container dimensions with better detection
-    const container = visualizationRef.current;
-    let containerWidth = container?.clientWidth || 800;
-    let containerHeight = container?.clientHeight || 600;
+    // Calculate where we want the content center to be in viewport
+    const viewportCenterX = containerWidth / 2;
+    const viewportCenterY = containerHeight / 2;
     
-    // Fallback to parent container if dimensions are too small
-    if (containerWidth < 400 || containerHeight < 300) {
-      const parentContainer = container?.parentElement;
-      containerWidth = parentContainer?.clientWidth || 800;
-      containerHeight = parentContainer?.clientHeight || 600;
-    }
+    // SIMPLE APPROACH: Just move the content so its center aligns with viewport center
+    // Don't worry about zoom here - that's handled by CSS transform
+    const offsetX = viewportCenterX - contentCenterX;
+    const offsetY = viewportCenterY - contentCenterY;
     
-    console.log('🎯 Container dimensions:', { containerWidth, containerHeight, zoom });
-    
-    // Calculate offset to center nodes in viewport
-    // Since CSS transform applies both scale and translate, we need to account for zoom
-    // The transform is: scale(zoom) translate(panOffset.x, panOffset.y)
-    const offsetX = (containerWidth / 2) / zoom - nodesCenterX;
-    const offsetY = (containerHeight / 2) / zoom - nodesCenterY;
-    
-    // Apply the offset with additional safety margin
-    setPanOffset({ x: offsetX, y: offsetY });
-    
-    // Force a second centering attempt after a short delay for stubborn cases
-    setTimeout(() => {
-      setPanOffset({ x: offsetX, y: offsetY });
-    }, 50);
-    
-    console.log('🎯 Centering visualization:', { 
-      nodeCount: scenario.nodes.length,
-      nodesBounds: { minX, maxX, minY, maxY },
-      nodesCenter: { nodesCenterX, nodesCenterY },
-      container: { containerWidth, containerHeight },
-      zoom,
-      finalOffset: { x: offsetX, y: offsetY }
+    console.log('🎯 Centering calculation:', {
+      contentCenter: { x: contentCenterX, y: contentCenterY },
+      viewportCenter: { x: viewportCenterX, y: viewportCenterY },
+      finalOffset: { x: offsetX, y: offsetY },
+      zoom: zoom
     });
+    
+    setPanOffset({ x: offsetX, y: offsetY });
   };
 
   // Zoom controls - Increased max zoom for better legibility
@@ -477,11 +469,17 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
   // Auto-center visualization when scenario changes
   React.useEffect(() => {
     if (scenario?.nodes && scenario.nodes.length > 0 && !isInitialized) {
-      // Multiple attempts at centering with increasing delays
-      const centerAttempts = [0, 100, 300, 500, 1000];
+      console.log('🎬 INITIAL CENTERING - New scenario loaded');
       
-      centerAttempts.forEach((delay) => {
+      // Reset zoom to reasonable level first
+      setZoom(2.0);
+      
+      // Multiple attempts at centering with increasing delays
+      const centerAttempts = [100, 300, 600, 1000, 1500];
+      
+      centerAttempts.forEach((delay, index) => {
         setTimeout(() => {
+          console.log(`⏳ Centering attempt ${index + 1}/${centerAttempts.length}`);
           centerOnNodes();
         }, delay);
       });
@@ -789,14 +787,30 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
           
           <button
             onClick={() => {
-              // Emergency "find visualization" with zoom reset
+              console.log('🆘 EMERGENCY FIND ACTIVATED');
+              // Reset everything and try different approach
               setZoom(1);
-              setTimeout(() => centerOnNodes(), 100);
-              setTimeout(() => centerOnNodes(), 300);
-              setTimeout(() => centerOnNodes(), 600);
+              setPanOffset({ x: 0, y: 0 });
+              
+              // Try centering multiple times with different approaches
+              setTimeout(() => {
+                console.log('⏱️ First attempt');
+                centerOnNodes();
+              }, 100);
+              
+              setTimeout(() => {
+                console.log('⏱️ Second attempt with zoom adjustment');
+                setZoom(1.5);
+                centerOnNodes();
+              }, 500);
+              
+              setTimeout(() => {
+                console.log('⏱️ Final attempt');
+                centerOnNodes();
+              }, 1000);
             }}
             className="p-2 bg-purple-800 hover:bg-purple-700 border border-purple-600 rounded-lg transition-colors text-xs text-white"
-            title="Emergency Find Visualization"
+            title="Emergency Find Visualization - Full Reset"
           >
             Find
           </button>
