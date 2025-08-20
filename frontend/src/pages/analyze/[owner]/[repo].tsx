@@ -1024,6 +1024,22 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
                           {isSaving ? 'Saving...' : 'Save Analysis'}
                         </button>
                       )}
+                      
+                      {/* Load Saved Analysis Button */}
+                      {user && analysisHistory.length > 0 && (
+                        <button
+                          onClick={() => {
+                            const recentAnalysis = analysisHistory[0];
+                            if (recentAnalysis) {
+                              loadSavedAnalysis(recentAnalysis);
+                            }
+                          }}
+                          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
+                          title={`Load most recent analysis: ${analysisHistory[0]?.repository_name}`}
+                        >
+                          Load Recent
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1207,9 +1223,12 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
                       <div className="bg-slate-800 border border-slate-700 rounded-lg p-3">
                         <div className="flex items-center justify-between mb-2">
                           <h4 className="text-sm font-semibold text-white flex items-center gap-2">
-                            🕒 Recent Analyses
+                            📁 Saved Analyses
                           </h4>
-                          <span className="text-xs text-slate-400">{analysisHistory.length}</span>
+                          <span className="text-xs text-blue-400 font-medium">{analysisHistory.length} saved</span>
+                        </div>
+                        <div className="text-xs text-slate-400 mb-3">
+                          Click any analysis below to load it
                         </div>
                         
                         <div className="space-y-1 max-h-40 overflow-auto">

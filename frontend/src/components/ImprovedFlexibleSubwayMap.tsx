@@ -118,9 +118,13 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
 
   const handleLegendMouseMove = (e: MouseEvent) => {
     if (isDraggingLegend) {
+      // Constrain legend position to stay within viewport
+      const newX = Math.max(0, Math.min(window.innerWidth - 200, e.clientX - dragOffset.x));
+      const newY = Math.max(0, Math.min(window.innerHeight - 150, e.clientY - dragOffset.y));
+      
       setLegendPosition({
-        x: e.clientX - dragOffset.x,
-        y: e.clientY - dragOffset.y
+        x: newX,
+        y: newY
       });
     }
   };
@@ -193,13 +197,23 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
     const nodesCenterX = (minX + maxX) / 2;
     const nodesCenterY = (minY + maxY) / 2;
     
-    // Get container dimensions
+    // Get container dimensions with better detection
     const container = visualizationRef.current;
-    const containerWidth = container?.clientWidth || 800;
-    const containerHeight = container?.clientHeight || 600;
+    let containerWidth = container?.clientWidth || 800;
+    let containerHeight = container?.clientHeight || 600;
     
-    // Calculate offset to center nodes in viewport (accounting for current zoom)
-    // Use more aggressive centering to ensure visibility
+    // Fallback to parent container if dimensions are too small
+    if (containerWidth < 400 || containerHeight < 300) {
+      const parentContainer = container?.parentElement;
+      containerWidth = parentContainer?.clientWidth || 800;
+      containerHeight = parentContainer?.clientHeight || 600;
+    }
+    
+    console.log('🎯 Container dimensions:', { containerWidth, containerHeight, zoom });
+    
+    // Calculate offset to center nodes in viewport
+    // Since CSS transform applies both scale and translate, we need to account for zoom
+    // The transform is: scale(zoom) translate(panOffset.x, panOffset.y)
     const offsetX = (containerWidth / 2) / zoom - nodesCenterX;
     const offsetY = (containerHeight / 2) / zoom - nodesCenterY;
     
@@ -785,6 +799,18 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
             title="Emergency Find Visualization"
           >
             Find
+          </button>
+          
+          <button
+            onClick={() => {
+              // Reset legend position
+              setLegendPosition({ x: 0, y: 0 });
+              setLegendCollapsed(false);
+            }}
+            className="p-2 bg-blue-800 hover:bg-blue-700 border border-blue-600 rounded-lg transition-colors text-xs text-white"
+            title="Reset Legend Position"
+          >
+            Legend
           </button>
           
           <button
