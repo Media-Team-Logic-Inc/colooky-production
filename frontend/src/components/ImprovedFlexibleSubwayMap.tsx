@@ -167,26 +167,43 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
     }
   };
 
-  // SMOOTH PROFESSIONAL CENTERING - No more glitching
+  // EMERGENCY DEBUGGING CENTERING - Force visibility
   const centerOnNodes = () => {
-    if (!scenario?.nodes || scenario.nodes.length === 0) return;
+    if (!scenario?.nodes || scenario.nodes.length === 0) {
+      console.log('❌ No nodes to center');
+      return;
+    }
     
-    console.log('🎯 PROFESSIONAL CENTERING - Single clean attempt');
+    console.log('🚨 EMERGENCY DEBUGGING - EnhancedSubwayMap.tsx issue');
+    
+    // DETAILED NODE ANALYSIS
+    console.log('📊 Raw node data:', scenario.nodes.map(node => ({
+      id: node.id,
+      title: node.title,
+      x: node.x,
+      y: node.y,
+      width: node.width,
+      height: node.height
+    })));
     
     // Get container dimensions
     const container = visualizationRef.current;
     const containerWidth = container?.clientWidth || 800;
     const containerHeight = container?.clientHeight || 600;
     
-    // Calculate node bounds
+    console.log('📐 Container size:', { containerWidth, containerHeight });
+    
+    // Calculate node bounds with detailed logging
     let minX = Infinity, maxX = -Infinity;
     let minY = Infinity, maxY = -Infinity;
     
-    scenario.nodes.forEach(node => {
+    scenario.nodes.forEach((node, index) => {
       const x = node.x || 0;
       const y = node.y || 0;
       const width = node.width || 200;
       const height = node.height || 80;
+      
+      console.log(`Node ${index} (${node.title}):`, { x, y, width, height });
       
       minX = Math.min(minX, x);
       maxX = Math.max(maxX, x + width);
@@ -194,31 +211,42 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
       maxY = Math.max(maxY, y + height);
     });
     
+    console.log('📏 Calculated bounds:', { minX, maxX, minY, maxY });
+    
     if (minX === Infinity) {
-      console.log('⚠️ No valid node positions, centering at origin');
+      console.log('⚠️ Invalid coordinates - forcing to center');
       setPanOffset({ x: 0, y: 0 });
       return;
     }
     
-    // Calculate content center
+    // Check if nodes are WAY off screen
+    const nodesWayOffScreen = Math.abs(minX) > 5000 || Math.abs(minY) > 5000 || 
+                              Math.abs(maxX) > 5000 || Math.abs(maxY) > 5000;
+    
+    if (nodesWayOffScreen) {
+      console.log('🚨 NODES WAY OFF-SCREEN! Forcing aggressive centering');
+      // NUCLEAR OPTION: Force all nodes to be visible
+      setPanOffset({ x: containerWidth / 2, y: containerHeight / 2 });
+      setZoom(0.5); // Zoom out to see everything
+      return;
+    }
+    
+    // Normal centering calculation
     const contentCenterX = (minX + maxX) / 2;
     const contentCenterY = (minY + maxY) / 2;
-    
-    // Calculate viewport center
     const viewportCenterX = containerWidth / 2;
     const viewportCenterY = containerHeight / 2;
     
-    // Simple offset calculation - smooth, no jumping
     const offsetX = viewportCenterX - contentCenterX;
     const offsetY = viewportCenterY - contentCenterY;
     
-    console.log('✨ Smooth centering:', {
+    console.log('🎯 Final centering decision:', {
       contentCenter: { x: contentCenterX, y: contentCenterY },
       viewportCenter: { x: viewportCenterX, y: viewportCenterY },
-      offset: { x: offsetX, y: offsetY }
+      offset: { x: offsetX, y: offsetY },
+      zoom: zoom
     });
     
-    // Single, smooth transition
     setPanOffset({ x: offsetX, y: offsetY });
   };
 
@@ -710,6 +738,14 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
         className="subway-container relative flex-1 overflow-hidden"
         style={{ background: 'linear-gradient(135deg, #0f1419 0%, #1a1f29 100%)' }}
       >
+        {/* EMERGENCY DEBUG INFO */}
+        <div className="fixed top-6 right-6 bg-red-900 text-white p-2 rounded text-xs z-50">
+          <div>Nodes: {scenario?.nodes?.length || 0}</div>
+          <div>Zoom: {zoom.toFixed(1)}</div>
+          <div>Pan: {panOffset.x.toFixed(0)}, {panOffset.y.toFixed(0)}</div>
+          <div>ViewBox: {viewBox}</div>
+        </div>
+
         {/* Controls - Fixed positioning to stay always visible */}
         <div className="fixed top-6 left-6 flex flex-col gap-2 z-50">
           {/* Simulation Button - FEATURED! */}
@@ -806,6 +842,25 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
           </button>
           
           <button
+            onClick={() => {
+              console.log('🔍 SHOW EVERYTHING - Nuclear visibility option');
+              // Force extreme zoom out and reset position
+              setZoom(0.1); // Zoom WAY out
+              setPanOffset({ x: 0, y: 0 }); // Reset position
+              
+              // Try centering after zoom change
+              setTimeout(() => {
+                setZoom(0.3); // Slightly zoom in but still wide view
+                centerOnNodes();
+              }, 200);
+            }}
+            className="p-2 bg-red-800 hover:bg-red-700 border border-red-600 rounded-lg transition-colors text-xs text-white"
+            title="Emergency: Show Everything - Force Extreme Zoom Out"
+          >
+            Show All
+          </button>
+          
+          <button
             onClick={handleZoomReset}
             className="p-2 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-lg transition-colors text-xs text-white"
             title="Reset Zoom & Positions"
@@ -875,12 +930,15 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
             ref={svgRef}
             className="w-full h-full"
             viewBox={viewBox}
+            style={{ 
+              border: '1px solid red', // DEBUG: Show SVG boundaries
+              cursor: isDragging ? 'grabbing' : isPanning ? 'grabbing' : 'grab' 
+            }}
             preserveAspectRatio="xMidYMid meet"
             onMouseDown={handleCanvasMouseDown}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
             onMouseLeave={handleMouseUp}
-            style={{ cursor: isDragging ? 'grabbing' : isPanning ? 'grabbing' : 'grab' }}
           >
             <defs>
               {/* Arrow markers for different colors */}
