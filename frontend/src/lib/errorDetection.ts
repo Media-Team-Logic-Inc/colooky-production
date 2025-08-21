@@ -115,21 +115,20 @@ export function enhanceScenarioWithErrors(scenario: any, analysisData?: any): an
   if (!scenario || !scenario.nodes) return scenario;
 
   const enhancedNodes = scenario.nodes.map((node: any) => {
-    // Check if this node represents an error or problematic code
-    const hasErrorKeywords = node.title && (
-      /error|exception|catch|throw|fail/i.test(node.title) ||
-      /TODO|FIXME|HACK/i.test(node.title)
+    // MUCH MORE PRECISE - Only mark actual error handling, not normal code
+    const hasActualErrorKeywords = node.title && (
+      /^(catch|throw|fail|exception)$/i.test(node.title) ||
+      /TODO:|FIXME:|HACK:/i.test(node.title) ||
+      /catch\s*\(|throw\s+new|Promise\.reject/i.test(node.title)
     );
 
     const hasErrorInDetails = node.details && node.details.some((detail: string) => 
-      /error|exception|fail|null|undefined|security|vulnerability/i.test(detail)
+      /throw\s+new|catch\s*\(|try\s*\{|Promise\.reject/i.test(detail)
     );
 
-    // Check if this is a validation or error handling node
-    const isErrorNode = hasErrorKeywords || hasErrorInDetails || 
-      node.title?.toLowerCase().includes('validation') ||
-      node.title?.toLowerCase().includes('auth') ||
-      node.color === '#ef4444'; // Already marked as error
+    // Only mark nodes that are ACTUALLY error handling code
+    const isErrorNode = hasActualErrorKeywords || hasErrorInDetails || 
+      node.color === '#ef4444'; // Already marked as error in backend
 
     return {
       ...node,

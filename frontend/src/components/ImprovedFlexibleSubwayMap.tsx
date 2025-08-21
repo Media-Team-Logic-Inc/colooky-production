@@ -167,40 +167,59 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
     }
   };
 
-  // RADICAL NEW APPROACH - Force center using brute force
+  // SMOOTH PROFESSIONAL CENTERING - No more glitching
   const centerOnNodes = () => {
     if (!scenario?.nodes || scenario.nodes.length === 0) return;
     
-    console.log('🚀 BRUTE FORCE CENTERING - Nuclear option');
+    console.log('🎯 PROFESSIONAL CENTERING - Single clean attempt');
     
-    // Get container
+    // Get container dimensions
     const container = visualizationRef.current;
     const containerWidth = container?.clientWidth || 800;
     const containerHeight = container?.clientHeight || 600;
     
-    console.log('📐 Container:', { containerWidth, containerHeight });
+    // Calculate node bounds
+    let minX = Infinity, maxX = -Infinity;
+    let minY = Infinity, maxY = -Infinity;
     
-    // NUCLEAR OPTION: Just put everything in the center of the screen
-    // Forget about the node positions for now - just center the damn thing
+    scenario.nodes.forEach(node => {
+      const x = node.x || 0;
+      const y = node.y || 0;
+      const width = node.width || 200;
+      const height = node.height || 80;
+      
+      minX = Math.min(minX, x);
+      maxX = Math.max(maxX, x + width);
+      minY = Math.min(minY, y);
+      maxY = Math.max(maxY, y + height);
+    });
     
-    // Reset to basic centered position
-    const simpleCenterX = 0;  // Center horizontally
-    const simpleCenterY = 0;  // Center vertically
+    if (minX === Infinity) {
+      console.log('⚠️ No valid node positions, centering at origin');
+      setPanOffset({ x: 0, y: 0 });
+      return;
+    }
     
-    console.log('💀 NUCLEAR CENTERING - Forcing to (0, 0)');
+    // Calculate content center
+    const contentCenterX = (minX + maxX) / 2;
+    const contentCenterY = (minY + maxY) / 2;
     
-    setPanOffset({ x: simpleCenterX, y: simpleCenterY });
+    // Calculate viewport center
+    const viewportCenterX = containerWidth / 2;
+    const viewportCenterY = containerHeight / 2;
     
-    // Also try updating the dynamic viewBox to force visibility
-    setTimeout(() => {
-      console.log('⚡ Secondary centering attempt');
-      setPanOffset({ x: 100, y: 100 }); // Slight offset to test
-    }, 100);
+    // Simple offset calculation - smooth, no jumping
+    const offsetX = viewportCenterX - contentCenterX;
+    const offsetY = viewportCenterY - contentCenterY;
     
-    setTimeout(() => {
-      console.log('🎯 Final centering attempt');  
-      setPanOffset({ x: 0, y: 0 }); // Back to center
-    }, 200);
+    console.log('✨ Smooth centering:', {
+      contentCenter: { x: contentCenterX, y: contentCenterY },
+      viewportCenter: { x: viewportCenterX, y: viewportCenterY },
+      offset: { x: offsetX, y: offsetY }
+    });
+    
+    // Single, smooth transition
+    setPanOffset({ x: offsetX, y: offsetY });
   };
 
   // Zoom controls - Increased max zoom for better legibility
@@ -442,25 +461,20 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
     setIsInitialized(false);
   }, [scenario?.id]);
 
-  // Auto-center visualization when scenario changes
+  // Auto-center visualization when scenario changes - REDUCED GLITCHING
   React.useEffect(() => {
     if (scenario?.nodes && scenario.nodes.length > 0 && !isInitialized) {
-      console.log('🎬 INITIAL CENTERING - New scenario loaded');
+      console.log('🎬 SMOOTH CENTERING - New scenario loaded');
       
-      // Reset zoom to reasonable level first
+      // Set reasonable zoom without jumping
       setZoom(2.0);
       
-      // Multiple attempts at centering with increasing delays
-      const centerAttempts = [100, 300, 600, 1000, 1500];
-      
-      centerAttempts.forEach((delay, index) => {
-        setTimeout(() => {
-          console.log(`⏳ Centering attempt ${index + 1}/${centerAttempts.length}`);
-          centerOnNodes();
-        }, delay);
-      });
-      
-      setIsInitialized(true);
+      // Single clean centering attempt
+      setTimeout(() => {
+        console.log('🎯 Single centering attempt');
+        centerOnNodes();
+        setIsInitialized(true);
+      }, 500); // One attempt after DOM settles
     }
   }, [scenario, isInitialized]);
 
@@ -607,16 +621,16 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
       // Wait for render
       await new Promise(resolve => setTimeout(resolve, 300));
 
-      // Capture with html2canvas - OPTIMIZED for smaller file size
+      // Capture with html2canvas - HIGH QUALITY for legible PDF
       const canvas = await html2canvas(exportContainer, {
         backgroundColor: '#0f1419',
-        scale: 1.2, // Reduced from 2 to 1.2 for smaller file size
+        scale: 3.0, // Much higher scale for crisp text in PDF
         useCORS: true,
         allowTaint: true,
         logging: false,
         width: 1200,
         height: 800,
-        removeContainer: true // Clean up faster
+        removeContainer: true
       });
 
       document.body.removeChild(exportContainer);
@@ -641,9 +655,9 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
       const x = (pageWidth - finalWidth) / 2;
       const y = (pageHeight - finalHeight) / 2;
 
-      // Compress image for smaller PDF - JPEG with 0.7 quality instead of PNG
-      const imgData = canvas.toDataURL('image/jpeg', 0.7); // Much smaller than PNG
-      pdf.addImage(imgData, 'JPEG', x, y, finalWidth, finalHeight);
+      // Use PNG for crisp text quality - essential for developer use
+      const imgData = canvas.toDataURL('image/png'); // PNG preserves text clarity
+      pdf.addImage(imgData, 'PNG', x, y, finalWidth, finalHeight);
 
       const timestamp = new Date().toISOString().slice(0, 10);
       const filename = `${repositoryInfo?.name || 'code-analysis'}-flow-${timestamp}.pdf`;
@@ -763,30 +777,18 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
           
           <button
             onClick={() => {
-              console.log('🆘 EMERGENCY FIND ACTIVATED');
-              // Reset everything and try different approach
-              setZoom(1);
+              console.log('🔍 EMERGENCY FIND - Clean reset');
+              // Reset everything cleanly
+              setZoom(2.0);
               setPanOffset({ x: 0, y: 0 });
               
-              // Try centering multiple times with different approaches
+              // Single clean centering attempt
               setTimeout(() => {
-                console.log('⏱️ First attempt');
                 centerOnNodes();
-              }, 100);
-              
-              setTimeout(() => {
-                console.log('⏱️ Second attempt with zoom adjustment');
-                setZoom(1.5);
-                centerOnNodes();
-              }, 500);
-              
-              setTimeout(() => {
-                console.log('⏱️ Final attempt');
-                centerOnNodes();
-              }, 1000);
+              }, 300);
             }}
             className="p-2 bg-purple-800 hover:bg-purple-700 border border-purple-600 rounded-lg transition-colors text-xs text-white"
-            title="Emergency Find Visualization - Full Reset"
+            title="Emergency Find Visualization"
           >
             Find
           </button>
