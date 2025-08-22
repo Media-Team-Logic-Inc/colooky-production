@@ -79,15 +79,8 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
   const [isDraggingLegend, setIsDraggingLegend] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [codeViewerOpen, setCodeViewerOpen] = useState(false);
-  const [zoom, setZoom] = useState(() => {
-    // Dynamic zoom based on node count for better default visibility
-    const nodeCount = scenario?.nodes?.length || 0;
-    if (nodeCount <= 3) return 4.0;      // Very zoomed in for small files
-    if (nodeCount <= 7) return 3.5;      // Zoomed in for medium files  
-    if (nodeCount <= 15) return 3.0;     // Moderate zoom for larger files
-    if (nodeCount <= 25) return 2.5;     // Default zoom for big files
-    return 2.0;                          // Wide view for huge files (still readable)
-  });
+  // PROFESSIONAL DEFAULT - Start with guaranteed visibility
+  const [zoom, setZoom] = useState(0.8); // Wide view ensures everything is visible
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 }); // Simplified for dynamic viewBox
   const [draggedNodes, setDraggedNodes] = useState<{[key: string]: {x: number, y: number}}>({});
   const [isDragging, setIsDragging] = useState<string | null>(null);
@@ -167,43 +160,23 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
     }
   };
 
-  // EMERGENCY DEBUGGING CENTERING - Force visibility
+  // PROFESSIONAL CENTERING - Clean and elegant
   const centerOnNodes = () => {
-    if (!scenario?.nodes || scenario.nodes.length === 0) {
-      console.log('❌ No nodes to center');
-      return;
-    }
+    if (!scenario?.nodes || scenario.nodes.length === 0) return;
     
-    console.log('🚨 EMERGENCY DEBUGGING - EnhancedSubwayMap.tsx issue');
-    
-    // DETAILED NODE ANALYSIS
-    console.log('📊 Raw node data:', scenario.nodes.map(node => ({
-      id: node.id,
-      title: node.title,
-      x: node.x,
-      y: node.y,
-      width: node.width,
-      height: node.height
-    })));
-    
-    // Get container dimensions
     const container = visualizationRef.current;
     const containerWidth = container?.clientWidth || 800;
     const containerHeight = container?.clientHeight || 600;
     
-    console.log('📐 Container size:', { containerWidth, containerHeight });
-    
-    // Calculate node bounds with detailed logging
+    // Calculate content bounds
     let minX = Infinity, maxX = -Infinity;
     let minY = Infinity, maxY = -Infinity;
     
-    scenario.nodes.forEach((node, index) => {
+    scenario.nodes.forEach(node => {
       const x = node.x || 0;
       const y = node.y || 0;
       const width = node.width || 200;
       const height = node.height || 80;
-      
-      console.log(`Node ${index} (${node.title}):`, { x, y, width, height });
       
       minX = Math.min(minX, x);
       maxX = Math.max(maxX, x + width);
@@ -211,41 +184,24 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
       maxY = Math.max(maxY, y + height);
     });
     
-    console.log('📏 Calculated bounds:', { minX, maxX, minY, maxY });
-    
     if (minX === Infinity) {
-      console.log('⚠️ Invalid coordinates - forcing to center');
       setPanOffset({ x: 0, y: 0 });
       return;
     }
     
-    // Check if nodes are WAY off screen
-    const nodesWayOffScreen = Math.abs(minX) > 5000 || Math.abs(minY) > 5000 || 
-                              Math.abs(maxX) > 5000 || Math.abs(maxY) > 5000;
-    
-    if (nodesWayOffScreen) {
-      console.log('🚨 NODES WAY OFF-SCREEN! Forcing aggressive centering');
-      // NUCLEAR OPTION: Force all nodes to be visible
+    // Check for extreme off-screen positioning
+    const extremeOffScreen = Math.abs(minX) > 5000 || Math.abs(minY) > 5000;
+    if (extremeOffScreen) {
+      // Graceful handling of extreme coordinates
       setPanOffset({ x: containerWidth / 2, y: containerHeight / 2 });
-      setZoom(0.5); // Zoom out to see everything
       return;
     }
     
-    // Normal centering calculation
+    // Professional centering calculation
     const contentCenterX = (minX + maxX) / 2;
     const contentCenterY = (minY + maxY) / 2;
-    const viewportCenterX = containerWidth / 2;
-    const viewportCenterY = containerHeight / 2;
-    
-    const offsetX = viewportCenterX - contentCenterX;
-    const offsetY = viewportCenterY - contentCenterY;
-    
-    console.log('🎯 Final centering decision:', {
-      contentCenter: { x: contentCenterX, y: contentCenterY },
-      viewportCenter: { x: viewportCenterX, y: viewportCenterY },
-      offset: { x: offsetX, y: offsetY },
-      zoom: zoom
-    });
+    const offsetX = (containerWidth / 2) - contentCenterX;
+    const offsetY = (containerHeight / 2) - contentCenterY;
     
     setPanOffset({ x: offsetX, y: offsetY });
   };
@@ -489,20 +445,16 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
     setIsInitialized(false);
   }, [scenario?.id]);
 
-  // Auto-center visualization when scenario changes - REDUCED GLITCHING
+  // ELEGANT AUTO-CENTERING - Professional and smooth
   React.useEffect(() => {
     if (scenario?.nodes && scenario.nodes.length > 0 && !isInitialized) {
-      console.log('🎬 SMOOTH CENTERING - New scenario loaded');
+      console.log('✨ ELEGANT CENTERING - Professional initialization');
       
-      // Set reasonable zoom without jumping
-      setZoom(2.0);
-      
-      // Single clean centering attempt
+      // Single clean centering after DOM is ready
       setTimeout(() => {
-        console.log('🎯 Single centering attempt');
         centerOnNodes();
         setIsInitialized(true);
-      }, 500); // One attempt after DOM settles
+      }, 300); // Quick, clean initialization
     }
   }, [scenario, isInitialized]);
 
@@ -738,13 +690,13 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
         className="subway-container relative flex-1 overflow-hidden"
         style={{ background: 'linear-gradient(135deg, #0f1419 0%, #1a1f29 100%)' }}
       >
-        {/* EMERGENCY DEBUG INFO */}
-        <div className="fixed top-6 right-6 bg-red-900 text-white p-2 rounded text-xs z-50">
-          <div>Nodes: {scenario?.nodes?.length || 0}</div>
-          <div>Zoom: {zoom.toFixed(1)}</div>
-          <div>Pan: {panOffset.x.toFixed(0)}, {panOffset.y.toFixed(0)}</div>
-          <div>ViewBox: {viewBox}</div>
-        </div>
+        {/* Debug info - minimal and professional */}
+        {process.env.NODE_ENV === 'development' && (
+          <div className="fixed top-6 right-6 bg-slate-800/80 text-white p-2 rounded text-xs z-50 opacity-70">
+            <div>Nodes: {scenario?.nodes?.length || 0}</div>
+            <div>Connections: {scenario?.connections?.length || 0}</div>
+          </div>
+        )}
 
         {/* Controls - Fixed positioning to stay always visible */}
         <div className="fixed top-6 left-6 flex flex-col gap-2 z-50">
@@ -813,18 +765,13 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
           
           <button
             onClick={() => {
-              console.log('🔍 EMERGENCY FIND - Clean reset');
-              // Reset everything cleanly
-              setZoom(2.0);
-              setPanOffset({ x: 0, y: 0 });
-              
-              // Single clean centering attempt
-              setTimeout(() => {
-                centerOnNodes();
-              }, 300);
+              console.log('🎯 PROFESSIONAL FIND - Smooth centering');
+              // Professional smooth centering without jarring effects
+              setZoom(1.2); // Reasonable zoom level
+              centerOnNodes(); // Single smooth center
             }}
             className="p-2 bg-purple-800 hover:bg-purple-700 border border-purple-600 rounded-lg transition-colors text-xs text-white"
-            title="Emergency Find Visualization"
+            title="Find & Center Visualization"
           >
             Find
           </button>
@@ -931,7 +878,6 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
             className="w-full h-full"
             viewBox={viewBox}
             style={{ 
-              border: '1px solid red', // DEBUG: Show SVG boundaries
               cursor: isDragging ? 'grabbing' : isPanning ? 'grabbing' : 'grab' 
             }}
             preserveAspectRatio="xMidYMid meet"
@@ -1126,41 +1072,42 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
                       />
                     )}
                     
-                    {/* Background shadow for depth (like demo) */}
+                    {/* DEMO-QUALITY PROFESSIONAL NODE STYLING */}
+                    
+                    {/* Subtle shadow for depth */}
                     <rect
-                      x={position.x + 2}
-                      y={position.y + 2}
+                      x={position.x + 1}
+                      y={position.y + 1}
                       width={node.width}
                       height={node.height}
-                      rx="12"
-                      ry="12"
-                      fill="rgba(0, 0, 0, 0.3)"
-                      style={{ filter: 'blur(4px)' }}
+                      rx="8"
+                      ry="8"
+                      fill="rgba(0, 0, 0, 0.15)"
+                      style={{ filter: 'blur(2px)' }}
                     />
                     
-                    {/* Node background - improved styling to match demo */}
+                    {/* Main node - DEMO QUALITY */}
                     <rect
                       className="node-rect"
                       x={position.x}
                       y={position.y}
                       width={node.width}
                       height={node.height}
-                      rx="12"
-                      ry="12"
-                      fill={isExecuting ? '#00ff88' : hasExecuted ? '#4ade80' : node.isError ? '#ef4444' : node.color}
-                      stroke={isExecuting ? '#00ff88' : hasExecuted ? '#4ade80' : node.isError ? '#f87171' : 'rgba(255, 255, 255, 0.2)'}
-                      strokeWidth={isDraggingThis || isExecuting ? "2" : "1"}
-                      fillOpacity="1"
+                      rx="8"
+                      ry="8"
+                      fill={isExecuting ? '#10b981' : hasExecuted ? '#34d399' : node.isError ? '#ef4444' : node.color || '#1f2937'}
+                      stroke={isExecuting ? '#10b981' : hasExecuted ? '#34d399' : node.isError ? '#ef4444' : '#374151'}
+                      strokeWidth="1.5"
+                      fillOpacity="0.95"
                       style={{
-                        filter: selectedNode === node.id ? 'drop-shadow(0 4px 16px rgba(251, 191, 36, 0.7))' : 
-                                isDraggingThis ? 'drop-shadow(0 8px 24px rgba(255, 255, 255, 0.4))' :
-                                isExecuting ? 'drop-shadow(0 8px 32px rgba(0, 255, 136, 0.6))' : 
-                                'drop-shadow(0 4px 12px rgba(0, 0, 0, 0.3))',
-                        transition: 'all 0.3s ease'
+                        filter: selectedNode === node.id ? 'drop-shadow(0 2px 8px rgba(59, 130, 246, 0.5))' : 
+                                isExecuting ? 'drop-shadow(0 2px 8px rgba(16, 185, 129, 0.4))' : 
+                                'drop-shadow(0 1px 3px rgba(0, 0, 0, 0.2))',
+                        transition: 'all 0.2s ease'
                       }}
                     />
                     
-                    {/* Node text - improved typography like demo */}
+                    {/* DEMO-QUALITY TYPOGRAPHY */}
                     <text
                       className="node-text"
                       x={position.x + node.width / 2}
@@ -1169,11 +1116,11 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
                       dominantBaseline="middle"
                       fill="#ffffff"
                       style={{ 
-                        fontSize: '14px',
-                        fontWeight: '600',
-                        fontFamily: 'system-ui, -apple-system, sans-serif',
-                        letterSpacing: '0.01em',
-                        textShadow: '0 1px 2px rgba(0, 0, 0, 0.5)',
+                        fontSize: '13px',
+                        fontWeight: '500',
+                        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+                        letterSpacing: '0.025em',
+                        textShadow: '0 1px 1px rgba(0, 0, 0, 0.3)',
                         pointerEvents: 'none'
                       }}
                     >
