@@ -447,16 +447,15 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
           setCodeViewerFile(filePath);
           setShowCodeViewer(true);
           
-          // DISABLED: Auto-scroll removed to keep both visualization and code visible
-          // Users can manually scroll if needed - prevents disruptive workflow
-          // if (highlightLine && codePreviewRef.current) {
-          //   setTimeout(() => {
-          //     const highlightedLine = codePreviewRef.current?.querySelector(`[data-line-number="${highlightLine}"]`);
-          //     if (highlightedLine) {
-          //       highlightedLine.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          //     }
-          //   }, 100);
-          // }
+          // Auto-scroll to highlighted line when clicking nodes
+          if (highlightLine && codePreviewRef.current) {
+            setTimeout(() => {
+              const highlightedLine = codePreviewRef.current?.querySelector(`[data-line-number="${highlightLine}"]`);
+              if (highlightedLine) {
+                highlightedLine.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              }
+            }, 100);
+          }
         }
       }
     } catch (error) {
@@ -984,18 +983,18 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
           {/* Step 3: Results - Responsive Layout */}
           {currentStep === 'results' && analysis?.visualization && (
             <div>
-              {/* Header - MUCH SMALLER */}
-              <div className="mb-2">
-                <div className="flex items-center justify-between mb-1">
-                  <div className="flex items-center gap-2">
-                    <div className="flex items-center gap-1">
-                      <CheckCircle className="w-4 h-4 text-green-400" />
-                      <h2 className="text-sm font-medium text-white">Analysis Complete</h2>
+              {/* Header - EXTRA SMALL */}
+              <div className="mb-1">
+                <div className="flex items-center justify-between mb-0.5">
+                  <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-0.5">
+                      <CheckCircle className="w-3 h-3 text-green-400" />
+                      <h2 className="text-xs font-medium text-white">Analysis Complete</h2>
                     </div>
                     
                     {/* Compact Load Saved Analysis Button */}
                     {user && analysisHistory.length > 0 && (
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-0.5">
                         <span className="text-slate-400 text-xs">or</span>
                         <button
                           onClick={() => {
@@ -1004,34 +1003,34 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
                               loadSavedAnalysis(recentAnalysis);
                             }
                           }}
-                          className="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-medium transition-colors"
+                          className="px-1 py-0.5 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-medium transition-colors"
                           title={`Load from ${analysisHistory.length} saved analyses`}
                         >
-                          📁 Load ({analysisHistory.length})
+                          📁 ({analysisHistory.length})
                         </button>
                       </div>
                     )}
                   </div>
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-0.5">
                     <button
                       onClick={() => exportAnalysis('json')}
-                      className="px-2 py-1 bg-green-600 hover:bg-green-700 text-white rounded text-xs font-medium transition-colors"
+                      className="px-1 py-0.5 bg-green-600 hover:bg-green-700 text-white rounded text-xs font-medium transition-colors"
                     >
                       JSON
                     </button>
                     <button
                       onClick={() => exportAnalysis('csv')}
-                      className="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-medium transition-colors"
+                      className="px-1 py-0.5 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-medium transition-colors"
                     >
                       CSV
                     </button>
                     
                     {/* Save/Delete Analysis Buttons */}
-                    <div className="border-l border-slate-600 pl-2 ml-2 flex items-center gap-2">
+                    <div className="border-l border-slate-600 pl-1 ml-1 flex items-center gap-1">
                       {savedAnalysisId ? (
                         <button
                           onClick={deleteSavedAnalysis}
-                          className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-md text-xs font-medium transition-colors"
+                          className="px-2 py-0.5 bg-red-600 hover:bg-red-700 text-white rounded text-xs font-medium transition-colors"
                           title="Delete saved analysis"
                         >
                           Delete
@@ -1040,7 +1039,7 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
                         <button
                           onClick={saveAnalysis}
                           disabled={isSaving}
-                          className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-400 text-white rounded-md text-xs font-medium transition-colors"
+                          className="px-2 py-0.5 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-400 text-white rounded text-xs font-medium transition-colors"
                           title="Save analysis to your history"
                         >
                           {isSaving ? 'Saving...' : 'Save'}
@@ -1056,7 +1055,7 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
                               loadSavedAnalysis(recentAnalysis);
                             }
                           }}
-                          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
+                          className="px-2 py-0.5 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-medium transition-colors"
                           title={`Load most recent analysis: ${analysisHistory[0]?.repository_name}`}
                         >
                           Load Recent
@@ -1067,10 +1066,39 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
                 </div>
               </div>
 
-            <div className="flex gap-4 mb-8">
+            {/* Navigation buttons moved from bottom to top */}
+            <div className="mb-4 bg-gray-800/50 border border-gray-700 rounded-lg p-3">
+              <div className="flex justify-center gap-4">
+                <button
+                  onClick={() => {
+                    setCurrentStep('select');
+                    setAnalysis(null);
+                    setSelectedFiles([]);
+                  }}
+                  className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  Analyze More Files
+                </button>
+                <Link
+                  href={`/analytics/${repository.owner}/${repository.name}`}
+                  className="px-5 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-medium transition-colors"
+                >
+                  View Full Analytics
+                </Link>
+                <Link
+                  href="/repositories"
+                  className="px-5 py-2 bg-slate-600 hover:bg-slate-500 text-white rounded-lg font-medium transition-colors"
+                >
+                  All Repositories
+                </Link>
+              </div>
+            </div>
+
+            <div className="flex gap-4 mb-6">
               {/* Main Visualization - Takes most space */}
               <div className="flex-1">
-                <div className="h-96 bg-slate-800 border border-slate-700 rounded-lg p-4 relative overflow-hidden">
+                <div className="h-[500px] bg-slate-800 border border-slate-700 rounded-lg p-4 relative overflow-hidden">
                   <ImprovedFlexibleSubwayMap 
                     scenario={(() => {
                       // Generate intelligent visualization based on content type and complexity
@@ -1357,31 +1385,6 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
               </div>
             </div>
 
-            <div className="mt-8 flex justify-center gap-4">
-                <button
-                  onClick={() => {
-                    setCurrentStep('select');
-                    setAnalysis(null);
-                    setSelectedFiles([]);
-                  }}
-                  className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
-                >
-                  <ArrowLeft className="w-4 h-4" />
-                  Analyze More Files
-                </button>
-                <Link
-                  href={`/analytics/${repository.owner}/${repository.name}`}
-                  className="px-6 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-medium transition-colors"
-                >
-                  View Full Analytics
-                </Link>
-                <Link
-                  href="/repositories"
-                  className="px-6 py-3 bg-slate-600 hover:bg-slate-500 text-white rounded-lg font-medium transition-colors"
-                >
-                  All Repositories
-                </Link>
-              </div>
             </div>
           )}
         </main>
