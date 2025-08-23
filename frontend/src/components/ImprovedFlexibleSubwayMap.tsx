@@ -79,8 +79,8 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
   const [isDraggingLegend, setIsDraggingLegend] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [codeViewerOpen, setCodeViewerOpen] = useState(false);
-  // PROFESSIONAL DEFAULT - Start with guaranteed visibility
-  const [zoom, setZoom] = useState(0.8); // Wide view ensures everything is visible
+  // GUARANTEED VISIBILITY - Start zoomed out to see everything
+  const [zoom, setZoom] = useState(0.3); // Very wide view to guarantee visibility
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 }); // Simplified for dynamic viewBox
   const [draggedNodes, setDraggedNodes] = useState<{[key: string]: {x: number, y: number}}>({});
   const [isDragging, setIsDragging] = useState<string | null>(null);
@@ -189,21 +189,24 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
       return;
     }
     
-    // Check for extreme off-screen positioning
-    const extremeOffScreen = Math.abs(minX) > 5000 || Math.abs(minY) > 5000;
+    // Check for extreme off-screen positioning - MUCH MORE AGGRESSIVE  
+    const extremeOffScreen = Math.abs(minX) > 1000 || Math.abs(minY) > 1000 || 
+                              Math.abs(maxX) > 1000 || Math.abs(maxY) > 1000;
     if (extremeOffScreen) {
-      // Graceful handling of extreme coordinates
-      setPanOffset({ x: containerWidth / 2, y: containerHeight / 2 });
+      console.log('🚨 EXTREME OFF-SCREEN DETECTED - Using aggressive centering');
+      // Force center with zoom out
+      setZoom(0.2); // Zoom way out
+      setPanOffset({ x: 0, y: 0 }); // Center position
       return;
     }
     
-    // Enhanced centering with better visual hierarchy (pyramid/centered style)
+    // AGGRESSIVE CENTERING - Force proper center alignment
     const contentCenterX = (minX + maxX) / 2;
     const contentCenterY = (minY + maxY) / 2;
     
-    // Center horizontally but position higher for better hierarchy
-    const offsetX = (containerWidth / 2) - contentCenterX;
-    const offsetY = (containerHeight * 0.4) - contentCenterY; // 40% from top for better visual balance
+    // Force center horizontally and position for pyramid style
+    const offsetX = (containerWidth / 2) - contentCenterX + 50; // Add slight offset to ensure visibility
+    const offsetY = (containerHeight * 0.3) - contentCenterY; // Higher position for hierarchy
     
     setPanOffset({ x: offsetX, y: offsetY });
   };

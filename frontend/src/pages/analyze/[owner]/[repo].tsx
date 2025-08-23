@@ -984,19 +984,19 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
           {/* Step 3: Results - Responsive Layout */}
           {currentStep === 'results' && analysis?.visualization && (
             <div>
-              {/* Header */}
-              <div className="mb-6">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-2">
-                      <CheckCircle className="w-5 h-5 text-green-400" />
-                      <h2 className="text-lg font-semibold text-white">Analysis Complete</h2>
+              {/* Header - MUCH SMALLER */}
+              <div className="mb-2">
+                <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1">
+                      <CheckCircle className="w-4 h-4 text-green-400" />
+                      <h2 className="text-sm font-medium text-white">Analysis Complete</h2>
                     </div>
                     
                     {/* Compact Load Saved Analysis Button */}
                     {user && analysisHistory.length > 0 && (
-                      <div className="flex items-center gap-2">
-                        <span className="text-slate-400 text-sm">or</span>
+                      <div className="flex items-center gap-1">
+                        <span className="text-slate-400 text-xs">or</span>
                         <button
                           onClick={() => {
                             const recentAnalysis = analysisHistory[0];
@@ -1004,24 +1004,24 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
                               loadSavedAnalysis(recentAnalysis);
                             }
                           }}
-                          className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
+                          className="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-medium transition-colors"
                           title={`Load from ${analysisHistory.length} saved analyses`}
                         >
-                          📁 Load Saved ({analysisHistory.length})
+                          📁 Load ({analysisHistory.length})
                         </button>
                       </div>
                     )}
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1">
                     <button
                       onClick={() => exportAnalysis('json')}
-                      className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-md text-xs font-medium transition-colors"
+                      className="px-2 py-1 bg-green-600 hover:bg-green-700 text-white rounded text-xs font-medium transition-colors"
                     >
                       JSON
                     </button>
                     <button
                       onClick={() => exportAnalysis('csv')}
-                      className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-xs font-medium transition-colors"
+                      className="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-medium transition-colors"
                     >
                       CSV
                     </button>
