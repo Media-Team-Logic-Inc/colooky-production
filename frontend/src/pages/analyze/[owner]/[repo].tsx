@@ -447,15 +447,16 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
           setCodeViewerFile(filePath);
           setShowCodeViewer(true);
           
-          // Auto-scroll to highlighted line after content loads
-          if (highlightLine && codePreviewRef.current) {
-            setTimeout(() => {
-              const highlightedLine = codePreviewRef.current?.querySelector(`[data-line-number="${highlightLine}"]`);
-              if (highlightedLine) {
-                highlightedLine.scrollIntoView({ behavior: 'smooth', block: 'center' });
-              }
-            }, 100);
-          }
+          // DISABLED: Auto-scroll removed to keep both visualization and code visible
+          // Users can manually scroll if needed - prevents disruptive workflow
+          // if (highlightLine && codePreviewRef.current) {
+          //   setTimeout(() => {
+          //     const highlightedLine = codePreviewRef.current?.querySelector(`[data-line-number="${highlightLine}"]`);
+          //     if (highlightedLine) {
+          //       highlightedLine.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          //     }
+          //   }, 100);
+          // }
         }
       }
     } catch (error) {
@@ -985,17 +986,17 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
             <div>
               {/* Header */}
               <div className="mb-6">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-6">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-4">
                     <div className="flex items-center gap-2">
-                      <CheckCircle className="w-6 h-6 text-green-400" />
-                      <h2 className="text-2xl font-bold text-white">Analysis Complete!</h2>
+                      <CheckCircle className="w-5 h-5 text-green-400" />
+                      <h2 className="text-lg font-semibold text-white">Analysis Complete</h2>
                     </div>
                     
-                    {/* SUPER PROMINENT Load Saved Analysis Button */}
+                    {/* Compact Load Saved Analysis Button */}
                     {user && analysisHistory.length > 0 && (
-                      <div className="flex items-center gap-3">
-                        <span className="text-slate-400 text-lg">or</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-slate-400 text-sm">or</span>
                         <button
                           onClick={() => {
                             const recentAnalysis = analysisHistory[0];
@@ -1003,13 +1004,10 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
                               loadSavedAnalysis(recentAnalysis);
                             }
                           }}
-                          className="px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-lg font-bold transition-all shadow-xl hover:shadow-blue-500/25 hover:scale-105 border border-blue-400/30"
+                          className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
                           title={`Load from ${analysisHistory.length} saved analyses`}
                         >
-                          📁 Load Saved Analysis
-                          <span className="ml-2 px-2 py-1 bg-blue-800 rounded-full text-sm">
-                            {analysisHistory.length}
-                          </span>
+                          📁 Load Saved ({analysisHistory.length})
                         </button>
                       </div>
                     )}
@@ -1017,15 +1015,15 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => exportAnalysis('json')}
-                      className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors"
+                      className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-md text-xs font-medium transition-colors"
                     >
-                      Export JSON
+                      JSON
                     </button>
                     <button
                       onClick={() => exportAnalysis('csv')}
-                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
+                      className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-xs font-medium transition-colors"
                     >
-                      Export CSV
+                      CSV
                     </button>
                     
                     {/* Save/Delete Analysis Buttons */}
@@ -1033,19 +1031,19 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
                       {savedAnalysisId ? (
                         <button
                           onClick={deleteSavedAnalysis}
-                          className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors"
+                          className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-md text-xs font-medium transition-colors"
                           title="Delete saved analysis"
                         >
-                          Delete Saved
+                          Delete
                         </button>
                       ) : (
                         <button
                           onClick={saveAnalysis}
                           disabled={isSaving}
-                          className="px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-400 text-white rounded-lg text-sm font-medium transition-colors"
+                          className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-400 text-white rounded-md text-xs font-medium transition-colors"
                           title="Save analysis to your history"
                         >
-                          {isSaving ? 'Saving...' : 'Save Analysis'}
+                          {isSaving ? 'Saving...' : 'Save'}
                         </button>
                       )}
                       

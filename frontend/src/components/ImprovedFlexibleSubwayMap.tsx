@@ -197,11 +197,13 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
       return;
     }
     
-    // Professional centering calculation
+    // Enhanced centering with better visual hierarchy (pyramid/centered style)
     const contentCenterX = (minX + maxX) / 2;
     const contentCenterY = (minY + maxY) / 2;
+    
+    // Center horizontally but position higher for better hierarchy
     const offsetX = (containerWidth / 2) - contentCenterX;
-    const offsetY = (containerHeight / 2) - contentCenterY;
+    const offsetY = (containerHeight * 0.4) - contentCenterY; // 40% from top for better visual balance
     
     setPanOffset({ x: offsetX, y: offsetY });
   };
@@ -458,16 +460,29 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
     }
   }, [scenario, isInitialized]);
 
-  // Additional centering when container size changes
+  // ROBUST window resize handling - maintain visibility
   React.useEffect(() => {
     const handleResize = () => {
       if (scenario?.nodes && scenario.nodes.length > 0) {
-        setTimeout(centerOnNodes, 100);
+        // Preserve current zoom level but recenter
+        setTimeout(() => {
+          centerOnNodes();
+        }, 150);
       }
     };
 
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    // Debounced resize handler to prevent excessive calls
+    let resizeTimeout: NodeJS.Timeout;
+    const debouncedResize = () => {
+      clearTimeout(resizeTimeout);
+      resizeTimeout = setTimeout(handleResize, 100);
+    };
+
+    window.addEventListener('resize', debouncedResize);
+    return () => {
+      window.removeEventListener('resize', debouncedResize);
+      clearTimeout(resizeTimeout);
+    };
   }, [scenario]);
 
   // Cleanup simulation on unmount
@@ -488,16 +503,16 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
         return;
       }
 
-      // Create clean export container
+      // Create LARGE export container for better PDF quality
       const exportContainer = document.createElement('div');
       exportContainer.style.cssText = `
         position: fixed;
         left: -9999px;
         top: 0;
-        width: 1200px;
-        height: 800px;
+        width: 1800px;
+        height: 1200px;
         background: #0f1419;
-        padding: 40px;
+        padding: 60px;
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
         box-sizing: border-box;
       `;
@@ -601,25 +616,25 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
       // Wait for render
       await new Promise(resolve => setTimeout(resolve, 300));
 
-      // Capture with html2canvas - HIGH QUALITY for legible PDF
+      // Capture with html2canvas - MAXIMUM QUALITY for professional PDFs
       const canvas = await html2canvas(exportContainer, {
         backgroundColor: '#0f1419',
-        scale: 3.0, // Much higher scale for crisp text in PDF
+        scale: 4.0, // Maximum scale for crisp professional text
         useCORS: true,
         allowTaint: true,
         logging: false,
-        width: 1200,
-        height: 800,
+        width: 1800,
+        height: 1200,
         removeContainer: true
       });
 
       document.body.removeChild(exportContainer);
 
-      // Create PDF
+      // Create LARGE PDF for better readability
       const pdf = new jsPDF({
         orientation: 'landscape',
         unit: 'mm',
-        format: 'a4'
+        format: 'a3' // A3 instead of A4 for larger, more readable size
       });
 
       const pageWidth = pdf.internal.pageSize.getWidth();
