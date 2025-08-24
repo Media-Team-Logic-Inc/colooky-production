@@ -127,39 +127,39 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
       fetchAnalysisHistory();
     }
     
-    // Load persisted file selections
-    const persistedSelections = localStorage.getItem(`colooky_selections_${repository.owner}_${repository.name}`);
-    if (persistedSelections) {
-      try {
-        const parsedSelections = JSON.parse(persistedSelections);
-        setSelectedFiles(parsedSelections);
-      } catch (error) {
-        console.warn('Failed to parse persisted selections:', error);
-      }
-    }
+    // DISABLED: Don't auto-load persisted file selections - users should start fresh
+    // const persistedSelections = localStorage.getItem(`colooky_selections_${repository.owner}_${repository.name}`);
+    // if (persistedSelections) {
+    //   try {
+    //     const parsedSelections = JSON.parse(persistedSelections);
+    //     setSelectedFiles(parsedSelections);
+    //   } catch (error) {
+    //     console.warn('Failed to parse persisted selections:', error);
+    //   }
+    // }
     
-    // Load persisted analysis results
-    const persistedAnalysis = localStorage.getItem(`colooky_analysis_${repository.owner}_${repository.name}`);
-    if (persistedAnalysis) {
-      try {
-        const parsedAnalysis = JSON.parse(persistedAnalysis);
-        // Only use cached analysis if it's less than 1 hour old
-        const analysisAge = Date.now() - new Date(parsedAnalysis.timestamp).getTime();
-        const oneHour = 60 * 60 * 1000;
-        
-        if (analysisAge < oneHour && parsedAnalysis.status === 'completed') {
-          setAnalysis(parsedAnalysis);
-          setCurrentStep('results');
-          console.log('Loaded cached analysis results');
-        } else {
-          // Clean up old analysis
-          localStorage.removeItem(`colooky_analysis_${repository.owner}_${repository.name}`);
-        }
-      } catch (error) {
-        console.warn('Failed to parse persisted analysis:', error);
-        localStorage.removeItem(`colooky_analysis_${repository.owner}_${repository.name}`);
-      }
-    }
+    // DISABLED: Don't auto-load cached analysis - users should start fresh
+    // const persistedAnalysis = localStorage.getItem(`colooky_analysis_${repository.owner}_${repository.name}`);
+    // if (persistedAnalysis) {
+    //   try {
+    //     const parsedAnalysis = JSON.parse(persistedAnalysis);
+    //     // Only use cached analysis if it's less than 1 hour old
+    //     const analysisAge = Date.now() - new Date(parsedAnalysis.timestamp).getTime();
+    //     const oneHour = 60 * 60 * 1000;
+    //     
+    //     if (analysisAge < oneHour && parsedAnalysis.status === 'completed') {
+    //       setAnalysis(parsedAnalysis);
+    //       setCurrentStep('results');
+    //       console.log('Loaded cached analysis results');
+    //     } else {
+    //       // Clean up old analysis
+    //       localStorage.removeItem(`colooky_analysis_${repository.owner}_${repository.name}`);
+    //     }
+    //   } catch (error) {
+    //     console.warn('Failed to parse persisted analysis:', error);
+    //     localStorage.removeItem(`colooky_analysis_${repository.owner}_${repository.name}`);
+    //   }
+    // }
   }, []);
 
   const loadRepositoryStructure = async () => {
@@ -817,23 +817,23 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
               )}
             </div>
             
-            <div className="flex items-center gap-4">
-              <Github className="w-8 h-8 text-blue-400" />
+            <div className="flex items-center gap-2">
+              <Github className="w-4 h-4 text-blue-400" />
               <div>
-                <h1 className="text-3xl font-bold text-white">
+                <h1 className="text-sm font-semibold text-white">
                   {repository.owner}/{repository.name}
                   {selectedFiles.length === 1 && (
-                    <span className="text-blue-400 text-xl ml-3 font-normal">
+                    <span className="text-blue-400 text-xs ml-2 font-normal">
                       → {selectedFiles[0].split('/').pop()}
                     </span>
                   )}
                   {selectedFiles.length > 1 && (
-                    <span className="text-blue-400 text-xl ml-3 font-normal">
+                    <span className="text-blue-400 text-xs ml-2 font-normal">
                       → {selectedFiles.length} files
                     </span>
                   )}
                 </h1>
-                <p className="text-slate-400">
+                <p className="text-xs text-slate-400">
                   {repository.description || 'Analyze this repository with Colooky'}
                 </p>
               </div>
@@ -1098,7 +1098,7 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
             <div className="flex gap-4 mb-6">
               {/* Main Visualization - Takes most space */}
               <div className="flex-1">
-                <div className="h-[500px] bg-slate-800 border border-slate-700 rounded-lg p-4 relative overflow-hidden">
+                <div className="h-[700px] bg-slate-800 border border-slate-700 rounded-lg p-4 relative overflow-hidden">
                   <ImprovedFlexibleSubwayMap 
                     scenario={(() => {
                       // Generate intelligent visualization based on content type and complexity
