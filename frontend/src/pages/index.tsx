@@ -281,6 +281,12 @@ export default function Home() {
               >
                 Pricing
               </a>
+              <Link href="/privacy" className="text-gray-400 hover:text-cyan-400 transition-colors duration-300">
+                Privacy Policy
+              </Link>
+              <Link href="/terms" className="text-gray-400 hover:text-purple-400 transition-colors duration-300">
+                Terms of Service
+              </Link>
             </div>
           </div>
           
