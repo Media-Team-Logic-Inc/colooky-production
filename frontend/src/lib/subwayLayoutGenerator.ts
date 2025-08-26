@@ -116,7 +116,7 @@ const NODE_COLORS = {
   error: { fill: '#ef4444', stroke: '#f87171' }
 };
 
-// Generate subway-style layout from analysis data
+// Generate hierarchical triangular layout from analysis data
 export function generateSubwayLayout(analysisData: any): {
   nodes: SubwayNode[];
   connections: SubwayConnection[];
@@ -127,16 +127,11 @@ export function generateSubwayLayout(analysisData: any): {
     return createEmptyLayout();
   }
 
-  // Determine layout type based on analysis complexity
-  const nodeCount = analysisData.nodes.length;
-  const layoutType = nodeCount <= 6 ? 'singleFile' : 
-                    nodeCount <= 12 ? 'multiFile' : 'complex';
+  console.log('🏗️ Generating hierarchical layout for', analysisData.nodes.length, 'nodes');
   
-  const template = LAYOUT_TEMPLATES[layoutType];
-  
-  // Classify and position nodes
+  // NEW: Use hierarchical triangular layout for any size
   const classifiedNodes = classifyNodes(analysisData.nodes);
-  const layoutNodes = positionNodes(classifiedNodes, template);
+  const layoutNodes = generateHierarchicalTriangularLayout(classifiedNodes);
   
   // Generate smooth connections
   const connections = generateConnections(layoutNodes, analysisData.connections);
@@ -144,10 +139,19 @@ export function generateSubwayLayout(analysisData: any): {
   // Create legend
   const legendItems = createLegend(layoutNodes);
 
+  // Calculate dynamic viewBox that GUARANTEES all nodes are visible
+  const viewBox = calculateOptimalViewBox(layoutNodes);
+
+  console.log('✅ Generated layout:', {
+    nodeCount: layoutNodes.length,
+    viewBox,
+    nodeTypes: [...new Set(layoutNodes.map(n => n.type))]
+  });
+
   return {
     nodes: layoutNodes,
     connections,
-    viewBox: template.viewBox,
+    viewBox,
     legendItems
   };
 }
@@ -182,52 +186,125 @@ function classifyNodes(nodes: any[]): Array<any & { nodeType: string }> {
   });
 }
 
-// Position nodes using subway map logic
-function positionNodes(nodes: any[], template: any): SubwayNode[] {
+// NEW: Generate hierarchical triangular layout that scales to any size
+function generateHierarchicalTriangularLayout(nodes: any[]): SubwayNode[] {
   const positioned: SubwayNode[] = [];
-  const laneCounters: Record<string, number> = {};
   
-  // Sort nodes by type for logical flow
+  // Sort nodes by type and importance for hierarchical flow
   const sortedNodes = [...nodes].sort((a, b) => {
     const typeOrder = ['frontend', 'api', 'auth', 'database', 'external', 'error'];
-    return typeOrder.indexOf(a.nodeType) - typeOrder.indexOf(b.nodeType);
+    const aIndex = typeOrder.indexOf(a.nodeType);
+    const bIndex = typeOrder.indexOf(b.nodeType);
+    
+    if (aIndex !== bIndex) return aIndex - bIndex;
+    return a.title.localeCompare(b.title); // Secondary sort by name
   });
 
-  sortedNodes.forEach((node, index) => {
-    const lane = node.nodeType;
-    laneCounters[lane] = (laneCounters[lane] || 0);
-    
-    // Find available position for this lane
-    const lanePositions = template.positions.filter((p: any) => p.lane === lane || p.lane === 'main');
-    const positionIndex = laneCounters[lane] % lanePositions.length;
-    const position = lanePositions[positionIndex] || template.positions[index % template.positions.length];
-    
-    const colors = NODE_COLORS[node.nodeType as keyof typeof NODE_COLORS] || NODE_COLORS.api;
-    
-    // Error nodes are smaller
-    const isErrorNode = node.nodeType === 'error' || node.isError;
-    const width = isErrorNode ? 100 : 140;
-    const height = isErrorNode ? 30 : 40;
-    
-    positioned.push({
-      id: node.id,
-      title: node.title,
-      x: position.x,
-      y: position.y,
-      width,
-      height,
-      color: colors.fill,
-      strokeColor: colors.stroke,
-      stepNumber: node.nodeType !== 'error' && index < 8 ? index + 1 : undefined,
-      details: node.details || [],
-      isError: isErrorNode,
-      type: node.nodeType
-    });
-    
-    laneCounters[lane]++;
+  // Group nodes by type
+  const nodesByType: Record<string, any[]> = {};
+  sortedNodes.forEach(node => {
+    const type = node.nodeType || 'api';
+    if (!nodesByType[type]) nodesByType[type] = [];
+    nodesByType[type].push(node);
   });
 
+  // Layout configuration for hierarchical triangular design
+  const config = {
+    startX: 100,
+    startY: 80,
+    levelHeight: 120, // Vertical spacing between hierarchy levels
+    nodeSpacing: 160, // Horizontal spacing between nodes
+    triangleSpread: 1.3, // How much wider each level gets
+    maxNodesPerRow: Math.max(8, Math.ceil(Math.sqrt(sortedNodes.length))) // Dynamic max nodes per row
+  };
+
+  let currentY = config.startY;
+  let globalIndex = 0;
+  
+  // Create hierarchical levels
+  const typeOrder = ['frontend', 'api', 'auth', 'database', 'external', 'error'];
+  
+  typeOrder.forEach((typeName, levelIndex) => {
+    const typeNodes = nodesByType[typeName] || [];
+    if (typeNodes.length === 0) return;
+    
+    console.log(`📊 Level ${levelIndex}: ${typeName} (${typeNodes.length} nodes)`);
+    
+    // Calculate nodes per row for this level (triangular expansion)
+    const triangularFactor = Math.pow(config.triangleSpread, levelIndex);
+    const maxNodesThisLevel = Math.ceil(config.maxNodesPerRow * triangularFactor);
+    const rowsNeeded = Math.ceil(typeNodes.length / maxNodesThisLevel);
+    
+    let nodeIndex = 0;
+    
+    // Create rows for this level
+    for (let row = 0; row < rowsNeeded; row++) {
+      const nodesInThisRow = Math.min(maxNodesThisLevel, typeNodes.length - nodeIndex);
+      
+      // Center the row horizontally
+      const totalRowWidth = (nodesInThisRow - 1) * config.nodeSpacing;
+      const rowStartX = config.startX + (levelIndex * 200) - (totalRowWidth / 2);
+      const rowY = currentY + (row * 80); // Small vertical offset for multiple rows
+      
+      // Position nodes in this row
+      for (let i = 0; i < nodesInThisRow && nodeIndex < typeNodes.length; i++) {
+        const node = typeNodes[nodeIndex];
+        const x = rowStartX + (i * config.nodeSpacing);
+        
+        const colors = NODE_COLORS[node.nodeType as keyof typeof NODE_COLORS] || NODE_COLORS.api;
+        const isErrorNode = node.nodeType === 'error' || node.isError;
+        
+        positioned.push({
+          id: node.id,
+          title: node.title,
+          x: Math.max(50, x), // Ensure minimum x position
+          y: Math.max(50, rowY), // Ensure minimum y position
+          width: isErrorNode ? 120 : 150,
+          height: isErrorNode ? 35 : 45,
+          color: colors.fill,
+          strokeColor: colors.stroke,
+          stepNumber: !isErrorNode && globalIndex < 20 ? globalIndex + 1 : undefined,
+          details: node.details || [],
+          isError: isErrorNode,
+          type: node.nodeType
+        });
+        
+        nodeIndex++;
+        globalIndex++;
+      }
+    }
+    
+    // Move to next level
+    currentY += config.levelHeight + (rowsNeeded > 1 ? (rowsNeeded - 1) * 80 : 0);
+  });
+
+  console.log(`🎨 Generated hierarchical layout: ${positioned.length} nodes positioned`);
   return positioned;
+}
+
+// Calculate optimal viewBox that guarantees all nodes are visible
+function calculateOptimalViewBox(nodes: SubwayNode[]): string {
+  if (nodes.length === 0) return "0 0 1000 600";
+  
+  // Find bounds of all nodes
+  const minX = Math.min(...nodes.map(n => n.x - 50)); // Add padding
+  const maxX = Math.max(...nodes.map(n => n.x + n.width + 50));
+  const minY = Math.min(...nodes.map(n => n.y - 50));
+  const maxY = Math.max(...nodes.map(n => n.y + n.height + 50));
+  
+  const width = maxX - minX;
+  const height = maxY - minY;
+  
+  // Ensure minimum size and add extra padding for large layouts
+  const finalWidth = Math.max(1200, width + 200);
+  const finalHeight = Math.max(800, height + 200);
+  const finalMinX = Math.min(0, minX - 100);
+  const finalMinY = Math.min(0, minY - 100);
+  
+  const viewBox = `${finalMinX} ${finalMinY} ${finalWidth} ${finalHeight}`;
+  console.log('📐 Calculated optimal viewBox:', viewBox);
+  
+  return viewBox;
 }
 
 // Generate smooth curved connections like the demo
@@ -323,7 +400,7 @@ function createEmptyLayout() {
   return {
     nodes: [],
     connections: [],
-    viewBox: "0 0 1000 500",
+    viewBox: "0 0 1200 800", // Larger default size
     legendItems: []
   };
 }

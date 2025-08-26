@@ -79,8 +79,8 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
   const [isDraggingLegend, setIsDraggingLegend] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [codeViewerOpen, setCodeViewerOpen] = useState(false);
-  // GUARANTEED VISIBILITY - Start zoomed out to see everything
-  const [zoom, setZoom] = useState(0.3); // Very wide view to guarantee visibility
+  // GUARANTEED VISIBILITY - Dynamic zoom based on content size
+  const [zoom, setZoom] = useState(0.1); // Start very zoomed out to guarantee everything is visible
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 }); // Simplified for dynamic viewBox
   const [draggedNodes, setDraggedNodes] = useState<{[key: string]: {x: number, y: number}}>({});
   const [isDragging, setIsDragging] = useState<string | null>(null);
@@ -189,14 +189,20 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
       return;
     }
     
-    // Check for extreme off-screen positioning - MUCH MORE AGGRESSIVE  
-    const extremeOffScreen = Math.abs(minX) > 1000 || Math.abs(minY) > 1000 || 
-                              Math.abs(maxX) > 1000 || Math.abs(maxY) > 1000;
-    if (extremeOffScreen) {
-      console.log('🚨 EXTREME OFF-SCREEN DETECTED - Using aggressive centering');
-      // Force center with zoom out
-      setZoom(0.2); // Zoom way out
+    // LARGE CODEBASE detection - for 50+ nodes/files
+    const largeCodebase = Math.abs(minX) > 500 || Math.abs(minY) > 500 || 
+                          Math.abs(maxX) > 2000 || Math.abs(maxY) > 1500;
+    if (largeCodebase) {
+      console.log('🚨 LARGE CODEBASE DETECTED - Using wide-view centering');
+      // Calculate optimal zoom based on content size
+      const contentWidth = maxX - minX;
+      const contentHeight = maxY - minY;
+      const optimalZoom = Math.min(0.05, 800 / Math.max(contentWidth, contentHeight));
+      
+      setZoom(Math.max(0.03, optimalZoom)); // Allow very small zoom for huge codebases
       setPanOffset({ x: 0, y: 0 }); // Center position
+      
+      console.log('📊 Large codebase zoom:', optimalZoom, 'Content size:', contentWidth, 'x', contentHeight);
       return;
     }
     
@@ -453,9 +459,26 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
   // ELEGANT AUTO-CENTERING - Professional and smooth
   React.useEffect(() => {
     if (scenario?.nodes && scenario.nodes.length > 0 && !isInitialized) {
-      console.log('✨ ELEGANT CENTERING - Professional initialization');
+      console.log('✨ SMART INITIALIZATION - Analyzing codebase size:', scenario.nodes.length, 'nodes');
       
-      // Single clean centering after DOM is ready
+      // Calculate optimal initial settings based on codebase size
+      const nodeCount = scenario.nodes.length;
+      let initialZoom = 0.8; // Default for small codebases
+      
+      if (nodeCount > 100) {
+        initialZoom = 0.03; // Ultra zoom out for massive codebases (100+ nodes)
+      } else if (nodeCount > 50) {
+        initialZoom = 0.05; // Very zoomed out for large codebases (50+ nodes)
+      } else if (nodeCount > 20) {
+        initialZoom = 0.15; // Moderately zoomed out (20+ nodes)
+      } else if (nodeCount > 10) {
+        initialZoom = 0.3; // Slightly zoomed out (10+ nodes)
+      }
+      
+      console.log('🎯 Setting initial zoom for', nodeCount, 'nodes:', initialZoom);
+      setZoom(initialZoom);
+      
+      // Center after zoom is set
       setTimeout(() => {
         centerOnNodes();
         setIsInitialized(true);
@@ -783,10 +806,24 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
           
           <button
             onClick={() => {
-              console.log('🎯 PROFESSIONAL FIND - Smooth centering');
-              // Professional smooth centering without jarring effects
-              setZoom(1.2); // Reasonable zoom level
-              centerOnNodes(); // Single smooth center
+              console.log('🎯 SMART CENTER - Adjusting for codebase size');
+              // Smart centering based on node count
+              const nodeCount = scenario?.nodes?.length || 0;
+              let targetZoom = 1.2;
+              
+              if (nodeCount > 100) {
+                targetZoom = 0.04; // Ultra zoom out for massive codebases
+              } else if (nodeCount > 50) {
+                targetZoom = 0.08; // Very zoomed out for large codebases
+              } else if (nodeCount > 20) {
+                targetZoom = 0.2;
+              } else if (nodeCount > 10) {
+                targetZoom = 0.5;
+              }
+              
+              console.log('📊 Setting smart zoom for', nodeCount, 'nodes:', targetZoom);
+              setZoom(targetZoom);
+              centerOnNodes();
             }}
             className="p-2 bg-purple-800 hover:bg-purple-700 border border-purple-600 rounded-lg transition-colors text-xs text-white"
             title="Find & Center Visualization"
@@ -808,16 +845,28 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
           
           <button
             onClick={() => {
-              console.log('🔍 SHOW EVERYTHING - Nuclear visibility option');
-              // Force extreme zoom out and reset position
-              setZoom(0.1); // Zoom WAY out
+              console.log('🔍 EMERGENCY RESET - Calculating optimal view');
+              const nodeCount = scenario?.nodes?.length || 0;
+              let emergencyZoom = 0.05; // Ultra-wide view
+              
+              if (nodeCount > 100) {
+                emergencyZoom = 0.02; // Maximum zoom out for very large codebases
+              } else if (nodeCount > 50) {
+                emergencyZoom = 0.03;
+              } else if (nodeCount > 20) {
+                emergencyZoom = 0.08;
+              } else {
+                emergencyZoom = 0.15;
+              }
+              
+              console.log('📊 Emergency zoom for', nodeCount, 'nodes:', emergencyZoom);
+              setZoom(emergencyZoom);
               setPanOffset({ x: 0, y: 0 }); // Reset position
               
-              // Try centering after zoom change
+              // Center after zoom change
               setTimeout(() => {
-                setZoom(0.3); // Slightly zoom in but still wide view
                 centerOnNodes();
-              }, 200);
+              }, 300);
             }}
             className="p-2 bg-red-800 hover:bg-red-700 border border-red-600 rounded-lg transition-colors text-xs text-white"
             title="Emergency: Show Everything - Force Extreme Zoom Out"
