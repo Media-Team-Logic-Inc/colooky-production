@@ -426,25 +426,6 @@ function getConnectionColor(nodeType?: string): string {
   return colorMap[nodeType as keyof typeof colorMap] || '#6366f1';
 }
 
-// Transform backend analysis into beautiful subway visualization
-export function transformToSubwayLayout(backendData: any) {
-  console.log('🎨 Transforming backend data to beautiful subway layout:', backendData);
-  
-  if (!backendData?.nodes) {
-    return backendData; // Return as-is if no nodes
-  }
-
-  // Apply the new subway layout transformation
-  const subwayLayout = generateSubwayLayout(backendData);
-  
-  return {
-    ...backendData,
-    nodes: subwayLayout.nodes,
-    connections: subwayLayout.connections,
-    viewBox: subwayLayout.viewBox,
-    legendItems: subwayLayout.legendItems
-  };
-}
 
 // Create legend based on node types present
 function createLegend(nodes: SubwayNode[]): Array<{ color: string; label: string }> {
