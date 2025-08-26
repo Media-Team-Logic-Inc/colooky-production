@@ -16,12 +16,14 @@ export interface SubwayNode {
 }
 
 export interface SubwayConnection {
+  id?: string;
   from: { x: number; y: number };
   to: { x: number; y: number };
   color: string;
   animated?: boolean;
   label?: string;
   isError?: boolean;
+  style?: 'solid' | 'dashed';
 }
 
 // Layout templates for different analysis types
