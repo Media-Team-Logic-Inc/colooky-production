@@ -208,14 +208,14 @@ function generateHierarchicalTriangularLayout(nodes: any[]): SubwayNode[] {
     nodesByType[type].push(node);
   });
 
-  // Layout configuration for hierarchical triangular design
+  // Layout configuration for CENTERED hierarchical triangular design
   const config = {
-    startX: 100,
-    startY: 80,
-    levelHeight: 120, // Vertical spacing between hierarchy levels
-    nodeSpacing: 160, // Horizontal spacing between nodes
-    triangleSpread: 1.3, // How much wider each level gets
-    maxNodesPerRow: Math.max(8, Math.ceil(Math.sqrt(sortedNodes.length))) // Dynamic max nodes per row
+    centerX: 800, // Center point of the entire layout
+    startY: 100,
+    levelHeight: 150, // Vertical spacing between hierarchy levels
+    nodeSpacing: 180, // Horizontal spacing between nodes
+    triangleSpread: 1.4, // How much wider each level gets
+    maxNodesPerRow: Math.max(6, Math.ceil(Math.sqrt(sortedNodes.length * 0.8))) // Dynamic max nodes per row
   };
 
   let currentY = config.startY;
@@ -237,14 +237,14 @@ function generateHierarchicalTriangularLayout(nodes: any[]): SubwayNode[] {
     
     let nodeIndex = 0;
     
-    // Create rows for this level
+    // Create rows for this level - PROPERLY CENTERED
     for (let row = 0; row < rowsNeeded; row++) {
       const nodesInThisRow = Math.min(maxNodesThisLevel, typeNodes.length - nodeIndex);
       
-      // Center the row horizontally
+      // CENTER the row horizontally around the centerX point
       const totalRowWidth = (nodesInThisRow - 1) * config.nodeSpacing;
-      const rowStartX = config.startX + (levelIndex * 200) - (totalRowWidth / 2);
-      const rowY = currentY + (row * 80); // Small vertical offset for multiple rows
+      const rowStartX = config.centerX - (totalRowWidth / 2); // Center around centerX
+      const rowY = currentY + (row * 90); // Small vertical offset for multiple rows
       
       // Position nodes in this row
       for (let i = 0; i < nodesInThisRow && nodeIndex < typeNodes.length; i++) {
@@ -257,10 +257,10 @@ function generateHierarchicalTriangularLayout(nodes: any[]): SubwayNode[] {
         positioned.push({
           id: node.id,
           title: node.title,
-          x: Math.max(50, x), // Ensure minimum x position
-          y: Math.max(50, rowY), // Ensure minimum y position
-          width: isErrorNode ? 120 : 150,
-          height: isErrorNode ? 35 : 45,
+          x: x, // Don't enforce minimum - let it be negative if needed for centering
+          y: rowY,
+          width: isErrorNode ? 130 : 160, // Slightly wider for better readability
+          height: isErrorNode ? 40 : 50, // Slightly taller
           color: colors.fill,
           strokeColor: colors.stroke,
           stepNumber: !isErrorNode && globalIndex < 20 ? globalIndex + 1 : undefined,
@@ -274,35 +274,52 @@ function generateHierarchicalTriangularLayout(nodes: any[]): SubwayNode[] {
       }
     }
     
-    // Move to next level
-    currentY += config.levelHeight + (rowsNeeded > 1 ? (rowsNeeded - 1) * 80 : 0);
+    // Move to next level with proper spacing
+    currentY += config.levelHeight + (rowsNeeded > 1 ? (rowsNeeded - 1) * 90 : 0);
   });
 
   console.log(`🎨 Generated hierarchical layout: ${positioned.length} nodes positioned`);
   return positioned;
 }
 
-// Calculate optimal viewBox that guarantees all nodes are visible
+// Calculate optimal viewBox that GUARANTEES all nodes are visible with generous padding
 function calculateOptimalViewBox(nodes: SubwayNode[]): string {
-  if (nodes.length === 0) return "0 0 1000 600";
+  if (nodes.length === 0) return "0 0 1600 1000";
   
-  // Find bounds of all nodes
-  const minX = Math.min(...nodes.map(n => n.x - 50)); // Add padding
-  const maxX = Math.max(...nodes.map(n => n.x + n.width + 50));
-  const minY = Math.min(...nodes.map(n => n.y - 50));
-  const maxY = Math.max(...nodes.map(n => n.y + n.height + 50));
+  // Find ACTUAL bounds of all nodes including their full width/height
+  const leftEdges = nodes.map(n => n.x);
+  const rightEdges = nodes.map(n => n.x + n.width);
+  const topEdges = nodes.map(n => n.y);
+  const bottomEdges = nodes.map(n => n.y + n.height);
   
-  const width = maxX - minX;
-  const height = maxY - minY;
+  const minX = Math.min(...leftEdges);
+  const maxX = Math.max(...rightEdges);
+  const minY = Math.min(...topEdges);
+  const maxY = Math.max(...bottomEdges);
   
-  // Ensure minimum size and add extra padding for large layouts
-  const finalWidth = Math.max(1200, width + 200);
-  const finalHeight = Math.max(800, height + 200);
-  const finalMinX = Math.min(0, minX - 100);
-  const finalMinY = Math.min(0, minY - 100);
+  console.log('📏 Node bounds:', { minX, maxX, minY, maxY });
   
-  const viewBox = `${finalMinX} ${finalMinY} ${finalWidth} ${finalHeight}`;
+  const contentWidth = maxX - minX;
+  const contentHeight = maxY - minY;
+  
+  // Add GENEROUS padding (30% of content size, minimum 300px)
+  const paddingX = Math.max(300, contentWidth * 0.3);
+  const paddingY = Math.max(200, contentHeight * 0.3);
+  
+  const finalMinX = minX - paddingX;
+  const finalMinY = minY - paddingY;
+  const finalWidth = contentWidth + (2 * paddingX);
+  const finalHeight = contentHeight + (2 * paddingY);
+  
+  // Ensure reasonable minimum dimensions
+  const viewBoxWidth = Math.max(1600, finalWidth);
+  const viewBoxHeight = Math.max(1000, finalHeight);
+  const viewBoxX = Math.min(finalMinX, 0);
+  const viewBoxY = Math.min(finalMinY, 0);
+  
+  const viewBox = `${viewBoxX} ${viewBoxY} ${viewBoxWidth} ${viewBoxHeight}`;
   console.log('📐 Calculated optimal viewBox:', viewBox);
+  console.log('📊 Content dimensions:', { contentWidth, contentHeight, paddingX, paddingY });
   
   return viewBox;
 }

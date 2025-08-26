@@ -79,8 +79,8 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
   const [isDraggingLegend, setIsDraggingLegend] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [codeViewerOpen, setCodeViewerOpen] = useState(false);
-  // GUARANTEED VISIBILITY - Dynamic zoom based on content size
-  const [zoom, setZoom] = useState(0.1); // Start very zoomed out to guarantee everything is visible
+  // GUARANTEED VISIBILITY - Reasonable zoom that's actually usable
+  const [zoom, setZoom] = useState(0.6); // Start at reasonable zoom level
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 }); // Simplified for dynamic viewBox
   const [draggedNodes, setDraggedNodes] = useState<{[key: string]: {x: number, y: number}}>({});
   const [isDragging, setIsDragging] = useState<string | null>(null);
@@ -199,7 +199,7 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
       const contentHeight = maxY - minY;
       const optimalZoom = Math.min(0.05, 800 / Math.max(contentWidth, contentHeight));
       
-      setZoom(Math.max(0.03, optimalZoom)); // Allow very small zoom for huge codebases
+      setZoom(Math.max(0.2, optimalZoom)); // Minimum usable zoom level
       setPanOffset({ x: 0, y: 0 }); // Center position
       
       console.log('📊 Large codebase zoom:', optimalZoom, 'Content size:', contentWidth, 'x', contentHeight);
@@ -466,13 +466,13 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
       let initialZoom = 0.8; // Default for small codebases
       
       if (nodeCount > 100) {
-        initialZoom = 0.03; // Ultra zoom out for massive codebases (100+ nodes)
+        initialZoom = 0.3; // Reasonable zoom for massive codebases (100+ nodes)
       } else if (nodeCount > 50) {
-        initialZoom = 0.05; // Very zoomed out for large codebases (50+ nodes)
+        initialZoom = 0.4; // Good zoom for large codebases (50+ nodes)
       } else if (nodeCount > 20) {
-        initialZoom = 0.15; // Moderately zoomed out (20+ nodes)
+        initialZoom = 0.5; // Decent zoom (20+ nodes)
       } else if (nodeCount > 10) {
-        initialZoom = 0.3; // Slightly zoomed out (10+ nodes)
+        initialZoom = 0.6; // Good zoom (10+ nodes)
       }
       
       console.log('🎯 Setting initial zoom for', nodeCount, 'nodes:', initialZoom);
@@ -812,13 +812,13 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
               let targetZoom = 1.2;
               
               if (nodeCount > 100) {
-                targetZoom = 0.04; // Ultra zoom out for massive codebases
+                targetZoom = 0.25; // Reasonable zoom for massive codebases
               } else if (nodeCount > 50) {
-                targetZoom = 0.08; // Very zoomed out for large codebases
+                targetZoom = 0.35; // Good zoom for large codebases
               } else if (nodeCount > 20) {
-                targetZoom = 0.2;
-              } else if (nodeCount > 10) {
                 targetZoom = 0.5;
+              } else if (nodeCount > 10) {
+                targetZoom = 0.7;
               }
               
               console.log('📊 Setting smart zoom for', nodeCount, 'nodes:', targetZoom);
@@ -850,13 +850,13 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
               let emergencyZoom = 0.05; // Ultra-wide view
               
               if (nodeCount > 100) {
-                emergencyZoom = 0.02; // Maximum zoom out for very large codebases
+                emergencyZoom = 0.15; // Minimum usable zoom for very large codebases
               } else if (nodeCount > 50) {
-                emergencyZoom = 0.03;
+                emergencyZoom = 0.25;
               } else if (nodeCount > 20) {
-                emergencyZoom = 0.08;
+                emergencyZoom = 0.4;
               } else {
-                emergencyZoom = 0.15;
+                emergencyZoom = 0.6;
               }
               
               console.log('📊 Emergency zoom for', nodeCount, 'nodes:', emergencyZoom);
