@@ -18,7 +18,7 @@ export const demoScenarios: FlowScenario[] = [
       {
         id: 'signup-btn',
         title: 'SignupButton.jsx',
-        x: 50, y: 60, width: 120, height: 40,
+        x: 160, y: 120, width: 140, height: 50,
         color: '#3b82f6', strokeColor: '#60a5fa',
         stepNumber: 1,
         details: [
@@ -31,7 +31,7 @@ export const demoScenarios: FlowScenario[] = [
       {
         id: 'form-modal',
         title: 'SignupModal.jsx',
-        x: 120, y: 130, width: 120, height: 40,
+        x: 160, y: 230, width: 140, height: 50,
         color: '#3b82f6', strokeColor: '#60a5fa',
         stepNumber: 2,
         details: [
@@ -44,7 +44,7 @@ export const demoScenarios: FlowScenario[] = [
       {
         id: 'api-call',
         title: '/api/auth/signup',
-        x: 370, y: 130, width: 120, height: 40,
+        x: 400, y: 200, width: 140, height: 50,
         color: '#10b981', strokeColor: '#34d399',
         stepNumber: 3,
         details: [
@@ -57,7 +57,7 @@ export const demoScenarios: FlowScenario[] = [
       {
         id: 'password-hash',
         title: 'bcrypt.hash()',
-        x: 520, y: 200, width: 120, height: 40,
+        x: 620, y: 120, width: 140, height: 50,
         color: '#8b5cf6', strokeColor: '#a78bfa',
         stepNumber: 4,
         details: [
@@ -70,7 +70,7 @@ export const demoScenarios: FlowScenario[] = [
       {
         id: 'db-insert',
         title: 'User.create()',
-        x: 520, y: 300, width: 120, height: 40,
+        x: 620, y: 280, width: 140, height: 50,
         color: '#f59e0b', strokeColor: '#fbbf24',
         stepNumber: 5,
         details: [
@@ -83,7 +83,7 @@ export const demoScenarios: FlowScenario[] = [
       {
         id: 'response',
         title: 'JSON Response',
-        x: 370, y: 350, width: 120, height: 40,
+        x: 400, y: 350, width: 140, height: 50,
         color: '#10b981', strokeColor: '#34d399',
         details: [
           'HTTP 201: Created',
@@ -94,11 +94,12 @@ export const demoScenarios: FlowScenario[] = [
       },
     ],
     connections: [
-      { from: { x: 110, y: 100 }, to: { x: 180, y: 130 }, color: '#64b5f6' },
-      { from: { x: 240, y: 150 }, to: { x: 370, y: 150 }, color: '#10b981' },
-      { from: { x: 490, y: 150 }, to: { x: 580, y: 200 }, color: '#8b5cf6' },
-      { from: { x: 580, y: 240 }, to: { x: 580, y: 300 }, color: '#f59e0b' },
-      { from: { x: 520, y: 320 }, to: { x: 430, y: 350 }, color: '#10b981' },
+      { from: { x: 230, y: 170 }, to: { x: 230, y: 230 }, color: '#3b82f6' },
+      { from: { x: 300, y: 255 }, to: { x: 400, y: 225 }, color: '#10b981' },
+      { from: { x: 540, y: 225 }, to: { x: 620, y: 145 }, color: '#8b5cf6' },
+      { from: { x: 690, y: 170 }, to: { x: 690, y: 280 }, color: '#f59e0b' },
+      { from: { x: 620, y: 305 }, to: { x: 540, y: 375 }, color: '#10b981' },
+      { from: { x: 470, y: 350 }, to: { x: 230, y: 280 }, color: '#3b82f6' },
     ]
   },
 

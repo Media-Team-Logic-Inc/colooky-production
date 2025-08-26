@@ -413,11 +413,21 @@ const FlexibleSubwayMap: React.FC<FlexibleSubwayMapProps> = ({
   };
 
   return (
-    <div className="w-full bg-slate-900 rounded-lg border border-slate-700">
-      {/* Header with scenario selector */}
-      <div className="text-center p-6 border-b border-slate-700">
-        <h2 className="text-2xl font-bold text-blue-400 mb-2">{scenario.title}</h2>
-        <p className="text-slate-400 mb-4">{scenario.description}</p>
+    <div 
+      className="w-full rounded-lg border border-slate-700/50" 
+      style={{
+        background: 'linear-gradient(135deg, #0f1419 0%, #1a1f29 30%, #0f1722 100%)',
+      }}
+    >
+      {/* Header with scenario selector - DEMO QUALITY */}
+      <div className="text-center p-6 border-b border-slate-700/50" style={{ background: 'linear-gradient(135deg, rgba(15, 20, 25, 0.95) 0%, rgba(26, 31, 41, 0.95) 100%)' }}>
+        <h2 className="text-3xl font-bold mb-2" style={{ 
+          background: 'linear-gradient(135deg, #60a5fa 0%, #a78bfa 100%)',
+          WebkitBackgroundClip: 'text',
+          WebkitTextFillColor: 'transparent',
+          textShadow: '0 2px 4px rgba(0,0,0,0.3)'
+        }}>{scenario.title}</h2>
+        <p className="text-slate-300 mb-4 text-lg font-medium" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}>{scenario.description}</p>
         
         {availableScenarios.length > 1 && onScenarioChange && (
           <div className="flex flex-wrap justify-center gap-2">
@@ -475,25 +485,29 @@ const FlexibleSubwayMap: React.FC<FlexibleSubwayMapProps> = ({
           <div className="text-xs text-slate-400 text-center">{Math.round(zoom * 100)}%</div>
         </div>
 
-        {/* Movable Legend */}
+        {/* DEMO-QUALITY Movable Legend */}
         <div 
-          className="absolute bg-slate-800/95 border border-slate-600 rounded-lg z-10 cursor-move"
+          className="absolute z-10 cursor-move rounded-xl border backdrop-blur-sm"
           style={{ 
             top: `${legendPosition.top}px`, 
             right: `${legendPosition.right}px`,
-            minWidth: legendCollapsed ? 'auto' : '120px'
+            minWidth: legendCollapsed ? 'auto' : '160px',
+            background: 'linear-gradient(135deg, rgba(15, 20, 25, 0.95) 0%, rgba(26, 31, 41, 0.95) 100%)',
+            borderColor: 'rgba(100, 116, 139, 0.3)',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.4)'
           }}
         >
           <div 
-            className="flex items-center justify-between p-2 border-b border-slate-600"
+            className="flex items-center justify-between p-3 border-b"
+            style={{ borderColor: 'rgba(100, 116, 139, 0.3)' }}
             onMouseDown={() => handleMouseDown('legend')}
           >
-            <h3 className="text-sm font-semibold text-white">Legend</h3>
-            <div className="flex items-center gap-1">
+            <h3 className="text-sm font-semibold text-white" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}>Legend</h3>
+            <div className="flex items-center gap-2">
               <Move className="w-3 h-3 text-slate-400" />
               <button
                 onClick={() => setLegendCollapsed(!legendCollapsed)}
-                className="p-1 hover:bg-slate-700 rounded"
+                className="p-1 hover:bg-slate-700/50 rounded transition-colors"
               >
                 {legendCollapsed ? 
                   <ChevronDown className="w-3 h-3 text-slate-400" /> : 
@@ -503,14 +517,17 @@ const FlexibleSubwayMap: React.FC<FlexibleSubwayMapProps> = ({
             </div>
           </div>
           {!legendCollapsed && (
-            <div className="p-3">
+            <div className="p-3 space-y-3">
               {scenario.legendItems.map((item, index) => (
-                <div key={index} className="flex items-center mb-2 last:mb-0">
+                <div key={index} className="flex items-center group transition-all duration-200 hover:bg-slate-700/30 p-1 rounded">
                   <div 
-                    className="w-4 h-4 rounded mr-2 flex-shrink-0" 
-                    style={{ backgroundColor: item.color }}
+                    className="w-5 h-5 rounded mr-3 flex-shrink-0 transition-all duration-200 group-hover:scale-110" 
+                    style={{ 
+                      backgroundColor: item.color,
+                      boxShadow: `0 2px 4px ${item.color}30`
+                    }}
                   />
-                  <span className="text-xs text-slate-300">{item.label}</span>
+                  <span className="text-sm text-slate-200 font-medium group-hover:text-white transition-colors">{item.label}</span>
                 </div>
               ))}
             </div>
@@ -553,9 +570,12 @@ const FlexibleSubwayMap: React.FC<FlexibleSubwayMapProps> = ({
           }
         `}</style>
         
-        {/* SVG Flow Diagram */}
+        {/* SVG Flow Diagram - DEMO QUALITY BACKGROUND */}
         <div 
-          className="relative w-full h-[600px] overflow-auto border border-slate-600 rounded-lg bg-slate-900"
+          className="relative w-full h-[600px] overflow-auto border border-slate-600 rounded-lg"
+          style={{
+            background: 'linear-gradient(135deg, #0f1419 0%, #1a1f29 50%, #0f1419 100%)',
+          }}
         >
           <div 
             className="transition-transform duration-200"
@@ -581,49 +601,98 @@ const FlexibleSubwayMap: React.FC<FlexibleSubwayMapProps> = ({
                 <marker 
                   key={color}
                   id={getArrowMarkerId(color)} 
-                  markerWidth="10" 
-                  markerHeight="7" 
-                  refX="9" 
-                  refY="3.5" 
+                  markerWidth="12" 
+                  markerHeight="8" 
+                  refX="10" 
+                  refY="4" 
                   orient="auto"
                 >
-                  <polygon points="0 0, 10 3.5, 0 7" fill={color} />
+                  <polygon points="0 0, 12 4, 0 8" fill={color} opacity="0.9" />
                 </marker>
               ))}
               {/* Fallback default arrow */}
-              <marker id="arrowhead" markerWidth="10" markerHeight="7" 
-                      refX="9" refY="3.5" orient="auto">
-                <polygon points="0 0, 10 3.5, 0 7" fill="#64b5f6" />
+              <marker id="arrowhead" markerWidth="12" markerHeight="8" 
+                      refX="10" refY="4" orient="auto">
+                <polygon points="0 0, 12 4, 0 8" fill="#64b5f6" opacity="0.9" />
               </marker>
+              
+              {/* PROFESSIONAL gradient definitions for nodes */}
+              {Array.from(new Set(optimizedScenario.nodes.map(node => node.color))).map(color => (
+                <linearGradient 
+                  key={`gradient-${color.replace('#', '')}`}
+                  id={`gradient-${color.replace('#', '')}`}
+                  x1="0%" y1="0%" x2="0%" y2="100%"
+                >
+                  <stop offset="0%" stopColor={color} stopOpacity="1" />
+                  <stop offset="50%" stopColor={color} stopOpacity="0.95" />
+                  <stop offset="100%" stopColor={`${color}DD`} stopOpacity="0.9" />
+                </linearGradient>
+              ))}
+              
+              {/* DEMO-QUALITY background pattern */}
+              <pattern id="subtle-grid" width="40" height="40" patternUnits="userSpaceOnUse">
+                <path d="M 40 0 L 0 0 0 40" fill="none" stroke="rgba(100, 116, 139, 0.1)" strokeWidth="0.5"/>
+              </pattern>
+              
+              {/* Enhanced glow effects */}
+              <filter id="node-glow">
+                <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
+                <feMerge> 
+                  <feMergeNode in="coloredBlur"/>
+                  <feMergeNode in="SourceGraphic"/> 
+                </feMerge>
+              </filter>
             </defs>
+            
+            {/* SUBTLE background grid for professional look */}
+            <rect 
+              width="100%" 
+              height="100%" 
+              fill="url(#subtle-grid)" 
+              opacity="0.3"
+            />
             
             {/* Render nodes first with step numbers and enhanced animations */}
             {optimizedScenario.nodes.map((node, nodeIndex) => {
               const stepNumber = nodeIndex + 1;
               return (
                 <g key={node.id}>
-                  {/* Step number circle */}
-                  <circle
-                    cx={node.x - 15}
-                    cy={node.y + node.height / 2}
-                    r="12"
-                    fill={node.color}
-                    stroke="rgba(255,255,255,0.8)"
-                    strokeWidth="2"
-                  />
-                  <text
-                    x={node.x - 15}
-                    y={node.y + node.height / 2 + 1}
-                    textAnchor="middle"
-                    dominantBaseline="middle"
-                    fill="#fff"
-                    fontSize="10"
-                    fontWeight="bold"
-                  >
-                    {stepNumber}
-                  </text>
+                  {/* DEMO-QUALITY step number circle */}
+                  <g style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))' }}>
+                    <circle
+                      cx={node.x - 15}
+                      cy={node.y + node.height / 2}
+                      r="14"
+                      fill={`url(#gradient-${node.color.replace('#', '')})`}
+                      stroke="rgba(255,255,255,0.9)"
+                      strokeWidth="2.5"
+                    />
+                    <circle
+                      cx={node.x - 15}
+                      cy={node.y + node.height / 2}
+                      r="10"
+                      fill="none"
+                      stroke="rgba(255,255,255,0.4)"
+                      strokeWidth="1"
+                    />
+                    <text
+                      x={node.x - 15}
+                      y={node.y + node.height / 2 + 1}
+                      textAnchor="middle"
+                      dominantBaseline="middle"
+                      fill="#ffffff"
+                      fontSize="11"
+                      fontWeight="700"
+                      style={{ 
+                        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+                        textShadow: '0 1px 2px rgba(0,0,0,0.5)'
+                      }}
+                    >
+                      {stepNumber}
+                    </text>
+                  </g>
                   
-                  {/* Enhanced node with stunning hover effects */}
+                  {/* DEMO-QUALITY node with professional styling */}
                   <g
                     className={`cursor-pointer appearing-node ${selectedNode === node.id ? 'pulsing-node' : ''}`}
                     onClick={() => {
@@ -635,11 +704,11 @@ const FlexibleSubwayMap: React.FC<FlexibleSubwayMapProps> = ({
                     style={{ 
                       transformOrigin: `${node.x + node.width/2}px ${node.y + node.height/2}px`,
                       transition: 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
-                      animationDelay: `${nodeIndex * 0.1}s`
+                      animationDelay: `${nodeIndex * 0.15}s`
                     }}
                     onMouseEnter={(e) => { 
                       e.currentTarget.style.transform = 'scale(1.08)';
-                      e.currentTarget.style.filter = `brightness(1.25) drop-shadow(0 6px 20px ${node.color}40)`;
+                      e.currentTarget.style.filter = `brightness(1.2) drop-shadow(0 8px 25px ${node.color}50) saturate(1.3)`;
                       e.currentTarget.style.zIndex = '100';
                     }}
                     onMouseLeave={(e) => { 
@@ -648,29 +717,54 @@ const FlexibleSubwayMap: React.FC<FlexibleSubwayMapProps> = ({
                       e.currentTarget.style.zIndex = 'auto';
                     }}
                   >
-                <rect
-                  x={node.x}
-                  y={node.y}
-                  width={node.width}
-                  height={node.height}
-                  rx="8"
-                  ry="8"
-                  fill={node.color}
-                  stroke={node.strokeColor}
-                  strokeWidth="2"
-                  fillOpacity="0.9"
-                />
-                <text
-                  x={node.x + node.width / 2}
-                  y={node.y + node.height / 2}
-                  textAnchor="middle"
-                  dominantBaseline="middle"
-                  fill="#fff"
-                  fontSize="12"
-                  fontWeight="500"
-                >
-                  {node.title}
-                </text>
+                    {/* DEMO-QUALITY shadow for depth */}
+                    <rect
+                      x={node.x + 2}
+                      y={node.y + 2}
+                      width={node.width}
+                      height={node.height}
+                      rx="12"
+                      ry="12"
+                      fill="rgba(0, 0, 0, 0.2)"
+                      style={{ filter: 'blur(3px)' }}
+                    />
+                    
+                    {/* MAIN node background - GORGEOUS styling */}
+                    <rect
+                      x={node.x}
+                      y={node.y}
+                      width={node.width}
+                      height={node.height}
+                      rx="12"
+                      ry="12"
+                      fill={`url(#gradient-${node.color.replace('#', '')})`}
+                      stroke={node.strokeColor || 'rgba(255, 255, 255, 0.3)'}
+                      strokeWidth="1.5"
+                      style={{
+                        filter: selectedNode === node.id 
+                          ? `drop-shadow(0 4px 12px ${node.color}60) brightness(1.15)` 
+                          : 'drop-shadow(0 2px 6px rgba(0,0,0,0.3))'
+                      }}
+                    />
+                    
+                    {/* PROFESSIONAL typography */}
+                    <text
+                      x={node.x + node.width / 2}
+                      y={node.y + node.height / 2}
+                      textAnchor="middle"
+                      dominantBaseline="middle"
+                      fill="#ffffff"
+                      fontSize="13"
+                      fontWeight="600"
+                      style={{ 
+                        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+                        letterSpacing: '0.025em',
+                        textShadow: '0 1px 3px rgba(0,0,0,0.4)',
+                        pointerEvents: 'none'
+                      }}
+                    >
+                      {node.title.length > 14 ? `${node.title.slice(0, 14)}…` : node.title}
+                    </text>
                 
                 {/* Step number circles */}
                 {node.stepNumber && (
@@ -699,75 +793,103 @@ const FlexibleSubwayMap: React.FC<FlexibleSubwayMapProps> = ({
               );
             })}
             
-            {/* Render elegant curved connections */}
+            {/* Render STUNNING curved connections - DEMO QUALITY */}
             {optimizedScenario.connections.map((conn, index) => {
               const connectionColor = getConnectionColor(conn, index);
               
-              // Create smooth curved paths
+              // ADVANCED CURVE ALGORITHM - Beautiful flowing curves like subway maps
               const dx = conn.to.x - conn.from.x;
               const dy = conn.to.y - conn.from.y;
               const distance = Math.sqrt(dx * dx + dy * dy);
               
-              // Control points for natural curves
-              const curvature = Math.min(distance * 0.25, 80);
-              const midX = (conn.from.x + conn.to.x) / 2;
-              const midY = (conn.from.y + conn.to.y) / 2;
+              // ENHANCED curvature for more natural, subway-like flows
+              let curvature = Math.min(distance * 0.4, 120); // More pronounced curves
               
-              // Perpendicular offset for elegant curve
-              const perpX = -dy / distance * curvature;
-              const perpY = dx / distance * curvature;
+              // INTELLIGENT curve direction - flows naturally like real subway maps
+              const angle = Math.atan2(dy, dx);
+              const perpAngle = angle + Math.PI / 2;
               
-              const controlX = midX + perpX;
-              const controlY = midY + perpY;
+              // ADAPTIVE control points - curves flow in the right direction
+              const controlOffset = curvature * 0.7;
+              const control1X = conn.from.x + dx * 0.3 + Math.cos(perpAngle) * controlOffset;
+              const control1Y = conn.from.y + dy * 0.3 + Math.sin(perpAngle) * controlOffset;
+              const control2X = conn.from.x + dx * 0.7 + Math.cos(perpAngle) * controlOffset;
+              const control2Y = conn.from.y + dy * 0.7 + Math.sin(perpAngle) * controlOffset;
               
-              const curvePath = `M ${conn.from.x} ${conn.from.y} Q ${controlX} ${controlY} ${conn.to.x} ${conn.to.y}`;
+              // CUBIC BEZIER for ultra-smooth subway-style curves
+              const curvePath = `M ${conn.from.x} ${conn.from.y} C ${control1X} ${control1Y}, ${control2X} ${control2Y}, ${conn.to.x} ${conn.to.y}`;
               
-              // Determine connection type and animation
+              // Enhanced connection styling
               const isErrorConnection = connectionColor === '#ef4444' || connectionColor === '#f87171';
-              const isAnimated = conn.animated || isErrorConnection;
               
               return (
                 <g key={index}>
+                  {/* DEMO-QUALITY connection shadow */}
+                  <path
+                    d={curvePath}
+                    stroke="rgba(0, 0, 0, 0.3)"
+                    strokeWidth={isErrorConnection ? "6" : "5"}
+                    fill="none"
+                    opacity="0.4"
+                    style={{ 
+                      filter: 'blur(2px)',
+                      transform: 'translate(2px, 2px)'
+                    }}
+                  />
+                  
+                  {/* MAIN connection line - STUNNING quality */}
                   <path
                     d={curvePath}
                     stroke={connectionColor}
                     strokeWidth={isErrorConnection ? "4" : "3"}
                     fill="none"
-                    opacity={isErrorConnection ? "0.9" : "0.8"}
+                    opacity={isErrorConnection ? "0.95" : "0.9"}
                     markerEnd={`url(#${getArrowMarkerId(connectionColor)})`}
                     className={isErrorConnection ? 'error-connection' : ''}
                     style={{
                       filter: isErrorConnection 
-                        ? 'drop-shadow(0px 3px 6px rgba(239, 68, 68, 0.4))' 
-                        : 'drop-shadow(0px 2px 4px rgba(0,0,0,0.2))',
-                      transition: 'all 0.3s ease',
+                        ? 'drop-shadow(0px 4px 8px rgba(239, 68, 68, 0.5)) brightness(1.1)' 
+                        : 'drop-shadow(0px 3px 6px rgba(0,0,0,0.3)) brightness(1.05)',
+                      transition: 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
                       strokeDasharray: isErrorConnection 
-                        ? '10 5' 
-                        : (conn.animated ? '8 4' : 'none'),
+                        ? '12 6' 
+                        : (conn.animated ? '10 5' : 'none'),
                       animation: isErrorConnection 
-                        ? 'marchingAnts 1s linear infinite' 
-                        : (conn.animated ? 'connectionFlow 2s linear infinite' : 'none')
+                        ? 'marchingAnts 1.2s linear infinite' 
+                        : (conn.animated ? 'connectionFlow 2.5s linear infinite' : 'none'),
+                      strokeLinecap: 'round',
+                      strokeLinejoin: 'round'
                     }}
                   />
+                  
+                  {/* PROFESSIONAL connection labels */}
                   {conn.label && (
                     <g>
-                      <rect
-                        x={midX - 25}
-                        y={midY - 10}
-                        width="50"
-                        height="20"
-                        fill="rgba(0, 0, 0, 0.8)"
-                        rx="10"
-                        ry="10"
+                      {/* Label background with elegant styling */}
+                      <ellipse
+                        cx={control1X}
+                        cy={control1Y - 8}
+                        rx="30"
+                        ry="12"
+                        fill="rgba(15, 20, 25, 0.95)"
+                        stroke={connectionColor}
+                        strokeWidth="1"
+                        style={{ 
+                          filter: 'drop-shadow(0px 2px 4px rgba(0,0,0,0.3))'
+                        }}
                       />
                       <text
-                        x={midX}
-                        y={midY + 3}
+                        x={control1X}
+                        y={control1Y - 5}
                         textAnchor="middle"
                         dominantBaseline="middle"
-                        fill="#fff"
-                        fontSize="10"
+                        fill="#ffffff"
+                        fontSize="11"
                         fontWeight="500"
+                        style={{ 
+                          fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+                          textShadow: '0 1px 2px rgba(0,0,0,0.5)'
+                        }}
                       >
                         {conn.label}
                       </text>
