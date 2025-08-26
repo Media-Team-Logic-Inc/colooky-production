@@ -31,13 +31,18 @@ CREATE INDEX IF NOT EXISTS idx_github_marketplace_purchase_id ON github_marketpl
 ALTER TABLE github_marketplace_subscriptions ENABLE ROW LEVEL SECURITY;
 
 -- Create RLS policies
-CREATE POLICY "Users can view their own marketplace subscriptions" 
-ON github_marketplace_subscriptions FOR SELECT 
-USING (auth.uid()::text = (SELECT user_id FROM profiles WHERE github_id = github_user_id::text));
-
+-- Note: Since we don't have a profiles table, we'll use a simpler policy
+-- Users can only access their own data if we implement user matching later
 CREATE POLICY "Service can manage all marketplace subscriptions" 
 ON github_marketplace_subscriptions FOR ALL 
 USING (auth.role() = 'service_role');
+
+-- Allow authenticated users to view marketplace subscriptions
+-- You can add more specific policies later when you have user profile mapping
+CREATE POLICY "Authenticated users can view marketplace subscriptions" 
+ON github_marketplace_subscriptions FOR SELECT 
+TO authenticated
+USING (true);
 
 -- Create function to automatically update the updated_at timestamp
 CREATE OR REPLACE FUNCTION update_github_marketplace_subscriptions_updated_at()
