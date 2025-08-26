@@ -1120,18 +1120,23 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
                       // EMERGENCY DEBUG: Show the actual raw analysis object
                       console.log('🚨 RAW ANALYSIS OBJECT:', JSON.stringify(analysis, null, 2));
                       
-                      // CRITICAL FIX: Use the REAL backend visualization with enhancements
-                      console.log('🚀 Using REAL backend visualization with actual function names!');
+                      // BEAUTIFUL VISUALIZATION: Transform backend data into professional subway layout
+                      console.log('🎨 Transforming backend data into beautiful subway visualization!');
                       
-                      // Apply error detection and step numbers to enhance visualization
-                      let enhancedVisualization = analysis.visualization;
-                      if (enhancedVisualization) {
-                        enhancedVisualization = enhanceScenarioWithErrors(enhancedVisualization, analysis);
-                        enhancedVisualization = addStepNumbers(enhancedVisualization);
-                        console.log('✨ Applied error detection and step numbers to visualization');
+                      // Apply professional subway layout transformation
+                      let professionalVisualization = analysis.visualization;
+                      if (professionalVisualization) {
+                        // Transform to beautiful subway layout with centering and connections
+                        professionalVisualization = transformToSubwayLayout(professionalVisualization);
+                        
+                        // Apply error detection and step numbers
+                        professionalVisualization = enhanceScenarioWithErrors(professionalVisualization, analysis);
+                        professionalVisualization = addStepNumbers(professionalVisualization);
+                        
+                        console.log('✨ Applied professional subway layout + enhancements');
                       }
                       
-                      return enhancedVisualization;
+                      return professionalVisualization;
                     })()}
                     onScenarioChange={() => {}}
                     availableScenarios={[analysis.visualization]}

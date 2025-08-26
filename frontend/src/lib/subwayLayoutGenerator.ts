@@ -324,64 +324,124 @@ function calculateOptimalViewBox(nodes: SubwayNode[]): string {
   return viewBox;
 }
 
-// Generate smooth curved connections like the demo
+// Generate beautiful curved connections like the demo
 function generateConnections(nodes: SubwayNode[], originalConnections?: any[]): SubwayConnection[] {
   const connections: SubwayConnection[] = [];
   
-  // Create logical flow connections between nodes
-  for (let i = 0; i < nodes.length - 1; i++) {
-    const fromNode = nodes[i];
-    const toNode = nodes[i + 1];
+  console.log('🎨 Creating beautiful connections for', nodes.length, 'nodes');
+  
+  // Group nodes by type for intelligent connections
+  const nodesByType: Record<string, SubwayNode[]> = {};
+  nodes.forEach(node => {
+    const type = node.type || 'api';
+    if (!nodesByType[type]) nodesByType[type] = [];
+    nodesByType[type].push(node);
+  });
+  
+  const typeOrder = ['frontend', 'api', 'auth', 'database', 'external'];
+  
+  // Create hierarchical flow connections (like demo)
+  for (let i = 0; i < typeOrder.length - 1; i++) {
+    const currentType = typeOrder[i];
+    const nextType = typeOrder[i + 1];
     
-    // Skip if both are error nodes
-    if (fromNode.isError && toNode.isError) continue;
+    const currentNodes = nodesByType[currentType] || [];
+    const nextNodes = nodesByType[nextType] || [];
     
-    // Connection points (center-right to center-left)
-    const from = {
-      x: fromNode.x + fromNode.width,
-      y: fromNode.y + fromNode.height / 2
-    };
-    
-    const to = {
-      x: toNode.x,
-      y: toNode.y + toNode.height / 2
-    };
-    
-    connections.push({
-      from,
-      to,
-      color: fromNode.isError || toNode.isError ? '#ef4444' : fromNode.color,
-      animated: fromNode.isError || toNode.isError,
-      isError: fromNode.isError || toNode.isError
-    });
+    if (currentNodes.length > 0 && nextNodes.length > 0) {
+      // Connect first node of current type to first node of next type
+      const fromNode = currentNodes[0];
+      const toNode = nextNodes[0];
+      
+      connections.push(createBeautifulConnection(fromNode, toNode, `hierarchy-${i}`, false));
+    }
   }
   
-  // Add error branch connections
+  // Create lateral connections within types (like demo branching)
+  Object.entries(nodesByType).forEach(([type, typeNodes]) => {
+    if (typeNodes.length > 1) {
+      for (let i = 0; i < typeNodes.length - 1; i++) {
+        connections.push(createBeautifulConnection(typeNodes[i], typeNodes[i + 1], `lateral-${type}-${i}`, false));
+      }
+    }
+  });
+  
+  // Connect error nodes to nearest non-error nodes with dashed lines
   const errorNodes = nodes.filter(n => n.isError);
   const mainNodes = nodes.filter(n => !n.isError);
   
-  errorNodes.forEach(errorNode => {
-    // Connect closest main node to error node
-    const closestMain = mainNodes.reduce((closest, node) => {
-      const distance = Math.sqrt(
-        Math.pow(node.x - errorNode.x, 2) + Math.pow(node.y - errorNode.y, 2)
-      );
-      const closestDistance = Math.sqrt(
-        Math.pow(closest.x - errorNode.x, 2) + Math.pow(closest.y - errorNode.y, 2)
-      );
-      return distance < closestDistance ? node : closest;
-    });
-    
-    connections.push({
-      from: { x: closestMain.x + closestMain.width/2, y: closestMain.y + closestMain.height },
-      to: { x: errorNode.x + errorNode.width/2, y: errorNode.y },
-      color: '#ef4444',
-      animated: true,
-      isError: true
-    });
+  errorNodes.forEach((errorNode, index) => {
+    if (mainNodes.length > 0) {
+      // Find closest main node
+      const closestMain = mainNodes.reduce((closest, node) => {
+        const closestDistance = Math.sqrt(
+          Math.pow(closest.x - errorNode.x, 2) + Math.pow(closest.y - errorNode.y, 2)
+        );
+        const nodeDistance = Math.sqrt(
+          Math.pow(node.x - errorNode.x, 2) + Math.pow(node.y - errorNode.y, 2)
+        );
+        return nodeDistance < closestDistance ? node : closest;
+      });
+      
+      connections.push(createBeautifulConnection(closestMain, errorNode, `error-${index}`, true));
+    }
   });
   
+  console.log('✨ Generated', connections.length, 'beautiful connections');
   return connections;
+}
+
+// Create a beautiful connection between two nodes (like the demo)
+function createBeautifulConnection(fromNode: SubwayNode, toNode: SubwayNode, id: string, isError: boolean): SubwayConnection {
+  return {
+    id,
+    from: {
+      x: fromNode.x + fromNode.width / 2,
+      y: fromNode.y + fromNode.height / 2
+    },
+    to: {
+      x: toNode.x + toNode.width / 2,
+      y: toNode.y + toNode.height / 2
+    },
+    color: isError ? '#ef4444' : getConnectionColor(fromNode.type),
+    animated: !isError,
+    isError,
+    style: isError ? 'dashed' : 'solid'
+  };
+}
+
+// Get beautiful connection colors based on source node type
+function getConnectionColor(nodeType?: string): string {
+  const colorMap = {
+    frontend: '#3b82f6',    // Blue like demo
+    api: '#10b981',         // Green like demo
+    auth: '#8b5cf6',        // Purple like demo
+    database: '#f59e0b',    // Orange like demo
+    external: '#6b7280',    // Gray
+    error: '#ef4444'        // Red
+  };
+  
+  return colorMap[nodeType as keyof typeof colorMap] || '#6366f1';
+}
+
+// Transform backend analysis into beautiful subway visualization
+export function transformToSubwayLayout(backendData: any) {
+  console.log('🎨 Transforming backend data to beautiful subway layout:', backendData);
+  
+  if (!backendData?.nodes) {
+    return backendData; // Return as-is if no nodes
+  }
+
+  // Apply the new subway layout transformation
+  const subwayLayout = generateSubwayLayout(backendData);
+  
+  return {
+    ...backendData,
+    nodes: subwayLayout.nodes,
+    connections: subwayLayout.connections,
+    viewBox: subwayLayout.viewBox,
+    legendItems: subwayLayout.legendItems
+  };
 }
 
 // Create legend based on node types present
