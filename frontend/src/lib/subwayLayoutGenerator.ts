@@ -145,7 +145,7 @@ export function generateSubwayLayout(analysisData: any): {
   console.log('✅ Generated layout:', {
     nodeCount: layoutNodes.length,
     viewBox,
-    nodeTypes: [...new Set(layoutNodes.map(n => n.type))]
+    nodeTypes: Array.from(new Set(layoutNodes.map(n => n.type)))
   });
 
   return {
