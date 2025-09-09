@@ -120,41 +120,6 @@ export default function Settings({ user }: SettingsProps) {
     }
   }, [user]);
 
-  const handleThemeChange = (newTheme: string, shouldSave: boolean = true) => {
-    setTheme(newTheme);
-    
-    // Apply theme immediately to document
-    if (newTheme === 'light') {
-      document.documentElement.classList.remove('dark');
-      document.documentElement.classList.add('light');
-      document.body.classList.add('bg-white');
-      document.body.classList.remove('bg-slate-900');
-    } else if (newTheme === 'auto') {
-      // Check system preference
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      if (prefersDark) {
-        document.documentElement.classList.remove('light');
-        document.documentElement.classList.add('dark');
-        document.body.classList.add('bg-slate-900');
-        document.body.classList.remove('bg-white');
-      } else {
-        document.documentElement.classList.remove('dark');
-        document.documentElement.classList.add('light');
-        document.body.classList.add('bg-white');
-        document.body.classList.remove('bg-slate-900');
-      }
-    } else {
-      document.documentElement.classList.remove('light');
-      document.documentElement.classList.add('dark');
-      document.body.classList.add('bg-slate-900');
-      document.body.classList.remove('bg-white');
-    }
-    
-    // Save to localStorage
-    if (shouldSave) {
-      localStorage.setItem('colooky_theme', newTheme);
-    }
-  };
 
   const handleCancelChanges = () => {
     // Reset all form values to their original state
@@ -164,14 +129,12 @@ export default function Settings({ user }: SettingsProps) {
       bio: ''
     });
     
-    // Reset theme
+    // Reset theme - ThemeProvider handles the application
     const savedTheme = localStorage.getItem('colooky_theme');
     if (savedTheme) {
-      setTheme(savedTheme);
-      handleThemeChange(savedTheme, false);
+      setTheme(savedTheme as 'light' | 'dark' | 'auto');
     } else {
       setTheme('dark');
-      handleThemeChange('dark', false);
     }
     
     // Reset notifications to saved values
