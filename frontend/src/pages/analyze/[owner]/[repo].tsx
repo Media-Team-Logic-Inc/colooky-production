@@ -21,7 +21,9 @@ import {
   AlertTriangle,
   CheckCircle,
   Clock,
-  ArrowLeft
+  ArrowLeft,
+  Search,
+  X
 } from 'lucide-react';
 
 interface Repository {
@@ -109,6 +111,8 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
   const [analysisHistory, setAnalysisHistory] = useState<AnalysisHistory[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [savedAnalysisId, setSavedAnalysisId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filteredFileTree, setFilteredFileTree] = useState<FileTreeNode[]>([]);
 
   // Supported file extensions for analysis
   const supportedExtensions = new Set([
@@ -117,6 +121,50 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
     '.yaml', '.yml', '.md', '.mdx', '.graphql', '.sql', '.sh', '.bash', '.dockerfile',
     '.swift', '.kt', '.dart', '.r', '.scala', '.clj', '.hs', '.elm', '.f90', '.pl', '.lua'
   ]);
+
+  // Filter file tree based on search query
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setFilteredFileTree(fileTree);
+      return;
+    }
+
+    const filterNodes = (nodes: FileTreeNode[]): FileTreeNode[] => {
+      return nodes.filter(node => {
+        // Check if the current node matches
+        const nodeMatches = node.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                           node.path.toLowerCase().includes(searchQuery.toLowerCase());
+        
+        if (node.type === 'file') {
+          return nodeMatches;
+        }
+        
+        if (node.type === 'dir' && node.children) {
+          const filteredChildren = filterNodes(node.children);
+          
+          // Include directory if it matches or has matching children
+          if (nodeMatches || filteredChildren.length > 0) {
+            return {
+              ...node,
+              children: filteredChildren
+            };
+          }
+        }
+        
+        return nodeMatches;
+      }).map(node => {
+        if (node.type === 'dir' && node.children) {
+          return {
+            ...node,
+            children: filterNodes(node.children)
+          };
+        }
+        return node;
+      });
+    };
+
+    setFilteredFileTree(filterNodes(fileTree));
+  }, [searchQuery, fileTree]);
 
   useEffect(() => {
     loadRepositoryStructure();
@@ -183,6 +231,7 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
       const contents = await response.json();
       const tree = await buildFileTree(contents, '');
       setFileTree(tree);
+      setFilteredFileTree(tree); // Initialize filtered tree
       
       // Don't auto-select files - let user choose
       
@@ -878,6 +927,36 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
                     </div>
                   </div>
                   
+                  {/* SEARCH INPUT - EXACTLY WHAT YOU ASKED FOR! */}
+                  <div className="mb-4">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
+                      <input
+                        type="text"
+                        placeholder="Search files... (e.g., component, .tsx, utils)"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="w-full pl-10 pr-10 py-2 text-sm bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                      />
+                      {searchQuery && (
+                        <button
+                          onClick={() => setSearchQuery('')}
+                          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-white transition-colors"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                    {searchQuery && (
+                      <div className="mt-2 text-xs text-slate-400">
+                        {filteredFileTree.length === 0 
+                          ? `No files found matching "${searchQuery}"` 
+                          : `Found files matching "${searchQuery}"`
+                        }
+                      </div>
+                    )}
+                  </div>
+                  
                   {loading ? (
                     <div className="flex items-center justify-center py-8">
                       <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-400"></div>
@@ -885,7 +964,7 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
                     </div>
                   ) : (
                     <div className="max-h-96 overflow-y-auto border border-slate-600 rounded p-4 bg-slate-900">
-                      {renderFileTree(fileTree)}
+                      {renderFileTree(filteredFileTree)}
                     </div>
                   )}
                 </div>

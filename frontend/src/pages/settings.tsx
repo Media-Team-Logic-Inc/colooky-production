@@ -316,7 +316,7 @@ export default function Settings({ user }: SettingsProps) {
                       className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
                         activeTab === tab.id
                           ? 'bg-blue-600 text-white'
-                          : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                          : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'
                       }`}
                     >
                       <Icon className="w-4 h-4" />
@@ -333,7 +333,7 @@ export default function Settings({ user }: SettingsProps) {
                 {/* Profile Settings */}
                 {activeTab === 'profile' && (
                   <div className="p-6">
-                    <h2 className="text-xl font-semibold text-white mb-6">Profile Settings</h2>
+                    <h2 className="text-xl font-semibold text-slate-900 dark:text-white mb-6">Profile Settings</h2>
                     
                     <div className="space-y-6">
                       <div className="flex items-center gap-4">
@@ -343,8 +343,8 @@ export default function Settings({ user }: SettingsProps) {
                           </span>
                         </div>
                         <div>
-                          <h3 className="text-lg font-semibold text-white">{user?.name || 'User'}</h3>
-                          <p className="text-slate-400">{user?.email}</p>
+                          <h3 className="text-lg font-semibold text-slate-900 dark:text-white">{user?.name || 'User'}</h3>
+                          <p className="text-slate-600 dark:text-slate-400">{user?.email}</p>
                           <button className="text-sm text-blue-400 hover:text-blue-300 mt-1">
                             Change avatar
                           </button>
@@ -353,31 +353,31 @@ export default function Settings({ user }: SettingsProps) {
 
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-sm font-medium text-white mb-2">
+                          <label className="block text-sm font-medium text-slate-900 dark:text-white mb-2">
                             Display Name
                           </label>
                           <input
                             type="text"
                             value={profileData.displayName}
                             onChange={(e) => handleProfileDataChange('displayName', e.target.value)}
-                            className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-blue-500"
+                            className="w-full px-3 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-400 focus:outline-none focus:border-blue-500"
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-white mb-2">
+                          <label className="block text-sm font-medium text-slate-900 dark:text-white mb-2">
                             GitHub Username
                           </label>
                           <input
                             type="text"
                             value={profileData.githubUsername}
                             onChange={(e) => handleProfileDataChange('githubUsername', e.target.value)}
-                            className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-blue-500"
+                            className="w-full px-3 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-400 focus:outline-none focus:border-blue-500"
                           />
                         </div>
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-white mb-2">
+                        <label className="block text-sm font-medium text-slate-900 dark:text-white mb-2">
                           Bio
                         </label>
                         <textarea
@@ -385,7 +385,7 @@ export default function Settings({ user }: SettingsProps) {
                           value={profileData.bio}
                           onChange={(e) => handleProfileDataChange('bio', e.target.value)}
                           placeholder="Tell us about yourself..."
-                          className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-blue-500"
+                          className="w-full px-3 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-400 focus:outline-none focus:border-blue-500"
                         />
                       </div>
 
@@ -544,11 +544,11 @@ export default function Settings({ user }: SettingsProps) {
                 {/* Appearance */}
                 {activeTab === 'appearance' && (
                   <div className="p-6">
-                    <h2 className="text-xl font-semibold text-white mb-6">Appearance</h2>
+                    <h2 className="text-xl font-semibold text-slate-900 dark:text-white mb-6">Appearance</h2>
                     
                     <div className="space-y-6">
                       <div>
-                        <h3 className="text-lg font-semibold text-white mb-4">Theme</h3>
+                        <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Theme</h3>
                         <div className="grid grid-cols-3 gap-4">
                           {['dark', 'light', 'auto'].map((themeOption) => (
                             <button
@@ -556,8 +556,8 @@ export default function Settings({ user }: SettingsProps) {
                               onClick={() => setTheme(themeOption as 'light' | 'dark' | 'auto')}
                               className={`p-4 border-2 rounded-lg transition-all ${
                                 theme === themeOption
-                                  ? 'border-blue-500 bg-blue-600/10'
-                                  : 'border-slate-600 hover:border-slate-500'
+                                  ? 'border-blue-500 bg-blue-50 dark:bg-blue-600/10'
+                                  : 'border-slate-300 dark:border-slate-600 hover:border-slate-400 dark:hover:border-slate-500'
                               }`}
                             >
                               <div className="text-center">
@@ -566,7 +566,7 @@ export default function Settings({ user }: SettingsProps) {
                                   themeOption === 'light' ? 'bg-white border border-slate-300' :
                                   'bg-gradient-to-r from-slate-800 via-white to-slate-800'
                                 }`}></div>
-                                <p className="text-white font-medium capitalize">{themeOption}</p>
+                                <p className="text-slate-900 dark:text-white font-medium capitalize">{themeOption}</p>
                               </div>
                             </button>
                           ))}
@@ -574,12 +574,12 @@ export default function Settings({ user }: SettingsProps) {
                       </div>
 
                       <div>
-                        <h3 className="text-lg font-semibold text-white mb-4">Visualization Preferences</h3>
+                        <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Visualization Preferences</h3>
                         <div className="space-y-3">
                           <div className="flex items-center justify-between">
                             <div>
-                              <label className="text-white font-medium">Animations</label>
-                              <p className="text-sm text-slate-400">Enable animated transitions in visualizations</p>
+                              <label className="text-slate-900 dark:text-white font-medium">Animations</label>
+                              <p className="text-sm text-slate-600 dark:text-slate-400">Enable animated transitions in visualizations</p>
                             </div>
                             <label className="relative inline-flex items-center cursor-pointer">
                               <input 
@@ -594,8 +594,8 @@ export default function Settings({ user }: SettingsProps) {
                           
                           <div className="flex items-center justify-between">
                             <div>
-                              <label className="text-white font-medium">High Contrast</label>
-                              <p className="text-sm text-slate-400">Increase contrast for better accessibility</p>
+                              <label className="text-slate-900 dark:text-white font-medium">High Contrast</label>
+                              <p className="text-sm text-slate-600 dark:text-slate-400">Increase contrast for better accessibility</p>
                             </div>
                             <label className="relative inline-flex items-center cursor-pointer">
                               <input 
