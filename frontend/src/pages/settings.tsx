@@ -3,6 +3,7 @@ import { GetServerSideProps } from 'next';
 import { getSession } from 'next-auth/react';
 import Head from 'next/head';
 import Header from '../components/layout/Header';
+import { useTheme } from '../components/ThemeProvider';
 import { Settings as SettingsIcon, User, Bell, Shield, Palette, Download, Trash2 } from 'lucide-react';
 
 interface SettingsProps {
@@ -10,6 +11,7 @@ interface SettingsProps {
 }
 
 export default function Settings({ user }: SettingsProps) {
+  const { theme, setTheme } = useTheme(); // Use global theme context
   const [activeTab, setActiveTab] = useState('profile');
   const [notifications, setNotifications] = useState({
     email: {
@@ -24,7 +26,6 @@ export default function Settings({ user }: SettingsProps) {
       comments: true,
     }
   });
-  const [theme, setTheme] = useState('dark');
   const [saving, setSaving] = useState(false);
   const [visualPrefs, setVisualPrefs] = useState({
     animations: true,
@@ -46,9 +47,10 @@ export default function Settings({ user }: SettingsProps) {
           const settings = await response.json();
           
           if (settings) {
-            // Apply settings from database
-            setTheme(settings.theme || 'dark');
-            handleThemeChange(settings.theme || 'dark', false);
+            // Apply settings from database - theme is handled by ThemeProvider
+            if (settings.theme) {
+              setTheme(settings.theme);
+            }
             
             setNotifications({
               email: settings.email_notifications || {
@@ -80,14 +82,8 @@ export default function Settings({ user }: SettingsProps) {
           }
         }
         
-        // Fallback to localStorage if Supabase fails
-        console.log('📦 Falling back to localStorage');
-        
-        const savedTheme = localStorage.getItem('colooky_theme');
-        if (savedTheme) {
-          setTheme(savedTheme);
-          handleThemeChange(savedTheme, false);
-        }
+        // Fallback to localStorage if Supabase fails - theme is handled by ThemeProvider
+        console.log('📦 Falling back to localStorage for non-theme settings');
         
         const savedNotifications = localStorage.getItem('colooky_notifications');
         if (savedNotifications) {
@@ -330,16 +326,16 @@ export default function Settings({ user }: SettingsProps) {
         <meta name="description" content="Manage your Colooky account settings and preferences" />
       </Head>
       
-      <div className="min-h-screen bg-slate-900">
+      <div className="min-h-screen bg-white dark:bg-slate-900">
         <Header />
         
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-white flex items-center gap-3">
+            <h1 className="text-3xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
               <SettingsIcon className="w-8 h-8 text-blue-400" />
               Settings
             </h1>
-            <p className="text-slate-400 mt-2">
+            <p className="text-slate-600 dark:text-slate-400 mt-2">
               Manage your account settings and preferences
             </p>
           </div>
@@ -370,7 +366,7 @@ export default function Settings({ user }: SettingsProps) {
 
             {/* Settings Content */}
             <div className="flex-1">
-              <div className="bg-slate-800 border border-slate-700 rounded-lg">
+              <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg">
                 {/* Profile Settings */}
                 {activeTab === 'profile' && (
                   <div className="p-6">
@@ -594,7 +590,7 @@ export default function Settings({ user }: SettingsProps) {
                           {['dark', 'light', 'auto'].map((themeOption) => (
                             <button
                               key={themeOption}
-                              onClick={() => handleThemeChange(themeOption)}
+                              onClick={() => setTheme(themeOption as 'light' | 'dark' | 'auto')}
                               className={`p-4 border-2 rounded-lg transition-all ${
                                 theme === themeOption
                                   ? 'border-blue-500 bg-blue-600/10'

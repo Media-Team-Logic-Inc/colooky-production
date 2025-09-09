@@ -11,7 +11,7 @@ export const demoScenarios: FlowScenario[] = [
       { color: '#10b981', label: 'API/Backend' },
       { color: '#f59e0b', label: 'Database' },
       { color: '#8b5cf6', label: 'Auth/Security' },
-      { color: '#ef4444', label: 'Error Handling' },
+      { color: '#ef4444', label: 'Data Issues' },
       { color: '#6b7280', label: 'External Service' },
     ],
     nodes: [
@@ -113,7 +113,7 @@ export const demoScenarios: FlowScenario[] = [
       { color: '#10b981', label: 'Backend API' },
       { color: '#f59e0b', label: 'Database/Cache' },
       { color: '#8b5cf6', label: 'External API' },
-      { color: '#ef4444', label: 'Error Handling' },
+      { color: '#ef4444', label: 'Data Issues' },
     ],
     nodes: [
       {
@@ -213,7 +213,7 @@ export const demoScenarios: FlowScenario[] = [
       { color: '#10b981', label: 'Backend' },
       { color: '#8b5cf6', label: 'Payment Gateway' },
       { color: '#f59e0b', label: 'Database' },
-      { color: '#ef4444', label: 'Error/Retry' },
+      { color: '#ef4444', label: 'Data Issues' },
       { color: '#06d6a0', label: 'Notification' },
     ],
     nodes: [

@@ -2,6 +2,7 @@ import type { AppProps } from 'next/app';
 import { QueryClient, QueryClientProvider } from 'react-query';
 import { SessionProvider } from 'next-auth/react';
 import { ToastProvider } from '../components/ui/Toast';
+import { ThemeProvider } from '../components/ThemeProvider';
 import '../styles/globals.css';
 
 console.log('🔧 App initializing...');
@@ -46,8 +47,10 @@ export default function App({ Component, pageProps: { session, ...pageProps } }:
       baseUrl={typeof window !== 'undefined' ? window.location.origin : 'https://colooky.com'}
     >
       <QueryClientProvider client={queryClient}>
-        <ToastProvider />
-        <Component {...pageProps} />
+        <ThemeProvider>
+          <ToastProvider />
+          <Component {...pageProps} />
+        </ThemeProvider>
       </QueryClientProvider>
     </SessionProvider>
   );

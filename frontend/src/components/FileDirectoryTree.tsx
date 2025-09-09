@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronRight, ChevronDown, File, Folder } from 'lucide-react';
+import { ChevronRight, ChevronDown, File, Folder, Search, X } from 'lucide-react';
 
 interface FileItem {
   name: string;
@@ -20,10 +20,41 @@ const FileDirectoryTree: React.FC<FileDirectoryTreeProps> = ({ owner, repo, onFi
   const [loading, setLoading] = useState(true);
   const [expandedDirs, setExpandedDirs] = useState<Set<string>>(new Set([''])); // Root expanded by default
   const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filteredFiles, setFilteredFiles] = useState<FileItem[]>([]);
 
   useEffect(() => {
     fetchFileTree();
   }, [owner, repo]);
+
+  // Update filtered files when search query or file tree changes
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setFilteredFiles([]);
+      return;
+    }
+
+    const flattenFiles = (items: FileItem[]): FileItem[] => {
+      let files: FileItem[] = [];
+      items.forEach(item => {
+        if (item.type === 'file') {
+          files.push(item);
+        }
+        if (item.children) {
+          files = files.concat(flattenFiles(item.children));
+        }
+      });
+      return files;
+    };
+
+    const allFiles = flattenFiles(fileTree);
+    const filtered = allFiles.filter(file => 
+      file.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      file.path.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
+    setFilteredFiles(filtered);
+  }, [searchQuery, fileTree]);
 
   const fetchFileTree = async () => {
     try {
@@ -121,6 +152,53 @@ const FileDirectoryTree: React.FC<FileDirectoryTreeProps> = ({ owner, repo, onFi
     return analyzableExtensions.includes(ext);
   };
 
+  const renderSearchResult = (item: FileItem): React.ReactNode => {
+    const isAnalyzable = item.type === 'file' && isAnalyzableFile(item.name);
+    
+    return (
+      <div
+        key={item.path}
+        className={`flex items-center gap-2 py-2 px-3 rounded cursor-pointer transition-colors ${
+          isAnalyzable 
+            ? 'hover:bg-slate-600 bg-slate-700/50 text-slate-200 hover:text-white border border-slate-600' 
+            : 'text-slate-400 hover:bg-slate-700/30'
+        }`}
+        onClick={() => {
+          if (isAnalyzable) {
+            onFileSelect(item.path);
+            setSearchQuery(''); // Clear search after selection
+          }
+        }}
+      >
+        <File className={`w-4 h-4 ${isAnalyzable ? 'text-green-400' : 'text-slate-500'}`} />
+        <div className="flex-1">
+          <div className={`text-sm ${isAnalyzable ? 'font-medium' : ''}`}>
+            {highlightMatch(item.name, searchQuery)}
+          </div>
+          <div className="text-xs text-slate-400 truncate">
+            {highlightMatch(item.path, searchQuery)}
+          </div>
+        </div>
+        {isAnalyzable && (
+          <span className="text-xs text-green-400 font-medium">●</span>
+        )}
+      </div>
+    );
+  };
+
+  const highlightMatch = (text: string, query: string): React.ReactNode => {
+    if (!query.trim()) return text;
+    
+    const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+    const parts = text.split(regex);
+    
+    return parts.map((part, index) => (
+      part.toLowerCase() === query.toLowerCase() ? (
+        <span key={index} className="bg-yellow-400 text-black px-1 rounded">{part}</span>
+      ) : part
+    ));
+  };
+
   const renderFileItem = (item: FileItem, depth: number = 0): React.ReactNode => {
     const isExpanded = expandedDirs.has(item.path);
     const isAnalyzable = item.type === 'file' && isAnalyzableFile(item.name);
@@ -190,20 +268,72 @@ const FileDirectoryTree: React.FC<FileDirectoryTreeProps> = ({ owner, repo, onFi
   }
 
   return (
-    <div className="max-h-96 overflow-y-auto text-xs">
-      <div className="text-[10px] text-slate-500 mb-2">
-        • Green files are analyzable
-        • Click to analyze individual files
+    <div className="text-xs">
+      {/* Search Input */}
+      <div className="mb-3">
+        <div className="relative">
+          <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 w-3 h-3 text-slate-400" />
+          <input
+            type="text"
+            placeholder="Search files... (e.g., component, .tsx, utils)"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-7 pr-8 py-2 text-xs bg-slate-700 border border-slate-600 rounded focus:border-blue-400 focus:outline-none text-white placeholder-slate-400"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute right-2 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-white transition-colors"
+            >
+              <X className="w-3 h-3" />
+            </button>
+          )}
+        </div>
       </div>
-      {fileTree.length > 0 ? (
-        <div className="space-y-0.5">
-          {fileTree.map(item => renderFileItem(item))}
-        </div>
-      ) : (
-        <div className="text-slate-400 py-4">
-          No files found in repository
-        </div>
-      )}
+
+      {/* Results Area */}
+      <div className="max-h-80 overflow-y-auto">
+        {searchQuery.trim() ? (
+          // Search Results View
+          <div>
+            <div className="text-[10px] text-slate-400 mb-2 flex items-center justify-between">
+              <span>
+                {filteredFiles.length} file{filteredFiles.length !== 1 ? 's' : ''} found
+              </span>
+              <span className="text-green-400">• Green = analyzable</span>
+            </div>
+            {filteredFiles.length > 0 ? (
+              <div className="space-y-1">
+                {filteredFiles.map(file => renderSearchResult(file))}
+              </div>
+            ) : (
+              <div className="text-slate-400 py-8 text-center">
+                <div className="text-lg mb-2">🔍</div>
+                <div>No files found matching "{searchQuery}"</div>
+                <div className="text-[10px] text-slate-500 mt-1">
+                  Try searching for file names, extensions, or paths
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          // Normal Tree View
+          <div>
+            <div className="text-[10px] text-slate-500 mb-2">
+              • Green files are analyzable • Click to analyze • Use search to find specific files
+            </div>
+            {fileTree.length > 0 ? (
+              <div className="space-y-0.5">
+                {fileTree.map(item => renderFileItem(item))}
+              </div>
+            ) : (
+              <div className="text-slate-400 py-4">
+                No files found in repository
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 };

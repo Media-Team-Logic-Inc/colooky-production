@@ -819,8 +819,11 @@ const FlexibleSubwayMap: React.FC<FlexibleSubwayMapProps> = ({
               // CUBIC BEZIER for ultra-smooth subway-style curves
               const curvePath = `M ${conn.from.x} ${conn.from.y} C ${control1X} ${control1Y}, ${control2X} ${control2Y}, ${conn.to.x} ${conn.to.y}`;
               
-              // Enhanced connection styling
+              // Enhanced connection styling with distinction between errors and handling
               const isErrorConnection = connectionColor === '#ef4444' || connectionColor === '#f87171';
+              const isDataError = conn.label?.toLowerCase().includes('error') || conn.detail?.toLowerCase().includes('error') || 
+                                 conn.label?.toLowerCase().includes('exception') || conn.detail?.toLowerCase().includes('exception');
+              const isDataHandling = isErrorConnection && !isDataError;
               
               return (
                 <g key={index}>
@@ -851,11 +854,13 @@ const FlexibleSubwayMap: React.FC<FlexibleSubwayMapProps> = ({
                         ? 'drop-shadow(0px 4px 8px rgba(239, 68, 68, 0.5)) brightness(1.1)' 
                         : 'drop-shadow(0px 3px 6px rgba(0,0,0,0.3)) brightness(1.05)',
                       transition: 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
-                      strokeDasharray: isErrorConnection 
-                        ? '12 6' 
-                        : (conn.animated ? '10 5' : 'none'),
-                      animation: isErrorConnection 
-                        ? 'marchingAnts 1.2s linear infinite' 
+                      strokeDasharray: isDataError 
+                        ? '8 8' // Army ants pattern for DATA ERRORS
+                        : isDataHandling 
+                          ? 'none' // Solid lines for DATA HANDLING
+                          : (conn.animated ? '10 5' : 'none'),
+                      animation: isDataError 
+                        ? 'marchingAnts 1.2s linear infinite' // Army ants animation for DATA ERRORS
                         : (conn.animated ? 'connectionFlow 2.5s linear infinite' : 'none'),
                       strokeLinecap: 'round',
                       strokeLinejoin: 'round'
