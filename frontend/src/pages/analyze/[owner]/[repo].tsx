@@ -743,12 +743,12 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
   const renderFileTree = (nodes: FileTreeNode[], level = 0) => {
     return nodes.map((node) => (
       <div key={node.path} style={{ marginLeft: level * 16 }}>
-        <div className="flex items-center py-1 hover:bg-slate-700/50 rounded">
+        <div className="flex items-center py-1 hover:bg-slate-100 dark:hover:bg-slate-700/50 rounded">
           {node.type === 'dir' ? (
             <>
               <button
                 onClick={() => toggleDirectory(node.path)}
-                className="p-1 hover:bg-slate-600 rounded mr-1"
+                className="p-1 hover:bg-slate-200 dark:hover:bg-slate-600 rounded mr-1"
               >
                 {expandedDirs.has(node.path) ? (
                   <ChevronDown className="w-4 h-4 text-slate-400" />
@@ -757,7 +757,7 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
                 )}
               </button>
               <Folder className="w-4 h-4 text-blue-400 mr-2" />
-              <span className="text-slate-200">{node.name}</span>
+              <span className="text-slate-700 dark:text-slate-200">{node.name}</span>
             </>
           ) : (
             <>
@@ -773,7 +773,7 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
                 node.supported ? 'text-green-400' : 'text-gray-500'
               }`} />
               <span className={`text-sm ${
-                node.supported ? 'text-slate-200' : 'text-slate-500'
+                node.supported ? 'text-slate-700 dark:text-slate-200' : 'text-slate-400 dark:text-slate-500'
               }`}>
                 {node.name}
               </span>
@@ -781,7 +781,7 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
                 <span className="ml-2 text-xs text-blue-400">({node.language})</span>
               )}
               {!node.supported && (
-                <span className="ml-2 text-xs text-slate-500">(unsupported)</span>
+                <span className="ml-2 text-xs text-slate-400 dark:text-slate-500">(unsupported)</span>
               )}
             </>
           )}
@@ -803,21 +803,21 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
         <meta name="description" content={`Analyze the ${repository.name} repository`} />
       </Head>
       
-      <div className="min-h-screen bg-slate-900">
+      <div className="min-h-screen bg-white dark:bg-slate-900">
         <Header />
         
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Analysis Status Banner */}
           {analysis && currentStep === 'results' && (
-            <div className="mb-6 bg-green-900/20 border border-green-800 rounded-lg p-4">
+            <div className="mb-6 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <CheckCircle className="w-5 h-5 text-green-400" />
                   <div>
-                    <p className="text-green-300 font-medium">
+                    <p className="text-green-700 dark:text-green-300 font-medium">
                       Analysis cached and ready to view!
                     </p>
-                    <p className="text-green-400 text-sm">
+                    <p className="text-green-600 dark:text-green-400 text-sm">
                       Analyzed {new Date(analysis.timestamp || '').toLocaleString()}
                     </p>
                   </div>
@@ -828,7 +828,7 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
                     setAnalysis(null);
                     localStorage.removeItem(`colooky_analysis_${repository.owner}_${repository.name}`);
                   }}
-                  className="text-sm text-green-400 hover:text-green-300 underline"
+                  className="text-sm text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 underline"
                 >
                   Start New Analysis
                 </button>
@@ -868,7 +868,7 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
             <div className="flex items-center gap-2">
               <Github className="w-4 h-4 text-blue-400" />
               <div>
-                <h1 className="text-sm font-semibold text-white">
+                <h1 className="text-sm font-semibold text-slate-900 dark:text-white">
                   {repository.owner}/{repository.name}
                   {selectedFiles.length === 1 && (
                     <span className="text-blue-400 text-xs ml-2 font-normal">
@@ -881,7 +881,7 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
                     </span>
                   )}
                 </h1>
-                <p className="text-xs text-slate-400">
+                <p className="text-xs text-slate-600 dark:text-slate-400">
                   {repository.description || 'Analyze this repository with Colooky'}
                 </p>
               </div>
@@ -901,13 +901,13 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
           {currentStep === 'select' && (
             <div className="grid lg:grid-cols-3 gap-8">
               <div className="lg:col-span-2">
-                <div className="bg-slate-800 border border-slate-700 rounded-lg p-6">
+                <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-6">
                   <div className="flex items-center justify-between mb-4">
                     <div>
-                      <h2 className="text-xl font-semibold text-white">
+                      <h2 className="text-xl font-semibold text-slate-900 dark:text-white">
                         Select Files to Analyze
                       </h2>
-                      <p className="text-slate-400 text-sm">
+                      <p className="text-slate-600 dark:text-slate-400 text-sm">
                         Choose specific files for focused analysis and visualization
                       </p>
                     </div>
@@ -936,19 +936,19 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
                         placeholder="Search files... (e.g., component, .tsx, utils)"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full pl-10 pr-10 py-2 text-sm bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                        className="w-full pl-10 pr-10 py-2 text-sm bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                       />
                       {searchQuery && (
                         <button
                           onClick={() => setSearchQuery('')}
-                          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-white transition-colors"
+                          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-white transition-colors"
                         >
                           <X className="w-4 h-4" />
                         </button>
                       )}
                     </div>
                     {searchQuery && (
-                      <div className="mt-2 text-xs text-slate-400">
+                      <div className="mt-2 text-xs text-slate-600 dark:text-slate-400">
                         {filteredFileTree.length === 0 
                           ? `No files found matching "${searchQuery}"` 
                           : `Found files matching "${searchQuery}"`
@@ -960,10 +960,10 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
                   {loading ? (
                     <div className="flex items-center justify-center py-8">
                       <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-400"></div>
-                      <span className="ml-3 text-slate-300">Loading repository structure...</span>
+                      <span className="ml-3 text-slate-600 dark:text-slate-300">Loading repository structure...</span>
                     </div>
                   ) : (
-                    <div className="max-h-96 overflow-y-auto border border-slate-600 rounded p-4 bg-slate-900">
+                    <div className="max-h-96 overflow-y-auto border border-slate-300 dark:border-slate-600 rounded p-4 bg-slate-50 dark:bg-slate-900">
                       {renderFileTree(filteredFileTree)}
                     </div>
                   )}
@@ -971,17 +971,17 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
               </div>
 
               <div className="lg:col-span-1">
-                <div className="bg-slate-800 border border-slate-700 rounded-lg p-6">
-                  <h3 className="text-lg font-semibold text-white mb-4">Analysis Settings</h3>
+                <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-6">
+                  <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Analysis Settings</h3>
                   
                   <div className="space-y-4">
                     <div>
-                      <span className="text-sm text-slate-400">Selected Files</span>
-                      <div className="text-2xl font-bold text-white">{selectedFiles.length}</div>
+                      <span className="text-sm text-slate-600 dark:text-slate-400">Selected Files</span>
+                      <div className="text-2xl font-bold text-slate-900 dark:text-white">{selectedFiles.length}</div>
                     </div>
                     
                     <div>
-                      <span className="text-sm text-slate-400">Primary Language</span>
+                      <span className="text-sm text-slate-600 dark:text-slate-400">Primary Language</span>
                       <div className="text-lg text-blue-400">{repository.language || 'Mixed'}</div>
                     </div>
 
@@ -1145,7 +1145,7 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
               </div>
 
             {/* Navigation & Analysis Summary Combined - SPACE EFFICIENT */}
-            <div className="mb-4 bg-gray-800/50 border border-gray-700 rounded-lg p-3">
+            <div className="mb-4 bg-slate-50 dark:bg-gray-800/50 border border-slate-200 dark:border-gray-700 rounded-lg p-3">
               <div className="flex flex-col gap-4">
                 {/* Navigation Buttons */}
                 <div className="flex justify-center gap-4">
@@ -1176,59 +1176,59 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
 
                 {/* COMPACT Summary & Insights - Horizontal Layout */}
                 {analysis.summary && (
-                  <div className="border-t border-gray-600 pt-3">
+                  <div className="border-t border-slate-200 dark:border-gray-600 pt-3">
                     <div className="grid grid-cols-2 gap-6">
                       {/* Summary Stats - Left */}
                       <div>
-                        <h3 className="text-sm font-semibold text-white mb-2 flex items-center gap-2">
+                        <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-2 flex items-center gap-2">
                           📊 Summary
                         </h3>
                         <div className="grid grid-cols-5 gap-2">
-                          <div className="bg-slate-700 rounded p-2 text-center">
+                          <div className="bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded p-2 text-center">
                             <div className="font-bold text-blue-400 text-sm">{analysis.summary.supported_files}</div>
-                            <div className="text-slate-300 text-xs">Files</div>
+                            <div className="text-slate-600 dark:text-slate-300 text-xs">Files</div>
                           </div>
-                          <div className="bg-slate-700 rounded p-2 text-center">
+                          <div className="bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded p-2 text-center">
                             <div className="font-bold text-green-400 text-sm">{analysis.summary.functions}</div>
-                            <div className="text-slate-300 text-xs">Funcs</div>
+                            <div className="text-slate-600 dark:text-slate-300 text-xs">Funcs</div>
                           </div>
-                          <div className="bg-slate-700 rounded p-2 text-center">
+                          <div className="bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded p-2 text-center">
                             <div className="font-bold text-purple-400 text-sm">{analysis.summary.classes}</div>
-                            <div className="text-slate-300 text-xs">Classes</div>
+                            <div className="text-slate-600 dark:text-slate-300 text-xs">Classes</div>
                           </div>
-                          <div className="bg-slate-700 rounded p-2 text-center">
+                          <div className="bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded p-2 text-center">
                             <div className="font-bold text-orange-400 text-sm">{analysis.summary.imports}</div>
-                            <div className="text-slate-300 text-xs">Imports</div>
+                            <div className="text-slate-600 dark:text-slate-300 text-xs">Imports</div>
                           </div>
-                          <div className="bg-slate-700 rounded p-2 text-center">
+                          <div className="bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded p-2 text-center">
                             <div className="font-bold text-cyan-400 text-xs truncate">{analysis.summary.main_language}</div>
-                            <div className="text-slate-300 text-xs">Lang</div>
+                            <div className="text-slate-600 dark:text-slate-300 text-xs">Lang</div>
                           </div>
                         </div>
                       </div>
 
                       {/* Insights - Right */}
                       <div>
-                        <h3 className="text-sm font-semibold text-white mb-2 flex items-center gap-2">
+                        <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-2 flex items-center gap-2">
                           🔍 Insights
                         </h3>
                         <div className="grid grid-cols-3 gap-2">
-                          <div className="bg-slate-700 rounded p-2">
+                          <div className="bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded p-2">
                             <div className="text-blue-400 font-medium text-xs">Architecture</div>
-                            <div className="text-slate-300 text-xs">
+                            <div className="text-slate-600 dark:text-slate-300 text-xs">
                               {analysis.summary.functions > analysis.summary.classes * 3 ? 'Functional' : 
                                analysis.summary.classes > analysis.summary.functions ? 'OOP' : 'Hybrid'}
                             </div>
                           </div>
-                          <div className="bg-slate-700 rounded p-2">
+                          <div className="bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded p-2">
                             <div className="text-green-400 font-medium text-xs">Density</div>
-                            <div className="text-slate-300 text-xs">
+                            <div className="text-slate-600 dark:text-slate-300 text-xs">
                               {Math.round((analysis.summary.functions + analysis.summary.classes) / analysis.summary.supported_files)} elem/file
                             </div>
                           </div>
-                          <div className="bg-slate-700 rounded p-2">
+                          <div className="bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded p-2">
                             <div className="text-purple-400 font-medium text-xs">Dependencies</div>
-                            <div className="text-slate-300 text-xs">
+                            <div className="text-slate-600 dark:text-slate-300 text-xs">
                               {analysis.summary.imports > analysis.summary.supported_files * 2 ? 'Modular' : 
                                analysis.summary.imports < analysis.summary.supported_files ? 'Self-contained' : 'Balanced'}
                             </div>
@@ -1244,7 +1244,7 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
             <div className="mb-6">
               {/* MAXIMUM WIDTH Visualization - Full viewport usage */}
               <div className="w-full">
-                <div className="h-[800px] bg-slate-800 border border-slate-700 rounded-lg p-4 relative overflow-hidden">
+                <div className="h-[800px] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4 relative overflow-hidden">
                   <ImprovedFlexibleSubwayMap 
                     scenario={(() => {
                       // Generate intelligent visualization based on content type and complexity

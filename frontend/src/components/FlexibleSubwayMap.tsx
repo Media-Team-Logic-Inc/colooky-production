@@ -414,13 +414,19 @@ const FlexibleSubwayMap: React.FC<FlexibleSubwayMapProps> = ({
 
   return (
     <div 
-      className="w-full rounded-lg border border-slate-700/50" 
+      className="w-full rounded-lg border border-slate-200 dark:border-slate-700/50" 
       style={{
-        background: 'linear-gradient(135deg, #0f1419 0%, #1a1f29 30%, #0f1722 100%)',
+        background: document.documentElement.classList.contains('dark') 
+          ? 'linear-gradient(135deg, #0f1419 0%, #1a1f29 30%, #0f1722 100%)'
+          : 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 30%, #f1f5f9 100%)',
       }}
     >
       {/* Header with scenario selector - DEMO QUALITY */}
-      <div className="text-center p-6 border-b border-slate-700/50" style={{ background: 'linear-gradient(135deg, rgba(15, 20, 25, 0.95) 0%, rgba(26, 31, 41, 0.95) 100%)' }}>
+      <div className="text-center p-6 border-b border-slate-200 dark:border-slate-700/50" style={{ 
+        background: document.documentElement.classList.contains('dark') 
+          ? 'linear-gradient(135deg, rgba(15, 20, 25, 0.95) 0%, rgba(26, 31, 41, 0.95) 100%)'
+          : 'linear-gradient(135deg, rgba(248, 250, 252, 0.95) 0%, rgba(241, 245, 249, 0.95) 100%)'
+      }}>
         <h2 className="text-3xl font-bold mb-2" style={{ 
           background: 'linear-gradient(135deg, #60a5fa 0%, #a78bfa 100%)',
           WebkitBackgroundClip: 'text',
@@ -572,9 +578,11 @@ const FlexibleSubwayMap: React.FC<FlexibleSubwayMapProps> = ({
         
         {/* SVG Flow Diagram - DEMO QUALITY BACKGROUND */}
         <div 
-          className="relative w-full h-[600px] overflow-auto border border-slate-600 rounded-lg"
+          className="relative w-full h-[600px] overflow-auto border border-slate-300 dark:border-slate-600 rounded-lg"
           style={{
-            background: 'linear-gradient(135deg, #0f1419 0%, #1a1f29 50%, #0f1419 100%)',
+            background: document.documentElement.classList.contains('dark') 
+              ? 'linear-gradient(135deg, #0f1419 0%, #1a1f29 50%, #0f1419 100%)'
+              : 'linear-gradient(135deg, #ffffff 0%, #f8fafc 50%, #ffffff 100%)',
           }}
         >
           <div 
