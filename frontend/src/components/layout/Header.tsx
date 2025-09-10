@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
+import { useTheme } from '../ThemeProvider';
 import { 
   Code, 
   Menu, 
@@ -20,6 +21,7 @@ import { Button } from '../ui/Button';
 const Header = () => {
   const { user, logout } = useAuth();
   const router = useRouter();
+  const { theme } = useTheme(); // Add theme context for reactivity  
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
 
@@ -47,7 +49,13 @@ const Header = () => {
   const isTrialExpiring = false;
 
   return (
-    <header className="border-b border-slate-200 dark:border-slate-800/50 backdrop-blur-sm bg-white/80 dark:bg-slate-900/50 sticky top-0 z-50">
+    <header 
+      className="border-b backdrop-blur-sm sticky top-0 z-50"
+      style={{
+        borderColor: theme === 'light' ? 'rgb(226 232 240)' : 'rgba(30, 41, 59, 0.5)',
+        backgroundColor: theme === 'light' ? 'rgba(255, 255, 255, 0.95)' : 'rgba(15, 23, 42, 0.95)'
+      }}
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center py-4">
           {/* Logo */}
