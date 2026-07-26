@@ -2,41 +2,19 @@ import { NextAuthOptions } from 'next-auth';
 import GitHubProvider from 'next-auth/providers/github';
 import { createUserProfile, getUserProfile, UserProfile } from './supabase';
 
-// Debug environment variables
-console.log('🔧 NextAuth config loading...');
-console.log('🔧 NODE_ENV:', process.env.NODE_ENV);
-console.log('🔧 GITHUB_CLIENT_ID:', process.env.GITHUB_CLIENT_ID ? 'present' : 'missing');
-console.log('🔧 GITHUB_CLIENT_SECRET:', process.env.GITHUB_CLIENT_SECRET ? 'present' : 'missing');
-console.log('🔧 NEXTAUTH_URL:', process.env.NEXTAUTH_URL);
-console.log('🔧 NEXTAUTH_SECRET:', process.env.NEXTAUTH_SECRET ? 'present' : 'missing');
-console.log('🔧 NEXTAUTH_URL for callbacks:', process.env.NEXTAUTH_URL);
-console.log('🔧 SUPABASE_URL:', process.env.SUPABASE_URL ? 'present' : 'missing');
-
-// Validate required environment variables
 const missingVars: string[] = [];
-if (!process.env.GITHUB_CLIENT_ID) {
-  console.error('❌ GITHUB_CLIENT_ID is required');
-  missingVars.push('GITHUB_CLIENT_ID');
-}
-if (!process.env.GITHUB_CLIENT_SECRET) {
-  console.error('❌ GITHUB_CLIENT_SECRET is required');
-  missingVars.push('GITHUB_CLIENT_SECRET');
-}
-if (!process.env.NEXTAUTH_SECRET) {
-  console.error('❌ NEXTAUTH_SECRET is required');
-  missingVars.push('NEXTAUTH_SECRET');
-}
-
+if (!process.env.GITHUB_CLIENT_ID) missingVars.push('GITHUB_CLIENT_ID');
+if (!process.env.GITHUB_CLIENT_SECRET) missingVars.push('GITHUB_CLIENT_SECRET');
+if (!process.env.NEXTAUTH_SECRET) missingVars.push('NEXTAUTH_SECRET');
 if (missingVars.length > 0) {
-  console.error(`❌ Missing required environment variables: ${missingVars.join(', ')}`);
-  console.error('❌ Application may not function correctly');
+  throw new Error(`Missing required environment variables: ${missingVars.join(', ')}`);
 }
 
 export const authOptions: NextAuthOptions = {
   providers: [
     GitHubProvider({
-      clientId: process.env.GITHUB_CLIENT_ID || 'missing-client-id',
-      clientSecret: process.env.GITHUB_CLIENT_SECRET || 'missing-client-secret',
+      clientId: process.env.GITHUB_CLIENT_ID!,
+      clientSecret: process.env.GITHUB_CLIENT_SECRET!,
       authorization: {
         params: {
           scope: 'read:user user:email repo',
@@ -70,7 +48,6 @@ export const authOptions: NextAuthOptions = {
       try {
         // Only attempt Supabase integration if environment variables are present
         if (!process.env.SUPABASE_URL || !process.env.SUPABASE_ANON_KEY) {
-          console.log('⚠️  Supabase not configured, skipping user profile creation');
           return true;
         }
 
@@ -88,18 +65,10 @@ export const authOptions: NextAuthOptions = {
             github_access_token: account.access_token,
           };
           
-          const newUser = await createUserProfile(userData);
-          if (newUser) {
-            console.log('✅ Created new user in Supabase:', newUser.id);
-          } else {
-            console.log('⚠️  Failed to create user in Supabase, but allowing sign-in');
-          }
-        } else {
-          console.log('✅ User already exists in Supabase:', existingUser.id);
+          await createUserProfile(userData);
         }
-      } catch (error) {
-        console.error('❌ Error during Supabase integration:', error);
-        console.log('⚠️  Supabase integration failed, but allowing sign-in to proceed');
+      } catch {
+        // Supabase integration is non-blocking — allow sign-in to proceed
       }
       
       return true;

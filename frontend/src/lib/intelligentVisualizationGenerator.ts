@@ -158,7 +158,6 @@ function generateMinimalVisualization(summary: any, selectedFiles: string[], ori
 // Rich visualization for files with functions/classes
 function generateRichCodeVisualization(summary: any, selectedFiles: string[], originalViz: any, elements?: any[]) {
   const fileName = selectedFiles.length === 1 ? selectedFiles[0]?.split('/').pop() : `${selectedFiles.length} Files`;
-  console.log('📁 Analyzing file(s):', fileName, 'from', selectedFiles);
   const nodes: any[] = [];
   const connections: any[] = [];
   let nodeId = 1;
@@ -191,22 +190,16 @@ function generateRichCodeVisualization(summary: any, selectedFiles: string[], or
   if (summary.functions > 0) {
     const functionElements = elements?.filter(e => e.type === 'function') || [];
     const funcCount = Math.max(summary.functions, functionElements.length);
-    console.log('🔧 Function elements:', functionElements.length, 'detected, summary says:', summary.functions);
-    console.log('🔧 Function names:', functionElements.map(f => f.name));
-    
+
     for (let i = 0; i < funcCount; i++) {
       const element = functionElements[i];
-      // REMOVE FAKE ERROR DETECTION: Only show errors if backend actually detected them
-      const isErrorFunc = false; // Disabled until we have real error detection
-      const isValidationFunc = element?.name.toLowerCase().includes('valid') || element?.name.toLowerCase().includes('check');
-      
-      // TEMPORARY WORKAROUND: Create realistic function names if backend fails
-      const realisticNames = ['useAuth', 'login', 'logout', 'validateUser', 'AuthProvider', 'getCurrentUser', 'updateProfile', 'resetPassword', 'verifyEmail', 'refreshToken', 'getUserPermissions', 'handleError', 'formatResponse', 'validateInput', 'sanitizeData'];
-      const fallbackName = realisticNames[i % realisticNames.length] || `function_${i + 1}`;
-      
+      const isErrorFunc = false;
+      const isValidationFunc = element?.name ? (element.name.toLowerCase().includes('valid') || element.name.toLowerCase().includes('check')) : false;
+      const displayName = element?.name ? `${element.name}()` : `anonymous function (${i + 1})`;
+
       const funcNode = {
         id: element?.id || `node-${nodeId++}`,
-        title: element ? `${element.name}()` : `${fallbackName}()`,
+        title: displayName,
         x: 80 + (i % 4) * 220, // 4 columns with wider spacing (220px)
         y: yOffset + Math.floor(i / 4) * 100, // Much more vertical spacing (100px)  
         width: 160,
@@ -214,12 +207,12 @@ function generateRichCodeVisualization(summary: any, selectedFiles: string[], or
         color: isErrorFunc ? '#ef4444' : isValidationFunc ? '#f59e0b' : '#3b82f6',
         strokeColor: isErrorFunc ? '#f87171' : isValidationFunc ? '#fbbf24' : '#60a5fa',
         stepNumber: i + 2,
-        content: element?.content, // Include actual code content
+        content: element?.content,
         details: [
           `File: ${element?.file || selectedFiles[0] || fileName}`,
-          `Function: ${element?.name || `function_${i + 1}`}`,
+          `Function: ${element?.name || 'anonymous'}`,
           `Line: ${element?.line || 'Unknown'}`,
-          `Type: ${isErrorFunc ? 'Error handler' : isValidationFunc ? 'Validation' : 'Function'}`,
+          `Type: ${isValidationFunc ? 'Validation' : 'Function'}`,
           `Language: ${element?.language || summary.main_language}`
         ],
         isError: isErrorFunc,
@@ -285,13 +278,9 @@ function generateRichCodeVisualization(summary: any, selectedFiles: string[], or
     
     for (let i = 0; i < importCount; i++) {
       const element = importElements[i];
-      // TEMPORARY WORKAROUND: Realistic import names
-      const realisticImports = ['React', 'useState', 'useEffect', 'useContext', 'createContext', 'axios', 'lodash', 'moment', 'react-router', 'express', 'bcrypt', 'jsonwebtoken', 'cors', 'helmet', 'dotenv'];
-      const fallbackImport = realisticImports[i % realisticImports.length] || `import_${i + 1}`;
-      
       const importNode = {
         id: element?.id || `import-${nodeId++}`,
-        title: element?.name || fallbackImport,
+        title: element?.name || `import ${i + 1}`,
         x: 50 + (i % 6) * 140, // 6 imports per row for better usage
         y: 50 + Math.floor(i / 6) * 70, // Stack in rows with more spacing
         width: 130,
@@ -299,10 +288,10 @@ function generateRichCodeVisualization(summary: any, selectedFiles: string[], or
         color: '#6b7280',
         strokeColor: '#9ca3af',
         stepNumber: undefined, // Don't number imports
-        content: element?.content, // Include actual code content
+        content: element?.content,
         details: [
           `File: ${element?.file || fileName}`,
-          `Import: ${element?.name || `import_${i + 1}`}`,
+          `Import: ${element?.name || 'unknown'}`,
           `Line: ${element?.line || 'Unknown'}`,
           'External library or module',
           `Language: ${element?.language || summary.main_language}`

@@ -11,7 +11,6 @@ if (!process.env.DATABASE_URL) {
   process.exit(1);
 }
 
-console.log('✅ DATABASE_URL found:', process.env.DATABASE_URL.substring(0, 50) + '...');
 
 const prisma = new PrismaClient({
   log: process.env.NODE_ENV === 'development' ? ['query', 'info', 'warn', 'error'] : ['error'],
@@ -24,22 +23,9 @@ const prisma = new PrismaClient({
 
 export async function initDatabase() {
   try {
-    console.log('📊 Attempting Prisma connection...');
     await prisma.$connect();
-    console.log('✅ Database connected successfully');
-    
-    // Skip test query to avoid prepared statement conflicts on Railway
-    console.log('📊 Skipping database test query in production');
-    
-    // Run any pending migrations in production
-    if (process.env.NODE_ENV === 'production') {
-      // Note: In production, you should run migrations separately
-      // This is just for development convenience
-      console.log('📊 Production mode - skipping migrations');
-    }
   } catch (error) {
-    console.error('❌ Database connection failed:', error);
-    console.error('❌ Database error details:', error instanceof Error ? error.message : 'Unknown error');
+    console.error('Database connection failed:', error instanceof Error ? error.message : error);
     throw error;
   }
 }

@@ -16,8 +16,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const { limit = '10' } = req.query;
     const userId = (session.user as any).id;
+    const limitNum = Math.min(Math.max(parseInt(limit as string) || 10, 1), 100);
 
-    const history = await getUserAnalysisHistory(userId, parseInt(limit as string));
+    const history = await getUserAnalysisHistory(userId, limitNum);
     
     res.status(200).json(history);
   } catch (error) {

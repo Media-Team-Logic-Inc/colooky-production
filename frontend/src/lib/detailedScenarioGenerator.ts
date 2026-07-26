@@ -254,33 +254,30 @@ function generateFromSummary(summary: any, selectedFiles: string[]) {
     const functionNodesToShow = Math.min(functionsCount, 8);
     for (let i = 0; i < functionNodesToShow; i++) {
       const isLastFunction = i === functionNodesToShow - 1 && functionsCount > 8;
-      const isErrorFunction = i === functionNodesToShow - 1 || (i + 1) % 4 === 0;
-      
+
       const funcNode = {
         id: `func-${nodeId++}`,
-        title: isLastFunction ? `+${functionsCount - 7} more functions` : `Function ${i + 1}`,
+        title: isLastFunction ? `+${functionsCount - 7} more functions` : `function ${i + 1}`,
         x: currentX + (i % 2) * 150,
         y: currentY + Math.floor(i / 2) * 80,
         width: isLastFunction ? 170 : 130,
         height: 35,
-        color: isErrorFunction ? '#ef4444' : '#3b82f6',
-        strokeColor: isErrorFunction ? '#f87171' : '#60a5fa',
+        color: '#3b82f6',
+        strokeColor: '#60a5fa',
         details: [
           isLastFunction ? `${functionsCount} total functions` : `Function definition ${i + 1}`,
-          isErrorFunction ? 'Type: Error handler' : 'Type: Function',
+          'Type: Function',
           `File: ${selectedFiles[0] || 'Unknown'}`
         ],
-        isError: isErrorFunction,
+        isError: false,
         type: 'function'
       };
       nodes.push(funcNode);
-      
-      // Connect to main file
+
       connections.push({
         from: { x: mainFileNode.x + mainFileNode.width, y: mainFileNode.y + mainFileNode.height/2 },
         to: { x: funcNode.x, y: funcNode.y + funcNode.height/2 },
-        color: isErrorFunction ? '#ef4444' : '#3b82f6',
-        animated: isErrorFunction
+        color: '#3b82f6'
       });
     }
     currentX += 350;

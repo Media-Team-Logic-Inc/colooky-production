@@ -1,10 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { AnalysisJob } from '../../../../types/analysis';
-
-// Initialize global storage if it doesn't exist
-if (!global.analysisJobs) {
-  global.analysisJobs = new Map<string, AnalysisJob>();
-}
+import { getJobStatus } from '../../../../lib/analysisQueue';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {
@@ -18,29 +13,34 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(400).json({ error: 'Analysis ID is required' });
     }
 
-    const job = global.analysisJobs.get(id);
+    const jobStatus = await getJobStatus(id);
 
-    if (!job) {
+    if (!jobStatus) {
       return res.status(404).json({ error: 'Analysis job not found' });
     }
 
-    // Return the current status
-    const response = {
-      id: job.id,
-      repository: job.repository,
-      status: job.status,
-      progress: job.progress,
-      files_analyzed: job.files_analyzed,
-      total_files: job.total_files,
-      error_message: job.error_message,
-      visualization: job.result?.visualization,
-      summary: job.result?.summary
+    const statusMap: Record<string, string> = {
+      waiting: 'pending',
+      active: 'analyzing',
+      completed: 'completed',
+      failed: 'error',
+      delayed: 'pending',
+      paused: 'pending',
     };
 
-    res.status(200).json(response);
+    return res.status(200).json({
+      id: jobStatus.id,
+      status: statusMap[jobStatus.state] ?? jobStatus.state,
+      progress: jobStatus.progress,
+      visualization: jobStatus.result?.visualization ?? null,
+      summary: jobStatus.result?.summary ?? null,
+      elements: jobStatus.result?.elements ?? null,
+      dependencies: jobStatus.result?.dependencies ?? null,
+      error_message: jobStatus.failedReason ?? null,
+    });
 
   } catch (error) {
     console.error('Error getting analysis status:', error);
-    res.status(500).json({ error: 'Failed to get analysis status' });
+    return res.status(500).json({ error: 'Failed to get analysis status' });
   }
 }

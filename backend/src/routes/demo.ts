@@ -11,10 +11,6 @@ router.get('/health', (req, res) => {
 // Get all available demo samples
 router.get('/samples', async (req, res) => {
   try {
-    // Debug CORS request
-    console.log('🔧 Demo samples request from origin:', req.headers.origin);
-    console.log('🔧 Request headers:', req.headers);
-    
     const samples = Object.values(demoSamples).map(sample => ({
       id: sample.id,
       name: sample.name,
@@ -29,7 +25,6 @@ router.get('/samples', async (req, res) => {
       }
     }));
 
-    console.log('🔧 Returning samples:', samples.length);
     res.json({
       success: true,
       samples

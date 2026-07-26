@@ -21,19 +21,11 @@ function encryptToken(text: string): {
   encryptedData: string;
   iv: string;
 } {
-  // Generate random IV
   const iv = crypto.randomBytes(IV_LENGTH);
-  
-  // Get key
   const key = getKey();
-  
-  // Create cipher
-  const cipher = crypto.createCipher(ALGORITHM, key);
-  
-  // Encrypt the text
+  const cipher = crypto.createCipheriv(ALGORITHM, key, iv);
   let encrypted = cipher.update(text, 'utf8', 'hex');
   encrypted += cipher.final('hex');
-  
   return {
     encryptedData: encrypted,
     iv: iv.toString('hex'),
@@ -56,17 +48,13 @@ function decryptToken(encryptedObj: {
   iv: string;
 }): string {
   const { encryptedData, iv } = encryptedObj;
-  
-  // Get key
+  if (!iv || iv.length !== IV_LENGTH * 2) {
+    throw new Error('Invalid or missing IV — token was encrypted with a deprecated method and cannot be decrypted');
+  }
   const key = getKey();
-  
-  // Create decipher
-  const decipher = crypto.createDecipher(ALGORITHM, key);
-  
-  // Decrypt
+  const decipher = crypto.createDecipheriv(ALGORITHM, key, Buffer.from(iv, 'hex'));
   let decrypted = decipher.update(encryptedData, 'hex', 'utf8');
   decrypted += decipher.final('utf8');
-  
   return decrypted;
 }
 

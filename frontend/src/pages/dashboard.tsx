@@ -5,9 +5,11 @@ import Header from '../components/layout/Header';
 
 interface DashboardProps {
   user: any;
+  hasGitHub: boolean;
+  analysisCount: number;
 }
 
-export default function Dashboard({ user }: DashboardProps) {
+export default function Dashboard({ user, hasGitHub, analysisCount }: DashboardProps) {
   return (
     <>
       <Head>
@@ -75,9 +77,9 @@ export default function Dashboard({ user }: DashboardProps) {
               <h2 className="text-xl font-semibold text-white mb-4">Getting Started</h2>
               <div className="space-y-2 text-sm text-slate-300">
                 <p>✅ Account created successfully</p>
-                <p>✅ GitHub connected</p>
-                <p>⏳ Repository analysis pending</p>
-                <p>⏳ First visualization pending</p>
+                <p>{hasGitHub ? '✅' : '⏳'} GitHub connected</p>
+                <p>{analysisCount > 0 ? '✅' : '⏳'} Repository analysis {analysisCount > 0 ? `complete (${analysisCount})` : 'pending'}</p>
+                <p>{analysisCount > 0 ? '✅' : '⏳'} First visualization {analysisCount > 0 ? 'complete' : 'pending'}</p>
               </div>
             </div>
           </div>
@@ -89,7 +91,7 @@ export default function Dashboard({ user }: DashboardProps) {
 
 export const getServerSideProps: GetServerSideProps = async (context) => {
   const session = await getSession(context);
-  
+
   if (!session) {
     return {
       redirect: {
@@ -98,10 +100,29 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
       },
     };
   }
-  
+
+  const hasGitHub = !!(session as any).accessToken;
+
+  // Fetch analysis count without blocking on error
+  let analysisCount = 0;
+  try {
+    const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
+    const historyRes = await fetch(`${baseUrl}/api/analysis/history?limit=1`, {
+      headers: { cookie: context.req.headers.cookie || '' },
+    });
+    if (historyRes.ok) {
+      const history = await historyRes.json();
+      analysisCount = Array.isArray(history) ? history.length : 0;
+    }
+  } catch {
+    // Non-blocking — checklist still renders with default state
+  }
+
   return {
     props: {
       user: session.user,
+      hasGitHub,
+      analysisCount,
     },
   };
 };

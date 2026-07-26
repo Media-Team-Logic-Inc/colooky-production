@@ -1,13 +1,33 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { v4 as uuidv4 } from 'uuid';
-import { AnalysisJob, AnalysisResult } from '../../../types/analysis';
+import * as ts from 'typescript';
+import { analysisQueue, ensureWorker, AnalysisJobData, AnalysisJobResult } from '../../../lib/analysisQueue';
 
-// Initialize global storage if it doesn't exist
-if (!global.analysisJobs) {
-  global.analysisJobs = new Map<string, AnalysisJob>();
-}
+// Start the worker in the same process (single-server deployment).
+// In a scaled deployment, move this to a separate worker entrypoint.
+ensureWorker(async (job) => {
+  const { repository, files, accessToken } = job.data;
 
-const analysisJobs = global.analysisJobs;
+  await job.updateProgress(5);
+  const fileContents = await fetchFileContents(repository, files, accessToken, async (pct) => {
+    await job.updateProgress(5 + pct * 0.6);
+  });
+
+  await job.updateProgress(70);
+  const analysis = await analyzeCodeStructure(fileContents, async (pct) => {
+    await job.updateProgress(70 + pct * 0.25);
+  });
+
+  await job.updateProgress(95);
+  const visualization = await generateVisualization(analysis);
+  await job.updateProgress(100);
+
+  return {
+    visualization,
+    summary: analysis.summary,
+    elements: analysis.elements,
+    dependencies: analysis.dependencies,
+  };
+});
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
@@ -21,90 +41,34 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(400).json({ error: 'Repository and files are required' });
     }
 
+    if (typeof repository !== 'string' || !/^[\w.-]+\/[\w.-]+$/.test(repository)) {
+      return res.status(400).json({ error: 'Invalid repository format. Expected owner/repo' });
+    }
+
     if (!accessToken) {
       return res.status(401).json({ error: 'Access token required' });
     }
 
-    // Create analysis job
-    const jobId = uuidv4();
-    const job: AnalysisJob = {
-      id: jobId,
-      repository,
-      files,
+    const jobData: AnalysisJobData = { repository, files, accessToken };
+    const job = await analysisQueue.add('analyze', jobData);
+
+    return res.status(200).json({
+      id: job.id,
       status: 'pending',
-      progress: 0,
-      files_analyzed: 0,
-      total_files: files.length,
-      created_at: new Date()
-    };
-
-    analysisJobs.set(jobId, job);
-
-    // Start analysis in background
-    processAnalysis(jobId, repository, files, accessToken);
-
-    res.status(200).json({ 
-      id: jobId,
-      status: 'pending',
-      message: 'Analysis started'
+      message: 'Analysis started',
     });
 
   } catch (error) {
     console.error('Error starting analysis:', error);
-    res.status(500).json({ error: 'Failed to start analysis' });
-  }
-}
-
-async function processAnalysis(jobId: string, repository: string, files: string[], accessToken: string) {
-  const job = analysisJobs.get(jobId);
-  if (!job) return;
-
-  try {
-    // Update status to analyzing
-    job.status = 'analyzing';
-    job.progress = 5;
-
-    // Fetch and analyze files
-    const fileContents = await fetchFileContents(repository, files, accessToken, (progress) => {
-      job.progress = 5 + (progress * 0.6); // 5-65% for fetching
-      job.files_analyzed = Math.floor((progress / 100) * files.length);
-    });
-
-    job.progress = 70;
-
-    // Analyze code structure
-    const analysis = await analyzeCodeStructure(fileContents, (progress) => {
-      job.progress = 70 + (progress * 0.25); // 70-95% for analysis
-    });
-
-    job.progress = 95;
-
-    // Generate visualization
-    const visualization = await generateVisualization(analysis);
-    
-    job.progress = 100;
-    job.status = 'completed';
-    job.result = {
-      id: jobId,
-      repository,
-      visualization,
-      summary: analysis.summary,
-      elements: analysis.elements,
-      dependencies: analysis.dependencies
-    };
-
-  } catch (error) {
-    console.error('Analysis failed:', error);
-    job.status = 'error';
-    job.error_message = error instanceof Error ? error.message : 'Analysis failed';
+    return res.status(500).json({ error: 'Failed to start analysis' });
   }
 }
 
 async function fetchFileContents(
-  repository: string, 
-  files: string[], 
-  accessToken: string, 
-  onProgress: (progress: number) => void
+  repository: string,
+  files: string[],
+  accessToken: string,
+  onProgress: (progress: number) => void | Promise<void>
 ): Promise<{ path: string; content: string; language: string }[]> {
   const contents: { path: string; content: string; language: string }[] = [];
   
@@ -141,7 +105,7 @@ async function fetchFileContents(
       console.warn(`Failed to fetch ${filePath}:`, error);
     }
 
-    onProgress(((i + 1) / files.length) * 100);
+    await onProgress(((i + 1) / files.length) * 100);
   }
 
   return contents;
@@ -167,7 +131,7 @@ function getLanguageFromExtension(ext: string): string {
 
 async function analyzeCodeStructure(
   fileContents: { path: string; content: string; language: string }[],
-  onProgress: (progress: number) => void
+  onProgress: (progress: number) => void | Promise<void>
 ): Promise<any> {
   const analysis = {
     functions: 0,
@@ -200,9 +164,8 @@ async function analyzeCodeStructure(
     // CRITICAL FIX: Merge the actual elements, not just counts!
     analysis.codeElements.push(...fileAnalysis.elements);
     analysis.dependencies.push(...fileAnalysis.dependencies);
-    console.log(`🔗 Merged ${fileAnalysis.elements.length} elements from ${file.path}, total now: ${analysis.codeElements.length}`);
 
-    onProgress(((i + 1) / fileContents.length) * 100);
+    await onProgress(((i + 1) / fileContents.length) * 100);
   }
 
   const mainLanguage = Object.entries(analysis.languageDistribution)
@@ -224,204 +187,235 @@ async function analyzeCodeStructure(
   };
 }
 
-function analyzeFile(file: { path: string; content: string; language: string }) {
-  console.log('🔬 Analyzing file:', file.path, 'Language:', file.language, 'Lines:', file.content.split('\n').length);
-  
-  // DEBUG: Show first 10 lines of file content to see what we're working with
+type FileAnalysis = {
+  functions: number;
+  classes: number;
+  imports: number;
+  complexity: number;
+  dependencies: { from: string; to: string; type: string; line: number; detail: string }[];
+  elements: any[];
+  functionCalls: { function: string; line: number; calledFrom: string }[];
+};
+
+function makeAnalysis(): FileAnalysis {
+  return { functions: 0, classes: 0, imports: 0, complexity: 0, dependencies: [], elements: [], functionCalls: [] };
+}
+
+function analyzeFile(file: { path: string; content: string; language: string }): FileAnalysis {
+  const isJsTs = ['JavaScript', 'TypeScript'].includes(file.language);
+  return isJsTs ? analyzeJsTsWithAST(file) : analyzeWithRegex(file);
+}
+
+function analyzeJsTsWithAST(file: { path: string; content: string; language: string }): FileAnalysis {
+  const analysis = makeAnalysis();
   const lines = file.content.split('\n');
-  console.log('📝 First 10 lines of file content:');
-  lines.slice(0, 10).forEach((line, i) => {
-    console.log(`${i + 1}: ${line}`);
-  });
-  
-  const analysis = {
-    functions: 0,
-    classes: 0,
-    imports: 0,
-    complexity: 0,
-    dependencies: [] as { from: string; to: string; type: string; line: number; detail: string }[],
-    elements: [] as any[],
-    functionCalls: [] as { function: string; line: number; calledFrom: string }[]
-  };
-  
-  console.log(`🔄 Starting analysis loop for ${lines.length} lines...`);
-  
-  for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
-    const line = lines[lineIndex];
-    const trimmed = line.trim();
-    const lineNumber = lineIndex + 1;
-    
-    // Debug EVERY non-empty line to see what we're working with
-    if (trimmed.length > 0 && lineNumber <= 20) {
-      console.log(`🔍 Line ${lineNumber}: "${trimmed}"`);
+
+  const ext = file.path.split('.').pop()?.toLowerCase();
+  const scriptKind =
+    ext === 'tsx' ? ts.ScriptKind.TSX :
+    ext === 'jsx' ? ts.ScriptKind.JSX :
+    ext === 'ts'  ? ts.ScriptKind.TS  :
+                    ts.ScriptKind.JS;
+
+  let sourceFile: ts.SourceFile;
+  try {
+    sourceFile = ts.createSourceFile(file.path, file.content, ts.ScriptTarget.Latest, true, scriptKind);
+  } catch {
+    return analyzeWithRegex(file);
+  }
+
+  function lineOf(pos: number): number {
+    return sourceFile.getLineAndCharacterOfPosition(pos).line + 1;
+  }
+
+  function snippet(node: ts.Node): string {
+    const ln = lineOf(node.getStart(sourceFile));
+    const start = Math.max(0, ln - 3);
+    const end = Math.min(lines.length - 1, ln + 4);
+    return lines.slice(start, end + 1).map((l, i) => `${start + i + 1}: ${l}`).join('\n');
+  }
+
+  function pushFunction(name: string, node: ts.Node, prefix = 'Function') {
+    const ln = lineOf(node.getStart(sourceFile));
+    analysis.functions++;
+    analysis.elements.push({
+      id: `${file.path}_func_${name}_${ln}`,
+      name,
+      type: 'function',
+      file: file.path,
+      line: ln,
+      language: file.language,
+      content: snippet(node),
+      details: [`${prefix}: ${name}`, `File: ${file.path}:${ln}`, `Language: ${file.language}`]
+    });
+  }
+
+  function visit(node: ts.Node) {
+    // Named function declarations
+    if (ts.isFunctionDeclaration(node) && node.name) {
+      pushFunction(node.name.text, node);
     }
-    
-    // ULTRA SIMPLE patterns that WILL work
-    const functionMatches = [
-      // ANY function keyword
-      /function\s+(\w+)/,
-      
-      // ANY const = () => (arrow functions)
-      /const\s+(\w+)\s*=.*=>/,
-      
-      // ANY const = ( (function assignments)  
-      /const\s+(\w+)\s*=.*\(/,
-      
-      // Method definitions (name followed by parentheses)
-      /^\s*(\w+)\s*\(/
-    ];
-    
-    let foundMatch = false;
-    for (let patternIndex = 0; patternIndex < functionMatches.length; patternIndex++) {
-      const pattern = functionMatches[patternIndex];
-      const match = trimmed.match(pattern);
-      if (match) {
-        console.log(`🎯 FOUND FUNCTION "${match[1]}" using pattern ${patternIndex} at line ${lineNumber} in ${file.path}`);
-        foundMatch = true;
-        analysis.functions++;
-        
-        // Extract function code snippet (5 lines around the function)
-        const startLine = Math.max(0, lineIndex - 2);
-        const endLine = Math.min(lines.length - 1, lineIndex + 5);
-        const codeSnippet = lines.slice(startLine, endLine + 1)
-          .map((line, index) => `${startLine + index + 1}: ${line}`)
-          .join('\n');
-        
-        analysis.elements.push({
-          id: `${file.path}_func_${match[1]}_${lineNumber}`,
-          name: match[1],
-          type: 'function',
-          file: file.path,
-          line: lineNumber,
-          language: file.language,
-          content: codeSnippet,
-          details: [`Function: ${match[1]}`, `File: ${file.path}:${lineNumber}`, `Language: ${file.language}`]
-        });
-        break;
+
+    // Arrow functions and function expressions assigned to variables
+    if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer) {
+      const init = node.initializer;
+      if (ts.isArrowFunction(init) || ts.isFunctionExpression(init)) {
+        pushFunction(node.name.text, node);
       }
     }
-    
-    // Debug: If line looks like a function but no pattern matched, show why
-    if (!foundMatch && (trimmed.includes('function') || trimmed.includes('=>') || trimmed.includes('const '))) {
-      console.log(`❌ Line ${lineNumber} looks like function but no pattern matched: "${trimmed}"`);
+
+    // Class methods
+    if (ts.isMethodDeclaration(node) && ts.isIdentifier(node.name)) {
+      pushFunction(node.name.text, node, 'Method');
     }
-    
-    // Extract class definitions
-    const classMatch = trimmed.match(/^(?:export\s+)?class\s+(\w+)/);
-    if (classMatch) {
+
+    // Class declarations
+    if (ts.isClassDeclaration(node) && node.name) {
+      const name = node.name.text;
+      const ln = lineOf(node.getStart(sourceFile));
       analysis.classes++;
-      
-      // Extract class code snippet
-      const startLine = Math.max(0, lineIndex - 1);
-      const endLine = Math.min(lines.length - 1, lineIndex + 8);
-      const codeSnippet = lines.slice(startLine, endLine + 1)
-        .map((line, index) => `${startLine + index + 1}: ${line}`)
-        .join('\n');
-      
       analysis.elements.push({
-        id: `${file.path}_class_${classMatch[1]}_${lineNumber}`,
-        name: classMatch[1],
+        id: `${file.path}_class_${name}_${ln}`,
+        name,
         type: 'class',
         file: file.path,
-        line: lineNumber,
+        line: ln,
         language: file.language,
-        content: codeSnippet,
-        details: [`Class: ${classMatch[1]}`, `File: ${file.path}:${lineNumber}`, `Language: ${file.language}`]
+        content: snippet(node),
+        details: [`Class: ${name}`, `File: ${file.path}:${ln}`, `Language: ${file.language}`]
       });
     }
-    
-    // Extract imports with detailed information
-    const importPatterns = [
-      /import\s+.*\s+from\s+['"]([^'"]+)['"]/,
-      /import\s+['"]([^'"]+)['"]/,
-      /require\s*\(\s*['"]([^'"]+)['"]\s*\)/
-    ];
-    
-    for (const pattern of importPatterns) {
-      const importMatch = trimmed.match(pattern);
-      if (importMatch) {
-        analysis.imports++;
-        analysis.dependencies.push({
-          from: file.path,
-          to: importMatch[1],
-          type: 'import',
-          line: lineNumber,
-          detail: `Imports from ${importMatch[1]} at line ${lineNumber}`
-        });
-        
-        // Create import element
-        analysis.elements.push({
-          id: `${file.path}_import_${importMatch[1].replace(/[^a-zA-Z0-9]/g, '_')}_${lineNumber}`,
-          name: `📥 ${importMatch[1]}`,
-          type: 'import',
-          file: file.path,
-          line: lineNumber,
-          language: file.language,
-          target: importMatch[1],
-          content: `${lineNumber}: ${line.trim()}`,
-          details: [`Import: ${importMatch[1]}`, `File: ${file.path}:${lineNumber}`, `Type: ${file.language} import`]
-        });
-        break;
-      }
+
+    // Import declarations
+    if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier)) {
+      const target = node.moduleSpecifier.text;
+      const ln = lineOf(node.getStart(sourceFile));
+      analysis.imports++;
+      analysis.dependencies.push({ from: file.path, to: target, type: 'import', line: ln, detail: `Imports from ${target}` });
+      analysis.elements.push({
+        id: `${file.path}_import_${target.replace(/[^a-zA-Z0-9]/g, '_')}_${ln}`,
+        name: target,
+        type: 'import',
+        file: file.path,
+        line: ln,
+        language: file.language,
+        target,
+        content: `${ln}: ${lines[ln - 1]?.trim() || ''}`,
+        details: [`Import: ${target}`, `File: ${file.path}:${ln}`, `Type: ${file.language} import`]
+      });
     }
 
-    // Extract exports with detailed information
-    const exportPatterns = [
-      /^export\s+(?:default\s+)?(?:class|function|const|let|var)\s+(\w+)/,
-      /^export\s+\{\s*([^}]+)\s*\}/,
-      /^export\s+default\s+(\w+)/,
-      /^module\.exports\s*=\s*(\w+)/,
-      /^exports\.(\w+)\s*=/
-    ];
-    
-    for (const pattern of exportPatterns) {
-      const exportMatch = trimmed.match(pattern);
-      if (exportMatch) {
-        const exportName = exportMatch[1].includes(',') ? 'Multiple' : exportMatch[1];
-        analysis.elements.push({
-          id: `${file.path}_export_${exportName.replace(/[^a-zA-Z0-9]/g, '_')}_${lineNumber}`,
-          name: `📤 ${exportName}`,
-          type: 'export',
-          file: file.path,
-          line: lineNumber,
-          language: file.language,
-          details: [`Export: ${exportName}`, `File: ${file.path}:${lineNumber}`, `Type: ${file.language} export`]
-        });
-        break;
-      }
+    // Complexity nodes
+    if (
+      ts.isIfStatement(node) || ts.isWhileStatement(node) || ts.isForStatement(node) ||
+      ts.isForInStatement(node) || ts.isForOfStatement(node) || ts.isSwitchStatement(node) ||
+      ts.isCatchClause(node) || ts.isConditionalExpression(node)
+    ) {
+      analysis.complexity++;
     }
-    
-    // Extract function calls
-    const functionCallMatch = trimmed.match(/(\w+)\s*\(/);
-    if (functionCallMatch && !trimmed.includes('function') && !trimmed.includes('=')) {
-      const functionName = functionCallMatch[1];
-      if (!['if', 'while', 'for', 'switch', 'catch', 'return'].includes(functionName)) {
-        analysis.functionCalls.push({
-          function: functionName,
-          line: lineNumber,
-          calledFrom: file.path
-        });
-      }
-    }
-    
-    // Complexity calculation
-    if (/\b(if|else|while|for|switch|catch|&&|\|\|)\b/.test(trimmed)) {
-      analysis.complexity += 1;
-    }
+
+    ts.forEachChild(node, visit);
   }
 
-  console.log(`📊 Analysis complete for ${file.path}:`, {
-    functions: analysis.functions,
-    classes: analysis.classes,
-    imports: analysis.imports,
-    elements: analysis.elements.length,
-    elementNames: analysis.elements.map(e => `${e.type}:${e.name}`)
+  ts.forEachChild(sourceFile, visit);
+  return analysis;
+}
+
+// Fallback regex-based analysis for non-JS/TS languages (Python, Java, Go, etc.)
+function analyzeWithRegex(file: { path: string; content: string; language: string }): FileAnalysis {
+  const analysis = makeAnalysis();
+  const lines = file.content.split('\n');
+
+  const langPatterns: Record<string, { func: RegExp[]; cls: RegExp[]; imp: RegExp[] }> = {
+    Python: {
+      func: [/^(?:async\s+)?def\s+(\w+)\s*\(/],
+      cls: [/^class\s+(\w+)/],
+      imp: [/^(?:import|from)\s+([\w.]+)/]
+    },
+    Java: {
+      func: [/(?:public|private|protected|static|\s)+[\w<>\[\]]+\s+(\w+)\s*\(/],
+      cls: [/(?:public\s+)?(?:abstract\s+)?class\s+(\w+)/],
+      imp: [/^import\s+([\w.]+)/]
+    },
+    Go: {
+      func: [/^func\s+(?:\(\w+\s+\*?\w+\)\s+)?(\w+)\s*\(/],
+      cls: [/^type\s+(\w+)\s+struct/],
+      imp: [/["']([^"']+)["']/]
+    },
+    Ruby: {
+      func: [/^\s*def\s+(\w+)/],
+      cls: [/^class\s+(\w+)/],
+      imp: [/require(?:_relative)?\s+['"]([^'"]+)['"]/]
+    }
+  };
+
+  const patterns = langPatterns[file.language];
+
+  lines.forEach((line, idx) => {
+    const trimmed = line.trim();
+    const lineNumber = idx + 1;
+
+    if (patterns) {
+      for (const p of patterns.func) {
+        const m = trimmed.match(p);
+        if (m?.[1]) {
+          analysis.functions++;
+          const start = Math.max(0, idx - 1);
+          const end = Math.min(lines.length - 1, idx + 5);
+          analysis.elements.push({
+            id: `${file.path}_func_${m[1]}_${lineNumber}`,
+            name: m[1],
+            type: 'function',
+            file: file.path,
+            line: lineNumber,
+            language: file.language,
+            content: lines.slice(start, end + 1).map((l, i) => `${start + i + 1}: ${l}`).join('\n'),
+            details: [`Function: ${m[1]}`, `File: ${file.path}:${lineNumber}`, `Language: ${file.language}`]
+          });
+          break;
+        }
+      }
+
+      for (const p of patterns.cls) {
+        const m = trimmed.match(p);
+        if (m?.[1]) {
+          analysis.classes++;
+          analysis.elements.push({
+            id: `${file.path}_class_${m[1]}_${lineNumber}`,
+            name: m[1],
+            type: 'class',
+            file: file.path,
+            line: lineNumber,
+            language: file.language,
+            details: [`Class: ${m[1]}`, `File: ${file.path}:${lineNumber}`, `Language: ${file.language}`]
+          });
+          break;
+        }
+      }
+
+      for (const p of patterns.imp) {
+        const m = trimmed.match(p);
+        if (m?.[1]) {
+          analysis.imports++;
+          analysis.dependencies.push({ from: file.path, to: m[1], type: 'import', line: lineNumber, detail: `Imports ${m[1]}` });
+          analysis.elements.push({
+            id: `${file.path}_import_${m[1].replace(/[^a-zA-Z0-9]/g, '_')}_${lineNumber}`,
+            name: m[1],
+            type: 'import',
+            file: file.path,
+            line: lineNumber,
+            language: file.language,
+            details: [`Import: ${m[1]}`, `File: ${file.path}:${lineNumber}`]
+          });
+          break;
+        }
+      }
+    }
+
+    if (/\b(if|else|while|for|switch|catch)\b/.test(trimmed)) {
+      analysis.complexity++;
+    }
   });
-
-  // CRITICAL DEBUG: If we found functions in summary but no elements, something's wrong
-  if (analysis.functions > 0 && analysis.elements.length === 0) {
-    console.error(`🚨 MAJOR ISSUE: Found ${analysis.functions} functions in summary but 0 elements! Regex patterns are failing!`);
-  }
 
   return analysis;
 }
@@ -474,24 +468,6 @@ async function generateVisualization(analysis: any): Promise<any> {
     interfaces: analysis.elements.filter(e => e.type === 'class' || e.name.includes('Type') || e.name.includes('Interface'))
   };
   
-  console.log('🏗️ Semantic grouping:', {
-    imports: elementsByType.imports.length,
-    contexts: elementsByType.contexts.length,
-    providers: elementsByType.providers.length,
-    hooks: elementsByType.hooks.length,
-    authMethods: elementsByType.authMethods.length,
-    profileMethods: elementsByType.profileMethods.length,
-    utilities: elementsByType.utilities.length,
-    interfaces: elementsByType.interfaces.length,
-    exports: elementsByType.exports.length
-  });
-  
-  console.log('🔍 Sample elements:', {
-    sampleFunction: analysis.elements.find(e => e.type === 'function')?.name,
-    sampleImport: analysis.elements.find(e => e.type === 'import')?.name,
-    allTypes: Array.from(new Set(analysis.elements.map(e => e.type)))
-  });
-
   // Create semantic architecture layout - ONLY for groups that have elements
   const allLayoutGroups = [
     { name: 'imports', elements: elementsByType.imports, color: '#f59e0b' },
@@ -513,8 +489,6 @@ async function generateVisualization(analysis: any): Promise<any> {
       y: 50 + index * 80 // Tight 80px spacing between existing groups
     }));
     
-  console.log('📐 Layout groups (only non-empty):', layoutGroups.map(g => `${g.name}: ${g.elements.length} elements at y=${g.y}`));
-
   layoutGroups.forEach(group => {
     group.elements.forEach((element: any, elementIndex: number) => {
       // Horizontal spacing for elements in the same group - reduced spacing
@@ -631,9 +605,6 @@ async function generateVisualization(analysis: any): Promise<any> {
     }
   }
   
-  // Create flexible architectural flow - connect existing groups dynamically
-  console.log('🔗 Connecting existing groups:', layoutGroups.map(g => g.name));
-  
   // Connect consecutive existing groups
   for (let i = 0; i < layoutGroups.length - 1; i++) {
     const currentGroup = layoutGroups[i];
@@ -643,7 +614,6 @@ async function generateVisualization(analysis: any): Promise<any> {
     const nextNode = nodes.find(n => nextGroup.elements.some(e => e.id === n.id));
     
     if (currentNode && nextNode) {
-      console.log(`🔗 Creating connection: ${currentGroup.name} → ${nextGroup.name}`);
       semanticConnections.push({
         from: { x: currentNode.x + currentNode.width/2, y: currentNode.y + currentNode.height },
         to: { x: nextNode.x + nextNode.width/2, y: nextNode.y },
@@ -652,11 +622,6 @@ async function generateVisualization(analysis: any): Promise<any> {
         detail: `Architecture flow: ${currentGroup.name} → ${nextGroup.name}`,
         strokeWidth: 4,
         animated: false
-      });
-    } else {
-      console.log(`❌ Missing nodes for connection: ${currentGroup.name} → ${nextGroup.name}`, {
-        currentNode: !!currentNode,
-        nextNode: !!nextNode
       });
     }
   }

@@ -36,7 +36,12 @@ export default function Settings({ user }: SettingsProps) {
     githubUsername: user?.login || '',
     bio: ''
   });
-  
+  const [privacy, setPrivacy] = useState({
+    make_profile_public: false,
+    show_activity: true,
+    allow_indexing: false,
+  });
+
   // Load settings from Supabase with localStorage fallback
   useEffect(() => {
     const loadSettings = async () => {
@@ -77,13 +82,9 @@ export default function Settings({ user }: SettingsProps) {
               high_contrast: false,
             });
             
-            console.log('✅ Loaded settings from Supabase');
             return; // Success, no need for localStorage fallback
           }
         }
-        
-        // Fallback to localStorage if Supabase fails - theme is handled by ThemeProvider
-        console.log('📦 Falling back to localStorage for non-theme settings');
         
         const savedNotifications = localStorage.getItem('colooky_notifications');
         if (savedNotifications) {
@@ -208,8 +209,7 @@ export default function Settings({ user }: SettingsProps) {
         throw new Error('Failed to save to server');
       }
       
-      const result = await response.json();
-      console.log('✅ Settings saved to Supabase:', result);
+      await response.json();
       
       // Also save to localStorage as backup
       localStorage.setItem('colooky_notifications', JSON.stringify(notifications));
@@ -236,12 +236,6 @@ export default function Settings({ user }: SettingsProps) {
       setSaving(false);
     }
   };
-  const [privacy, setPrivacy] = useState({
-    make_profile_public: false,
-    show_activity: true,
-    allow_indexing: false,
-  });
-
   const tabs = [
     { id: 'profile', label: 'Profile', icon: User },
     { id: 'notifications', label: 'Notifications', icon: Bell },

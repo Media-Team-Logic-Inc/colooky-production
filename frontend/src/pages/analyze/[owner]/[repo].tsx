@@ -482,7 +482,7 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
         const fileData = await response.json();
         
         if (fileData.content && fileData.encoding === 'base64') {
-          const content = Buffer.from(fileData.content, 'base64').toString('utf-8');
+          const content = atob(fileData.content.replace(/\n/g, ''));
           const extension = filePath.split('.').pop()?.toLowerCase() || '';
           const language = getLanguageFromExtension('.' + extension);
           
@@ -661,9 +661,7 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
       if (response.ok) {
         const savedAnalysis = await response.json();
         setSavedAnalysisId(savedAnalysis.id);
-        // Refresh analysis history
         await fetchAnalysisHistory();
-        console.log('Analysis saved successfully:', savedAnalysis.id);
       } else {
         console.error('Failed to save analysis');
       }
@@ -689,9 +687,7 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
 
       if (response.ok) {
         setSavedAnalysisId(null);
-        // Refresh analysis history
         await fetchAnalysisHistory();
-        console.log('Analysis deleted successfully');
       } else {
         console.error('Failed to delete analysis');
       }
@@ -725,8 +721,6 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
       
       // Update current step to results
       setCurrentStep('results');
-      
-      console.log('✅ Loaded saved analysis:', historyItem.id);
       
       // Show success feedback
       const originalTitle = document.title;
@@ -1245,43 +1239,14 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
               {/* MAXIMUM WIDTH Visualization - Full viewport usage */}
               <div className="w-full">
                 <div className="h-[800px] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4 relative overflow-hidden">
-                  <ImprovedFlexibleSubwayMap 
+                  <ImprovedFlexibleSubwayMap
                     scenario={(() => {
-                      // Generate intelligent visualization based on content type and complexity
-                      console.log('🎨 Generating intelligent visualization for analysis:', {
-                        functions: analysis.summary?.functions || 0,
-                        classes: analysis.summary?.classes || 0,
-                        imports: analysis.summary?.imports || 0,
-                        files: selectedFiles.length
-                      });
-                      
-                      // DEBUG: Log what we're getting from backend
-                      console.log('🔍 Analysis data received:', {
-                        summary: analysis.summary,
-                        elements: analysis.elements?.length || 0,
-                        elementsPreview: analysis.elements?.slice(0, 3),
-                        dependencies: analysis.dependencies?.length || 0
-                      });
-                      
-                      // EMERGENCY DEBUG: Show the actual raw analysis object
-                      console.log('🚨 RAW ANALYSIS OBJECT:', JSON.stringify(analysis, null, 2));
-                      
-                      // BEAUTIFUL VISUALIZATION: Transform backend data into professional subway layout
-                      console.log('🎨 Transforming backend data into beautiful subway visualization!');
-                      
-                      // Apply professional subway layout transformation
                       let professionalVisualization = analysis.visualization;
                       if (professionalVisualization) {
-                        // Transform to beautiful subway layout with centering and connections
                         professionalVisualization = transformToSubwayLayout(professionalVisualization);
-                        
-                        // Apply error detection and step numbers
                         professionalVisualization = enhanceScenarioWithErrors(professionalVisualization, analysis);
                         professionalVisualization = addStepNumbers(professionalVisualization);
-                        
-                        console.log('✨ Applied professional subway layout + enhancements');
                       }
-                      
                       return professionalVisualization;
                     })()}
                     onScenarioChange={() => {}}
@@ -1306,10 +1271,7 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
                         viewFileContent(filePath, highlightLine);
                       }
                     }}
-                    onNodeSelect={(node) => {
-                      // Node selection can be used for future features
-                      console.log('Selected node:', node);
-                    }}
+                    onNodeSelect={() => {}}
                   />
                 </div>
               </div>

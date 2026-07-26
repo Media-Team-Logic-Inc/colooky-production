@@ -114,47 +114,50 @@ export function detectErrors(content: string, filename: string): Array<{
 export function enhanceScenarioWithErrors(scenario: any, analysisData?: any): any {
   if (!scenario || !scenario.nodes) return scenario;
 
+  // Build a lookup by node id for fast connection resolution
+  const nodeById = new Map<string, any>();
+
   const enhancedNodes = scenario.nodes.map((node: any) => {
-    // MUCH MORE PRECISE - Only mark actual error handling, not normal code
-    const hasActualErrorKeywords = node.title && (
-      /^(catch|throw|fail|exception)$/i.test(node.title) ||
-      /TODO:|FIXME:|HACK:/i.test(node.title) ||
-      /catch\s*\(|throw\s+new|Promise\.reject/i.test(node.title)
-    );
+    // Prefer scanning actual source code when the node carries it
+    let isErrorNode = node.color === '#ef4444'; // respect backend-set flag
 
-    const hasErrorInDetails = node.details && node.details.some((detail: string) => 
-      /throw\s+new|catch\s*\(|try\s*\{|Promise\.reject/i.test(detail)
-    );
+    if (!isErrorNode && node.content) {
+      const errors = detectErrors(node.content, node.title || '');
+      isErrorNode = errors.some(e => e.severity === 'error');
+    }
 
-    // Only mark nodes that are ACTUALLY error handling code
-    const isErrorNode = hasActualErrorKeywords || hasErrorInDetails || 
-      node.color === '#ef4444'; // Already marked as error in backend
-
-    return {
+    const enhanced = {
       ...node,
       isError: isErrorNode,
       color: isErrorNode ? '#ef4444' : node.color,
       strokeColor: isErrorNode ? '#f87171' : node.strokeColor
     };
+    if (node.id) nodeById.set(node.id, enhanced);
+    return enhanced;
   });
 
   const enhancedConnections = scenario.connections.map((connection: any) => {
-    // Mark connections as errors if they connect to error nodes
-    const fromNode = enhancedNodes.find((n: any) => 
-      Math.abs(n.x - connection.from.x) < 50 && Math.abs(n.y - connection.from.y) < 50
-    );
-    const toNode = enhancedNodes.find((n: any) => 
-      Math.abs(n.x - connection.to.x) < 50 && Math.abs(n.y - connection.to.y) < 50
-    );
+    // Prefer ID-based lookup; fall back to position proximity for legacy data
+    const fromNode = connection.fromId
+      ? nodeById.get(connection.fromId)
+      : enhancedNodes.find((n: any) =>
+          Math.abs(n.x - connection.from?.x) < 80 &&
+          Math.abs(n.y - connection.from?.y) < 80
+        );
+    const toNode = connection.toId
+      ? nodeById.get(connection.toId)
+      : enhancedNodes.find((n: any) =>
+          Math.abs(n.x - connection.to?.x) < 80 &&
+          Math.abs(n.y - connection.to?.y) < 80
+        );
 
-    const isErrorConnection = (fromNode?.isError || toNode?.isError) || 
-      connection.animated; // Animated connections often represent errors/warnings
+    const isErrorConnection = fromNode?.isError || toNode?.isError || false;
 
     return {
       ...connection,
       isError: isErrorConnection,
       color: isErrorConnection ? '#ef4444' : connection.color,
-      animated: isErrorConnection ? true : connection.animated
+      animated: isErrorConnection || connection.animated
     };
   });
 
@@ -214,12 +217,11 @@ export function addStepNumbers(scenario: any): any {
     return a.x - b.x;
   });
 
-  // Add step numbers to first 10 nodes (like the demo)
   const nodesWithSteps = scenario.nodes.map((node: any) => {
     const stepIndex = sortedNodes.findIndex(n => n.id === node.id);
     return {
       ...node,
-      stepNumber: stepIndex < 10 ? stepIndex + 1 : undefined
+      stepNumber: stepIndex >= 0 ? stepIndex + 1 : undefined
     };
   });
 

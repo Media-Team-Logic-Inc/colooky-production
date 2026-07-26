@@ -260,7 +260,7 @@ export default function Home() {
               <Link href="/docs" className="text-gray-400 hover:text-cyan-400 transition-colors duration-300">
                 Documentation
               </Link>
-              <a href="mailto:flolooky@gmail.com" className="text-gray-400 hover:text-purple-400 transition-colors duration-300">
+              <a href={`mailto:${process.env.NEXT_PUBLIC_CONTACT_EMAIL || 'hello@colooky.com'}`} className="text-gray-400 hover:text-purple-400 transition-colors duration-300">
                 Contact
               </a>
               <a href="#features" 

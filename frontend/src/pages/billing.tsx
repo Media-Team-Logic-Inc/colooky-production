@@ -73,7 +73,11 @@ export default function Billing({ user }: BillingProps) {
 
       if (response.ok) {
         const data = await response.json();
-        window.location.href = data.checkout_url;
+        if (typeof data.checkout_url === 'string' && data.checkout_url.startsWith('https://checkout.stripe.com')) {
+          window.location.href = data.checkout_url;
+        } else {
+          alert('Invalid checkout URL received. Please try again.');
+        }
       } else {
         const error = await response.json();
         alert(`Error: ${error.message || 'Failed to create checkout session'}`);
@@ -96,7 +100,11 @@ export default function Billing({ user }: BillingProps) {
 
       if (response.ok) {
         const data = await response.json();
-        window.location.href = data.portal_url;
+        if (typeof data.portal_url === 'string' && data.portal_url.startsWith('https://billing.stripe.com')) {
+          window.location.href = data.portal_url;
+        } else {
+          alert('Invalid portal URL received. Please try again.');
+        }
       } else {
         const error = await response.json();
         alert(`Error: ${error.message || 'Failed to access customer portal'}`);
