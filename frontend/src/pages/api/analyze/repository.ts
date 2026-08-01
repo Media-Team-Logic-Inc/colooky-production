@@ -1,33 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import * as ts from 'typescript';
-import { analysisQueue, ensureWorker, AnalysisJobData, AnalysisJobResult } from '../../../lib/analysisQueue';
-
-// Start the worker in the same process (single-server deployment).
-// In a scaled deployment, move this to a separate worker entrypoint.
-ensureWorker(async (job) => {
-  const { repository, files, accessToken } = job.data;
-
-  await job.updateProgress(5);
-  const fileContents = await fetchFileContents(repository, files, accessToken, async (pct) => {
-    await job.updateProgress(5 + pct * 0.6);
-  });
-
-  await job.updateProgress(70);
-  const analysis = await analyzeCodeStructure(fileContents, async (pct) => {
-    await job.updateProgress(70 + pct * 0.25);
-  });
-
-  await job.updateProgress(95);
-  const visualization = await generateVisualization(analysis);
-  await job.updateProgress(100);
-
-  return {
-    visualization,
-    summary: analysis.summary,
-    elements: analysis.elements,
-    dependencies: analysis.dependencies,
-  };
-});
+import crypto from 'crypto';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
@@ -49,18 +22,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(401).json({ error: 'Access token required' });
     }
 
-    const jobData: AnalysisJobData = { repository, files, accessToken };
-    const job = await analysisQueue.add('analyze', jobData);
+    const fileContents = await fetchFileContents(repository, files, accessToken, async () => {});
+    const analysis = await analyzeCodeStructure(fileContents, async () => {});
+    const visualization = await generateVisualization(analysis);
 
     return res.status(200).json({
-      id: job.id,
-      status: 'pending',
-      message: 'Analysis started',
+      id: crypto.randomUUID(),
+      status: 'completed',
+      visualization,
+      summary: analysis.summary,
+      elements: analysis.elements,
+      dependencies: analysis.dependencies,
     });
 
   } catch (error) {
-    console.error('Error starting analysis:', error);
-    return res.status(500).json({ error: 'Failed to start analysis' });
+    console.error('Error analyzing repository:', error);
+    return res.status(500).json({ error: 'Failed to analyze repository' });
   }
 }
 
@@ -718,13 +695,3 @@ async function generateVisualization(analysis: any): Promise<any> {
   };
 }
 
-// Cleanup old jobs (run periodically)
-setInterval(() => {
-  const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000); // 24 hours ago
-  
-  analysisJobs.forEach((job, id) => {
-    if (job.created_at < cutoff) {
-      analysisJobs.delete(id);
-    }
-  });
-}, 60 * 60 * 1000); // Run every hour

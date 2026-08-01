@@ -550,10 +550,26 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
         throw new Error('Failed to start analysis');
       }
 
-      const analysisJob = await response.json();
-      
-      // Poll for analysis results
-      pollAnalysisStatus(analysisJob.id);
+      const result = await response.json();
+
+      if (result.status === 'completed') {
+        setAnalysis(result);
+        setAnalyzing(false);
+        setCurrentStep('results');
+        const analysisWithTimestamp = {
+          ...result,
+          timestamp: new Date().toISOString(),
+          repository_info: { owner: repository.owner, name: repository.name, full_name: repository.full_name }
+        };
+        localStorage.setItem(`colooky_analysis_${repository.owner}_${repository.name}`, JSON.stringify(analysisWithTimestamp));
+        const recentAnalyses = JSON.parse(localStorage.getItem('colooky_recent_analyses') || '[]');
+        const filteredAnalyses = recentAnalyses.filter((item: any) => item.full_name !== repository.full_name);
+        localStorage.setItem('colooky_recent_analyses', JSON.stringify(
+          [{ owner: repository.owner, name: repository.name, full_name: repository.full_name, timestamp: new Date().toISOString(), summary: result.summary }, ...filteredAnalyses].slice(0, 10)
+        ));
+      } else {
+        pollAnalysisStatus(result.id);
+      }
       
     } catch (err) {
       console.error('Error starting analysis:', err);
