@@ -33,6 +33,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       summary: analysis.summary,
       elements: analysis.elements,
       dependencies: analysis.dependencies,
+      callEdges: analysis.callEdges,
+      hooks: analysis.hooks,
+      importUsage: analysis.importUsage,
+      props: analysis.props,
     });
 
   } catch (error) {
@@ -48,10 +52,10 @@ async function fetchFileContents(
   onProgress: (progress: number) => void | Promise<void>
 ): Promise<{ path: string; content: string; language: string }[]> {
   const contents: { path: string; content: string; language: string }[] = [];
-  
+
   for (let i = 0; i < files.length; i++) {
     const filePath = files[i];
-    
+
     try {
       const response = await fetch(
         `https://api.github.com/repos/${repository}/contents/${filePath}`,
@@ -65,12 +69,12 @@ async function fetchFileContents(
 
       if (response.ok) {
         const fileData = await response.json();
-        
+
         if (fileData.content && fileData.encoding === 'base64') {
           const content = Buffer.from(fileData.content, 'base64').toString('utf-8');
           const extension = filePath.split('.').pop()?.toLowerCase() || '';
           const language = getLanguageFromExtension(extension);
-          
+
           contents.push({
             path: filePath,
             content,
@@ -118,29 +122,37 @@ async function analyzeCodeStructure(
     languageDistribution: {} as { [key: string]: number },
     complexity: 0,
     dependencies: [] as { from: string; to: string; type: string }[],
-    codeElements: [] as any[]
+    codeElements: [] as any[],
+    callEdges: [] as any[],
+    hooks: [] as any[],
+    importUsage: [] as any[],
+    props: [] as any[],
   };
 
   for (let i = 0; i < fileContents.length; i++) {
     const file = fileContents[i];
-    
+
     // Update file type count
     const ext = file.path.split('.').pop()?.toLowerCase() || 'unknown';
     analysis.fileTypes[ext] = (analysis.fileTypes[ext] || 0) + 1;
-    
+
     // Update language distribution
     analysis.languageDistribution[file.language] = (analysis.languageDistribution[file.language] || 0) + 1;
-    
+
     // Analyze code content
     const fileAnalysis = analyzeFile(file);
     analysis.functions += fileAnalysis.functions;
     analysis.classes += fileAnalysis.classes;
     analysis.imports += fileAnalysis.imports;
     analysis.complexity += fileAnalysis.complexity;
-    
-    // CRITICAL FIX: Merge the actual elements, not just counts!
+
+    // Merge elements and dependency data
     analysis.codeElements.push(...fileAnalysis.elements);
     analysis.dependencies.push(...fileAnalysis.dependencies);
+    analysis.callEdges.push(...fileAnalysis.callEdges);
+    analysis.hooks.push(...fileAnalysis.hooks);
+    analysis.importUsage.push(...fileAnalysis.importUsage);
+    analysis.props.push(...fileAnalysis.props);
 
     await onProgress(((i + 1) / fileContents.length) * 100);
   }
@@ -155,12 +167,16 @@ async function analyzeCodeStructure(
       functions: analysis.functions,
       classes: analysis.classes,
       imports: analysis.imports,
-      complexity_score: Math.round(analysis.complexity / fileContents.length),
+      complexity_score: Math.round(analysis.complexity / Math.max(fileContents.length, 1)),
       main_language: mainLanguage,
       file_types: analysis.fileTypes
     },
     dependencies: analysis.dependencies,
-    elements: analysis.codeElements
+    elements: analysis.codeElements,
+    callEdges: analysis.callEdges,
+    hooks: analysis.hooks,
+    importUsage: analysis.importUsage,
+    props: analysis.props,
   };
 }
 
@@ -172,16 +188,48 @@ type FileAnalysis = {
   dependencies: { from: string; to: string; type: string; line: number; detail: string }[];
   elements: any[];
   functionCalls: { function: string; line: number; calledFrom: string }[];
+  callEdges: { from: string; to: string; line: number; callType: 'function-call' | 'jsx-render' | 'hook' | 'state-update'; label: string }[];
+  hooks: { hook: string; variable?: string; setter?: string; deps?: string[]; line: number; containingFunction: string }[];
+  importUsage: { name: string; module: string; usedIn: string[] }[];
+  props: { component: string; props: string[] }[];
 };
 
 function makeAnalysis(): FileAnalysis {
-  return { functions: 0, classes: 0, imports: 0, complexity: 0, dependencies: [], elements: [], functionCalls: [] };
+  return {
+    functions: 0,
+    classes: 0,
+    imports: 0,
+    complexity: 0,
+    dependencies: [],
+    elements: [],
+    functionCalls: [],
+    callEdges: [],
+    hooks: [],
+    importUsage: [],
+    props: [],
+  };
 }
 
 function analyzeFile(file: { path: string; content: string; language: string }): FileAnalysis {
   const isJsTs = ['JavaScript', 'TypeScript'].includes(file.language);
   return isJsTs ? analyzeJsTsWithAST(file) : analyzeWithRegex(file);
 }
+
+// Built-in noise filter — skip call edges for these names
+const CALL_NOISE = new Set([
+  'console', 'Math', 'JSON', 'Object', 'Array', 'String', 'Number', 'Boolean',
+  'setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'parseInt', 'parseFloat',
+  'map', 'filter', 'forEach', 'reduce', 'find', 'some', 'every', 'includes', 'flat', 'flatMap',
+  'push', 'pop', 'shift', 'unshift', 'splice', 'slice', 'concat', 'join', 'reverse', 'sort',
+  'split', 'trim', 'replace', 'toLowerCase', 'toUpperCase', 'indexOf', 'startsWith', 'endsWith',
+  'then', 'catch', 'finally', 'resolve', 'reject', 'all', 'allSettled', 'race', 'any',
+  'keys', 'values', 'entries', 'assign', 'freeze', 'create', 'fromEntries',
+  'log', 'error', 'warn', 'info', 'debug', 'from', 'of', 'isArray',
+  'call', 'apply', 'bind', 'toString', 'valueOf',
+  'get', 'set', 'has', 'delete', 'clear',
+  'preventDefault', 'stopPropagation', 'stopImmediatePropagation',
+  'encodeURIComponent', 'decodeURIComponent', 'fetch',
+]);
 
 function analyzeJsTsWithAST(file: { path: string; content: string; language: string }): FileAnalysis {
   const analysis = makeAnalysis();
@@ -199,6 +247,48 @@ function analyzeJsTsWithAST(file: { path: string; content: string; language: str
     sourceFile = ts.createSourceFile(file.path, file.content, ts.ScriptTarget.Latest, true, scriptKind);
   } catch {
     return analyzeWithRegex(file);
+  }
+
+  // --- AST helper functions ---
+
+  function isNoisyCall(name: string): boolean {
+    const top = name.split('.')[0];
+    return CALL_NOISE.has(top) || CALL_NOISE.has(name);
+  }
+
+  function isComponentName(name: string): boolean {
+    const BUILTINS = new Set([
+      'Error', 'Promise', 'String', 'Number', 'Boolean', 'Object',
+      'Array', 'Function', 'Symbol', 'Date', 'RegExp', 'Map', 'Set',
+      'WeakMap', 'WeakSet',
+    ]);
+    return name.length > 0 && name[0] >= 'A' && name[0] <= 'Z' && !BUILTINS.has(name);
+  }
+
+  function getCalleeName(expr: ts.Expression): string | null {
+    if (ts.isIdentifier(expr)) return expr.text;
+    if (ts.isPropertyAccessExpression(expr)) {
+      const obj = getCalleeName(expr.expression);
+      return obj ? `${obj}.${expr.name.text}` : expr.name.text;
+    }
+    return null;
+  }
+
+  function getBindingElementName(el: ts.ArrayBindingElement | undefined): string | undefined {
+    if (!el || ts.isOmittedExpression(el)) return undefined;
+    if (ts.isBindingElement(el) && ts.isIdentifier(el.name)) return el.name.text;
+    return undefined;
+  }
+
+  function extractComponentProps(params: ts.NodeArray<ts.ParameterDeclaration>): string[] {
+    if (!params.length) return [];
+    const first = params[0];
+    if (ts.isObjectBindingPattern(first.name)) {
+      return first.name.elements
+        .filter((el): el is ts.BindingElement => ts.isBindingElement(el) && ts.isIdentifier(el.name))
+        .map(el => (el.name as ts.Identifier).text);
+    }
+    return [];
   }
 
   function lineOf(pos: number): number {
@@ -227,23 +317,127 @@ function analyzeJsTsWithAST(file: { path: string; content: string; language: str
     });
   }
 
-  function visit(node: ts.Node) {
-    // Named function declarations
-    if (ts.isFunctionDeclaration(node) && node.name) {
-      pushFunction(node.name.text, node);
-    }
+  // --- Pass 1: collect all imported identifiers ---
+  // importedNames: identifier text → module path
+  const importedNames = new Map<string, string>();
 
-    // Arrow functions and function expressions assigned to variables
-    if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer) {
-      const init = node.initializer;
-      if (ts.isArrowFunction(init) || ts.isFunctionExpression(init)) {
-        pushFunction(node.name.text, node);
+  function collectImports(node: ts.Node) {
+    if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier)) {
+      const modulePath = node.moduleSpecifier.text;
+      const clause = node.importClause;
+      if (clause) {
+        // default import: import Foo from '...'
+        if (clause.name) {
+          importedNames.set(clause.name.text, modulePath);
+        }
+        const bindings = clause.namedBindings;
+        if (bindings) {
+          if (ts.isNamespaceImport(bindings)) {
+            // import * as Foo from '...'
+            importedNames.set(bindings.name.text, modulePath);
+          } else if (ts.isNamedImports(bindings)) {
+            // import { Foo, Bar } from '...'
+            bindings.elements.forEach(el => {
+              importedNames.set(el.name.text, modulePath);
+            });
+          }
+        }
       }
     }
+    ts.forEachChild(node, collectImports);
+  }
+  ts.forEachChild(sourceFile, collectImports);
 
-    // Class methods
+  // importUsageMap: identifier name → Set of function scopes that use it
+  const importUsageMap = new Map<string, Set<string>>();
+  importedNames.forEach((_, name) => {
+    importUsageMap.set(name, new Set());
+  });
+
+  // --- Pass 2: scope-aware traversal ---
+
+  function visit(node: ts.Node, scope: string) {
+    // Named function declarations
+    if (ts.isFunctionDeclaration(node) && node.name) {
+      const name = node.name.text;
+      pushFunction(name, node);
+      // Extract props if component
+      if (isComponentName(name) && node.parameters) {
+        const propList = extractComponentProps(node.parameters);
+        if (propList.length > 0) {
+          analysis.props.push({ component: name, props: propList });
+        }
+      }
+      // Recurse into children with new scope
+      ts.forEachChild(node, child => visit(child, name));
+      return;
+    }
+
+    // Variable declarations: arrow/function expressions OR array destructuring (hooks)
+    if (ts.isVariableStatement(node)) {
+      ts.forEachChild(node, child => visit(child, scope));
+      return;
+    }
+
+    if (ts.isVariableDeclarationList(node)) {
+      ts.forEachChild(node, child => visit(child, scope));
+      return;
+    }
+
+    if (ts.isVariableDeclaration(node)) {
+      const ln = lineOf(node.getStart(sourceFile));
+
+      // Arrow function / function expression assigned to variable
+      if (ts.isIdentifier(node.name) && node.initializer) {
+        const init = node.initializer;
+        const varName = node.name.text;
+
+        if (ts.isArrowFunction(init) || ts.isFunctionExpression(init)) {
+          pushFunction(varName, node);
+          // Extract props if component
+          if (isComponentName(varName) && init.parameters) {
+            const propList = extractComponentProps(init.parameters);
+            if (propList.length > 0) {
+              analysis.props.push({ component: varName, props: propList });
+            }
+          }
+          // Recurse into body with new scope
+          ts.forEachChild(node, child => visit(child, varName));
+          return;
+        }
+      }
+
+      // Array destructuring: useState / useReducer hooks
+      if (ts.isArrayBindingPattern(node.name) && node.initializer && ts.isCallExpression(node.initializer)) {
+        const callee = getCalleeName(node.initializer.expression);
+        if (callee === 'useState' || callee === 'useReducer') {
+          const elements = node.name.elements;
+          const variable = getBindingElementName(elements[0]);
+          const setter = getBindingElementName(elements[1]);
+          analysis.hooks.push({
+            hook: callee,
+            variable,
+            setter,
+            line: ln,
+            containingFunction: scope,
+          });
+          // Still recurse with same scope (not a new function scope)
+          ts.forEachChild(node, child => visit(child, scope));
+          return;
+        }
+      }
+
+      // Fall through: recurse with same scope
+      ts.forEachChild(node, child => visit(child, scope));
+      return;
+    }
+
+    // Method declarations inside classes
     if (ts.isMethodDeclaration(node) && ts.isIdentifier(node.name)) {
-      pushFunction(node.name.text, node, 'Method');
+      const name = node.name.text;
+      pushFunction(name, node, 'Method');
+      ts.forEachChild(node, child => visit(child, name));
+      return;
     }
 
     // Class declarations
@@ -261,6 +455,8 @@ function analyzeJsTsWithAST(file: { path: string; content: string; language: str
         content: snippet(node),
         details: [`Class: ${name}`, `File: ${file.path}:${ln}`, `Language: ${file.language}`]
       });
+      ts.forEachChild(node, child => visit(child, name));
+      return;
     }
 
     // Import declarations
@@ -280,9 +476,111 @@ function analyzeJsTsWithAST(file: { path: string; content: string; language: str
         content: `${ln}: ${lines[ln - 1]?.trim() || ''}`,
         details: [`Import: ${target}`, `File: ${file.path}:${ln}`, `Type: ${file.language} import`]
       });
+      // Don't recurse into import declarations for call edges
+      return;
     }
 
-    // Complexity nodes
+    // Call expressions
+    if (ts.isCallExpression(node)) {
+      const callee = getCalleeName(node.expression);
+      const ln = lineOf(node.getStart(sourceFile));
+
+      if (callee && scope) {
+        // useEffect / useCallback / useMemo — extract deps array
+        if (callee === 'useEffect' || callee === 'useCallback' || callee === 'useMemo') {
+          const depsArg = node.arguments[callee === 'useEffect' || callee === 'useCallback' ? 1 : 1];
+          let deps: string[] = [];
+          if (depsArg && ts.isArrayLiteralExpression(depsArg)) {
+            deps = depsArg.elements
+              .filter(ts.isIdentifier)
+              .map(id => (id as ts.Identifier).text);
+          }
+          analysis.hooks.push({
+            hook: callee,
+            deps,
+            line: ln,
+            containingFunction: scope,
+          });
+          analysis.callEdges.push({
+            from: scope,
+            to: callee,
+            line: ln,
+            callType: 'hook' as const,
+            label: callee,
+          });
+        }
+        // useContext
+        else if (callee === 'useContext') {
+          const contextArg = node.arguments[0];
+          const contextName = contextArg && ts.isIdentifier(contextArg) ? contextArg.text : 'context';
+          analysis.hooks.push({
+            hook: 'useContext',
+            variable: contextName,
+            line: ln,
+            containingFunction: scope,
+          });
+          analysis.callEdges.push({
+            from: scope,
+            to: contextName,
+            line: ln,
+            callType: 'hook' as const,
+            label: 'useContext',
+          });
+        }
+        // Generic call edges (skip noise)
+        else if (!isNoisyCall(callee)) {
+          analysis.callEdges.push({
+            from: scope,
+            to: callee,
+            line: ln,
+            callType: 'function-call' as const,
+            label: callee,
+          });
+        }
+
+        // Track import usage: if callee top-level name is an imported identifier
+        const topName = callee.split('.')[0];
+        if (importedNames.has(topName) && scope) {
+          importUsageMap.get(topName)?.add(scope);
+        }
+      }
+
+      // Recurse into arguments and callee expression
+      ts.forEachChild(node, child => visit(child, scope));
+      return;
+    }
+
+    // JSX elements: uppercase tag = component render
+    if (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) {
+      const tagName = node.tagName;
+      const tag = ts.isIdentifier(tagName)
+        ? tagName.text
+        : ts.isPropertyAccessExpression(tagName)
+          ? `${(tagName.expression as ts.Identifier).text}.${tagName.name.text}`
+          : null;
+      if (tag && isComponentName(tag.split('.')[0]) && scope) {
+        const ln = lineOf(node.getStart(sourceFile));
+        analysis.callEdges.push({
+          from: scope,
+          to: tag,
+          line: ln,
+          callType: 'jsx-render' as const,
+          label: `renders <${tag}>`,
+        });
+      }
+      ts.forEachChild(node, child => visit(child, scope));
+      return;
+    }
+
+    // Identifiers: track import usage
+    if (ts.isIdentifier(node) && scope) {
+      const name = node.text;
+      if (importedNames.has(name)) {
+        importUsageMap.get(name)?.add(scope);
+      }
+    }
+
+    // Complexity tracking
     if (
       ts.isIfStatement(node) || ts.isWhileStatement(node) || ts.isForStatement(node) ||
       ts.isForInStatement(node) || ts.isForOfStatement(node) || ts.isSwitchStatement(node) ||
@@ -291,10 +589,20 @@ function analyzeJsTsWithAST(file: { path: string; content: string; language: str
       analysis.complexity++;
     }
 
-    ts.forEachChild(node, visit);
+    ts.forEachChild(node, child => visit(child, scope));
   }
 
-  ts.forEachChild(sourceFile, visit);
+  ts.forEachChild(sourceFile, node => visit(node, ''));
+
+  // Materialise importUsage from the map
+  importUsageMap.forEach((usedInSet, name) => {
+    const modulePath = importedNames.get(name)!;
+    const usedIn = Array.from(usedInSet);
+    if (usedIn.length > 0) {
+      analysis.importUsage.push({ name, module: modulePath, usedIn });
+    }
+  });
+
   return analysis;
 }
 
@@ -403,49 +711,60 @@ async function generateVisualization(analysis: any): Promise<any> {
   const legendItems = [
     { color: '#f59e0b', label: 'Imports' },
     { color: '#8b5cf6', label: 'Interfaces/Types' },
-    { color: '#06b6d4', label: 'Context' },
-    { color: '#10b981', label: 'Provider' },
-    { color: '#3b82f6', label: 'Hooks & Auth Methods' },
+    { color: '#06b6d4', label: 'Renders (JSX)' },
+    { color: '#10b981', label: 'Provider/Context' },
+    { color: '#3b82f6', label: 'Functions/Methods' },
+    { color: '#7c3aed', label: 'State (useState)' },
+    { color: '#60a5fa', label: 'Function Calls' },
     { color: '#6b7280', label: 'Utilities' },
-    { color: '#87CEEB', label: 'Exports' },
-    { color: '#ef4444', label: 'Error Handling' }
+    { color: '#ef4444', label: 'Error Handling' },
   ];
 
-  // Group elements by file for better layout
-  const fileGroups: { [key: string]: any[] } = {};
-  analysis.elements.forEach((element: any) => {
-    if (!fileGroups[element.file]) {
-      fileGroups[element.file] = [];
-    }
-    fileGroups[element.file].push(element);
-  });
+  // --- Visualization helper functions ---
 
-  let globalIndex = 0;
-  const filePositions: { [key: string]: { x: number; y: number } } = {};
-  
-  // Create intelligent semantic layout based on code architecture
-  const totalElements = analysis.elements.length;
-  
-  // Group elements by semantic purpose for better layout
+  function findNodeByName(name: string, allNodes: any[], nameMap: Map<string, any>): any | null {
+    if (!name) return null;
+    if (nameMap.has(name)) return nameMap.get(name);
+    return allNodes.find(n =>
+      n.id.includes(`_${name}_`) || n.id.endsWith(`_${name}`) || n.title === name
+    ) || null;
+  }
+
+  function findImportNode(importName: string, module: string, allNodes: any[]): any | null {
+    const moduleSlug = module.replace(/[^a-zA-Z0-9]/g, '_');
+    const nameSlug = importName.replace(/[^a-zA-Z0-9]/g, '_');
+    return allNodes.find(n =>
+      n.id.includes('import') && (
+        n.id.includes(moduleSlug) ||
+        n.id.includes(nameSlug) ||
+        n.title === importName ||
+        n.title.includes(importName.substring(0, 8))
+      )
+    ) || null;
+  }
+
+  // --- Node layout (semantic grouping — unchanged) ---
+
   const elementsByType = {
-    imports: analysis.elements.filter(e => e.type === 'import'),
-    exports: analysis.elements.filter(e => e.type === 'export'),
-    contexts: analysis.elements.filter(e => e.name.toLowerCase().includes('context')),
-    providers: analysis.elements.filter(e => e.name.toLowerCase().includes('provider')),
-    hooks: analysis.elements.filter(e => e.name.startsWith('use')),
-    authMethods: analysis.elements.filter(e => /sign|auth|login|logout|verify/i.test(e.name)),
-    profileMethods: analysis.elements.filter(e => /profile|update|switch|fetch/i.test(e.name)),
-    utilities: analysis.elements.filter(e => 
-      !e.name.toLowerCase().includes('context') && 
+    imports: analysis.elements.filter((e: any) => e.type === 'import'),
+    exports: analysis.elements.filter((e: any) => e.type === 'export'),
+    contexts: analysis.elements.filter((e: any) => e.name.toLowerCase().includes('context')),
+    providers: analysis.elements.filter((e: any) => e.name.toLowerCase().includes('provider')),
+    hooks: analysis.elements.filter((e: any) => e.name.startsWith('use')),
+    authMethods: analysis.elements.filter((e: any) => /sign|auth|login|logout|verify/i.test(e.name)),
+    profileMethods: analysis.elements.filter((e: any) => /profile|update|switch|fetch/i.test(e.name)),
+    utilities: analysis.elements.filter((e: any) =>
+      !e.name.toLowerCase().includes('context') &&
       !e.name.toLowerCase().includes('provider') &&
       !e.name.startsWith('use') &&
       !/sign|auth|login|logout|verify|profile|update|switch|fetch/i.test(e.name) &&
       e.type === 'function'
     ),
-    interfaces: analysis.elements.filter(e => e.type === 'class' || e.name.includes('Type') || e.name.includes('Interface'))
+    interfaces: analysis.elements.filter((e: any) =>
+      e.type === 'class' || e.name.includes('Type') || e.name.includes('Interface')
+    )
   };
-  
-  // Create semantic architecture layout - ONLY for groups that have elements
+
   const allLayoutGroups = [
     { name: 'imports', elements: elementsByType.imports, color: '#f59e0b' },
     { name: 'interfaces', elements: elementsByType.interfaces, color: '#8b5cf6' },
@@ -457,46 +776,43 @@ async function generateVisualization(analysis: any): Promise<any> {
     { name: 'utilities', elements: elementsByType.utilities, color: '#6b7280' },
     { name: 'exports', elements: elementsByType.exports, color: '#87CEEB' }
   ];
-  
-  // Filter to only groups with elements and assign tight Y positions
+
   const layoutGroups = allLayoutGroups
     .filter(group => group.elements.length > 0)
     .map((group, index) => ({
       ...group,
-      y: 50 + index * 80 // Tight 80px spacing between existing groups
+      y: 50 + index * 80
     }));
-    
+
+  let globalIndex = 0;
+
   layoutGroups.forEach(group => {
     group.elements.forEach((element: any, elementIndex: number) => {
-      // Horizontal spacing for elements in the same group - reduced spacing
-      const nodeX = 100 + elementIndex * 180; // Tighter horizontal spacing
+      const nodeX = 100 + elementIndex * 180;
       const nodeY = group.y;
-      
-      // Detect error handling functions
+
       const isErrorFunction = /error|catch|throw|fail|reject|invalid|exception|abort/i.test(element.name);
       const isValidationFunction = /valid|check|verify|confirm|test|assert/i.test(element.name);
-      
-      // Use group color as base, but override for special cases
-      const nodeColor = 
-        isErrorFunction ? '#ef4444' : // Red for error functions
-        isValidationFunction ? '#f59e0b' : // Orange for validation functions
-        group.color; // Use semantic group color
-        
-      const strokeColor = 
-        isErrorFunction ? '#f87171' : // Light red stroke for error functions
-        isValidationFunction ? '#fbbf24' : // Light orange stroke for validation
+
+      const nodeColor =
+        isErrorFunction ? '#ef4444' :
+        isValidationFunction ? '#f59e0b' :
+        group.color;
+
+      const strokeColor =
+        isErrorFunction ? '#f87171' :
+        isValidationFunction ? '#fbbf24' :
         nodeColor === '#f59e0b' ? '#fbbf24' :
         nodeColor === '#8b5cf6' ? '#a78bfa' :
         nodeColor === '#06b6d4' ? '#38bdf8' :
         nodeColor === '#10b981' ? '#34d399' :
         nodeColor === '#3b82f6' ? '#60a5fa' :
         nodeColor === '#6b7280' ? '#9ca3af' :
-        '#B0E0E6'; // Default light blue
+        '#B0E0E6';
 
-      // Adjust node size for better readability
       const nodeWidth = 180;
       const nodeHeight = 45;
-      
+
       nodes.push({
         id: element.id,
         title: element.name.length > 20 ? element.name.substring(0, 18) + '...' : element.name,
@@ -509,15 +825,15 @@ async function generateVisualization(analysis: any): Promise<any> {
         stepNumber: globalIndex + 1,
         isError: isErrorFunction,
         isValidation: isValidationFunction,
-        group: group.name, // Add semantic group info
-        content: element.content, // Add actual code content for code viewer
+        group: group.name,
+        content: element.content,
         details: element.details || [
           `Group: ${group.name}`,
           `${element.type}: ${element.name}`,
           `File: ${element.file}:${element.line}`,
           `Language: ${element.language}`,
-          isErrorFunction ? 'Type: Error Handler' : 
-          isValidationFunction ? 'Type: Validation' : 
+          isErrorFunction ? 'Type: Error Handler' :
+          isValidationFunction ? 'Type: Validation' :
           `Type: ${element.type}`
         ]
       });
@@ -525,173 +841,140 @@ async function generateVisualization(analysis: any): Promise<any> {
     });
   });
 
-  // Create connections based on dependencies with detailed labels
-  analysis.dependencies.forEach((dep: any) => {
-    // Find source file nodes (imports)
-    const sourceNodes = nodes.filter(n => n.id.includes(dep.from.replace(/[^a-zA-Z0-9]/g, '_')));
-    
-    // For imports, connect to any node that imports the same module
-    const importTargetNodes = nodes.filter(n => 
-      n.id.includes('import') && 
-      (n.id.includes(dep.to.replace(/[^a-zA-Z0-9]/g, '_')) || 
-       (n.details && n.details.some((d: string) => d.includes(dep.to))))
+  // --- Build node lookup maps ---
+  const nodeByName = new Map<string, any>();
+  const nodeById = new Map<string, any>();
+  nodes.forEach(n => {
+    nodeById.set(n.id, n);
+    nodeByName.set(n.title, n);
+    const idParts = n.id.split('_');
+    if (idParts.length >= 3) {
+      const rawName = idParts.slice(2, -1).join('_');
+      nodeByName.set(rawName, n);
+    }
+  });
+
+  // --- Real connections ---
+  const realConnections: any[] = [];
+
+  // 1. Hook/state nodes — inserted first so their IDs exist for connection lookup
+  if (analysis.hooks && analysis.hooks.length > 0) {
+    const stateHooks = analysis.hooks.filter(
+      (h: any) => h.hook === 'useState' || h.hook === 'useReducer'
     );
+    stateHooks.forEach((hook: any, i: number) => {
+      const label = hook.variable ? `${hook.variable} state` : `State ${i + 1}`;
+      const stateNode = {
+        id: `hook_state_${hook.variable || i}_${hook.line}`,
+        title: label.length > 20 ? label.substring(0, 18) + '...' : label,
+        x: 100 + i * 200,
+        y: 180,
+        width: 160,
+        height: 40,
+        color: '#7c3aed',
+        strokeColor: '#a78bfa',
+        stepNumber: undefined,
+        isError: false,
+        group: 'state',
+        details: [
+          `State: ${hook.variable || 'unknown'}`,
+          `Setter: ${hook.setter || 'unknown'}`,
+          `In: ${hook.containingFunction}`,
+          `Line: ${hook.line}`,
+          'Type: React State — changes cause re-render'
+        ]
+      };
+      nodes.push(stateNode);
+      if (hook.variable) nodeByName.set(hook.variable, stateNode);
+      if (hook.setter) nodeByName.set(hook.setter, stateNode);
+      nodeByName.set(label, stateNode);
 
-    if (sourceNodes.length > 0 && importTargetNodes.length > 0) {
-      const sourceNode = sourceNodes[0];
-      const targetNode = importTargetNodes[0];
-      
-      connections.push({
-        from: { x: sourceNode.x + sourceNode.width, y: sourceNode.y + sourceNode.height / 2 },
-        to: { x: targetNode.x, y: targetNode.y + targetNode.height / 2 },
-        color: '#ef4444',
-        label: `Line ${dep.line}`,
-        detail: dep.detail,
-        animated: true
-      });
-    }
-  });
-
-  // Create semantic architecture flow connections
-  const semanticConnections = [];
-  
-  // 1. Imports flow to interfaces (or directly to context if no interfaces)
-  if (elementsByType.imports.length > 0) {
-    const importNode = nodes.find(n => elementsByType.imports.some(e => e.id === n.id));
-    let targetNode = nodes.find(n => elementsByType.interfaces.some(e => e.id === n.id));
-    
-    // If no interfaces, connect to context
-    if (!targetNode && elementsByType.contexts.length > 0) {
-      targetNode = nodes.find(n => elementsByType.contexts.some(e => e.id === n.id));
-    }
-    
-    // If no context, connect to provider
-    if (!targetNode && elementsByType.providers.length > 0) {
-      targetNode = nodes.find(n => elementsByType.providers.some(e => e.id === n.id));
-    }
-    if (importNode && targetNode) {
-      semanticConnections.push({
-        from: { x: importNode.x + importNode.width/2, y: importNode.y + importNode.height },
-        to: { x: targetNode.x + targetNode.width/2, y: targetNode.y },
-        color: '#3b82f6',
-        label: 'Flow',
-        detail: 'Architecture flow from imports',
-        strokeWidth: 3,
-        animated: false
-      });
-    }
-  }
-  
-  // Connect consecutive existing groups
-  for (let i = 0; i < layoutGroups.length - 1; i++) {
-    const currentGroup = layoutGroups[i];
-    const nextGroup = layoutGroups[i + 1];
-    
-    const currentNode = nodes.find(n => currentGroup.elements.some(e => e.id === n.id));
-    const nextNode = nodes.find(n => nextGroup.elements.some(e => e.id === n.id));
-    
-    if (currentNode && nextNode) {
-      semanticConnections.push({
-        from: { x: currentNode.x + currentNode.width/2, y: currentNode.y + currentNode.height },
-        to: { x: nextNode.x + nextNode.width/2, y: nextNode.y },
-        color: nextGroup.color,
-        label: 'Flow',
-        detail: `Architecture flow: ${currentGroup.name} → ${nextGroup.name}`,
-        strokeWidth: 4,
-        animated: false
-      });
-    }
-  }
-  
-  // 5. Add REAL error handling flows - only for functions with actual try/catch or error keywords
-  elementsByType.authMethods.forEach(authMethod => {
-    const authNode = nodes.find(n => n.id === authMethod.id);
-    if (authNode) {
-      // Only add error path if the function actually contains error handling keywords
-      const hasRealErrorHandling = authMethod.content && 
-        /try\s*\{|catch\s*\(|throw\s+|\.catch\(|error\s*[=:]/i.test(authMethod.content);
-      
-      // Add success path to profile methods
-      const profileNode = nodes.find(n => elementsByType.profileMethods.some(e => e.id === n.id));
-      if (profileNode) {
-        semanticConnections.push({
-          from: { x: authNode.x + authNode.width, y: authNode.y + authNode.height/2 },
-          to: { x: profileNode.x, y: profileNode.y + profileNode.height/2 },
-          color: '#10b981',
-          label: 'Success',
-          detail: `${authMethod.name} success → profile management`,
-          strokeWidth: 3
-        });
-      }
-      
-      // ONLY add error path if there's REAL error handling in the code
-      if (hasRealErrorHandling) {
-        semanticConnections.push({
-          from: { x: authNode.x + authNode.width/2, y: authNode.y + authNode.height },
-          to: { x: authNode.x + authNode.width/2, y: authNode.y + authNode.height + 60 },
-          color: '#ef4444',
-          label: 'Error',
-          detail: `${authMethod.name} has try/catch error handling`,
-          strokeWidth: 3,
-          strokeDasharray: "10,5",
-          animated: true,
-          isError: true
-        });
-      }
-    }
-  });
-  
-  connections.push(...semanticConnections);
-
-  // Add cross-file connections for imports/exports
-  nodes.forEach(importNode => {
-    if (importNode.title.includes('📥')) {
-      // Find potential export matches in other files
-      nodes.forEach(exportNode => {
-        if (exportNode.title.includes('📤') && 
-            exportNode.details[0].includes(importNode.details[0].split(': ')[1]?.split('/').pop() || '')) {
-          connections.push({
-            from: { x: importNode.x + importNode.width, y: importNode.y + importNode.height / 2 },
-            to: { x: exportNode.x, y: exportNode.y + exportNode.height / 2 },
-            color: '#ef4444',
-            label: 'Cross-file',
-            detail: `Cross-file dependency: ${importNode.title} connects to ${exportNode.title}`,
-            animated: true
-          });
-        }
-      });
-    }
-  });
-
-  // Add function call connections if we have function call data
-  if (analysis.functionCalls && analysis.functionCalls.length > 0) {
-    analysis.functionCalls.forEach((call: any) => {
-      const callerNodes = nodes.filter(n => n.id.includes(call.calledFrom.replace(/[^a-zA-Z0-9]/g, '_')));
-      const targetNodes = nodes.filter(n => n.title === call.function);
-      
-      if (callerNodes.length > 0 && targetNodes.length > 0) {
-        const callerNode = callerNodes[0];
-        const targetNode = targetNodes[0];
-        
-        connections.push({
-          from: { x: callerNode.x + callerNode.width, y: callerNode.y + callerNode.height / 2 },
-          to: { x: targetNode.x, y: targetNode.y + targetNode.height / 2 },
-          color: '#8b5cf6',
-          label: `Calls at line ${call.line}`,
-          detail: `Function ${call.function} called from ${call.calledFrom} at line ${call.line}`
+      // Connect container function → state node
+      const containerNode = findNodeByName(hook.containingFunction, nodes, nodeByName);
+      if (containerNode) {
+        realConnections.push({
+          fromId: containerNode.id,
+          toId: stateNode.id,
+          from: { x: containerNode.x + containerNode.width / 2, y: containerNode.y + containerNode.height },
+          to: { x: stateNode.x + stateNode.width / 2, y: stateNode.y },
+          color: '#7c3aed',
+          label: 'manages',
+          detail: `${hook.containingFunction} manages ${hook.variable} state`,
+          strokeWidth: 2,
+          animated: false,
         });
       }
     });
   }
 
+  // 2. Real call edges (call graph + JSX render tree)
+  if (analysis.callEdges && analysis.callEdges.length > 0) {
+    const seen = new Set<string>();
+    analysis.callEdges.forEach((edge: any) => {
+      const key = `${edge.from}→${edge.to}`;
+      if (seen.has(key)) return;
+
+      const fromNode = findNodeByName(edge.from, nodes, nodeByName);
+      const toNode = findNodeByName(edge.to, nodes, nodeByName);
+
+      if (fromNode && toNode && fromNode.id !== toNode.id) {
+        seen.add(key);
+
+        const isJsx = edge.callType === 'jsx-render';
+        const isHook = edge.callType === 'hook';
+
+        realConnections.push({
+          fromId: fromNode.id,
+          toId: toNode.id,
+          from: { x: fromNode.x + fromNode.width / 2, y: fromNode.y + fromNode.height },
+          to: { x: toNode.x + toNode.width / 2, y: toNode.y },
+          color: isJsx ? '#06b6d4' : isHook ? '#8b5cf6' : '#60a5fa',
+          label: edge.label || edge.callType,
+          detail: `${edge.from} → ${edge.to}`,
+          strokeWidth: isJsx ? 2 : 3,
+          strokeDasharray: isJsx ? '6,3' : undefined,
+          animated: false,
+        });
+      }
+    });
+  }
+
+  // 3. Import usage edges
+  if (analysis.importUsage && analysis.importUsage.length > 0) {
+    const importSeen = new Set<string>();
+    analysis.importUsage.forEach((usage: any) => {
+      usage.usedIn.forEach((funcName: string) => {
+        const key = `${usage.name}→${funcName}`;
+        if (importSeen.has(key)) return;
+        const importNode = findImportNode(usage.name, usage.module, nodes);
+        const funcNode = findNodeByName(funcName, nodes, nodeByName);
+        if (importNode && funcNode && importNode.id !== funcNode.id) {
+          importSeen.add(key);
+          realConnections.push({
+            fromId: importNode.id,
+            toId: funcNode.id,
+            from: { x: importNode.x + importNode.width / 2, y: importNode.y + importNode.height },
+            to: { x: funcNode.x + funcNode.width / 2, y: funcNode.y },
+            color: '#f59e0b',
+            label: 'used by',
+            detail: `${usage.name} used in ${funcName}`,
+            strokeWidth: 1.5,
+            animated: false,
+          });
+        }
+      });
+    });
+  }
+
+  connections.push(...realConnections);
+
   return {
     id: 'semantic-architecture-analysis',
     title: `Semantic Architecture Flow - ${analysis.summary.main_language}`,
-    description: `Intelligent architecture visualization showing code flow: imports → interfaces → context → provider → hooks → methods`,
-    viewBox: "0 0 4500 800", // Wider viewBox to prevent horizontal clipping, shorter for tighter spacing
+    description: `Intelligent architecture visualization showing real call graph, JSX render tree, hook semantics, and import usage`,
+    viewBox: '0 0 4500 800',
     nodes,
     connections,
     legendItems
   };
 }
-
