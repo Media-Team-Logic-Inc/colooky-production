@@ -797,9 +797,22 @@ async function generateVisualization(analysis: any): Promise<any> {
     );
   });
 
-  // Map level → Y position
-  const LEVEL_Y: Record<number, number> = { 0: 60, 1: 240, 2: 420, 3: 600 };
-  const NODE_W = 180, NODE_H = 45, H_GAP = 210;
+  // Map level → Y position (dynamic: import rows stack vertically before other levels)
+  const IMPORTS_PER_ROW = 5;
+  const IMPORT_H_GAP = 155;
+  const IMPORT_ROW_H = 75;
+  const BASE_IMPORT_Y = 60;
+  const importCount = levelGroups.get(0)?.length ?? 0;
+  const importRows = Math.max(1, Math.ceil(importCount / IMPORTS_PER_ROW));
+  const NON_IMPORT_BASE_Y = BASE_IMPORT_Y + importRows * IMPORT_ROW_H + 50;
+
+  const LEVEL_Y: Record<number, number> = {
+    0: BASE_IMPORT_Y,
+    1: NON_IMPORT_BASE_Y,
+    2: NON_IMPORT_BASE_Y + 180,
+    3: NON_IMPORT_BASE_Y + 360,
+  };
+  const NODE_W = 160, NODE_H = 45, H_GAP = 195;
 
   function getNodeColor(element: any): { color: string; strokeColor: string } {
     const isErr = /error|catch|throw|fail|reject|invalid|exception|abort/i.test(element.name);
@@ -819,9 +832,17 @@ async function generateVisualization(analysis: any): Promise<any> {
   let stepNum = 0;
   Array.from(levelGroups.keys()).sort().forEach(level => {
     const elements = levelGroups.get(level)!;
-    const y = LEVEL_Y[level] ?? 60 + level * 180;
     elements.forEach((element: any, idx: number) => {
-      const x = 80 + idx * H_GAP;
+      let x: number, y: number;
+      if (level === 0) {
+        const col = idx % IMPORTS_PER_ROW;
+        const row = Math.floor(idx / IMPORTS_PER_ROW);
+        x = 80 + col * IMPORT_H_GAP;
+        y = BASE_IMPORT_Y + row * IMPORT_ROW_H;
+      } else {
+        x = 80 + idx * H_GAP;
+        y = LEVEL_Y[level] ?? NON_IMPORT_BASE_Y + level * 180;
+      }
       const { color, strokeColor } = getNodeColor(element);
       const isErr = /error|catch|throw|fail|reject|invalid|exception|abort/i.test(element.name);
       const isVal = /valid|check|verify|confirm|test|assert/i.test(element.name);
@@ -874,7 +895,7 @@ async function generateVisualization(analysis: any): Promise<any> {
         id: `hook_state_${hook.variable || i}_${hook.line}`,
         title: label.length > 20 ? label.substring(0, 18) + '...' : label,
         x: 100 + i * 200,
-        y: 330,
+        y: LEVEL_Y[1] + 90,
         width: 160,
         height: 40,
         color: '#7c3aed',

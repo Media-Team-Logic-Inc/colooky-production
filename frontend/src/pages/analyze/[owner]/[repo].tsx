@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { GetServerSideProps } from 'next';
 import { getSession } from 'next-auth/react';
 import Head from 'next/head';
@@ -110,6 +110,10 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
   const [savedAnalysisId, setSavedAnalysisId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [filteredFileTree, setFilteredFileTree] = useState<FileTreeNode[]>([]);
+  const [nodeCodePanel, setNodeCodePanel] = useState<{content: string, path: string, highlightLine?: number, language: string} | null>(null);
+  const nodePanelHighlightRef = useCallback((el: HTMLDivElement | null) => {
+    if (el) setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
+  }, []);
 
   // Supported file extensions for analysis
   const supportedExtensions = new Set([
@@ -1251,40 +1255,90 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
             <div className="mb-6">
               {/* MAXIMUM WIDTH Visualization - Full viewport usage */}
               <div className="w-full">
-                <div className="h-[800px] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4 relative overflow-hidden">
-                  <ImprovedFlexibleSubwayMap
-                    scenario={(() => {
-                      let professionalVisualization = analysis.visualization;
-                      if (professionalVisualization) {
-                        professionalVisualization = enhanceScenarioWithErrors(professionalVisualization, analysis);
-                        professionalVisualization = addStepNumbers(professionalVisualization);
-                      }
-                      return professionalVisualization;
-                    })()}
-                    onScenarioChange={() => {}}
-                    availableScenarios={[analysis.visualization]}
-                    repositoryInfo={{
-                      owner: repository.owner,
-                      name: repository.name,
-                      full_name: repository.full_name
-                    }}
-                    analysisInfo={{
-                      selectedFiles: selectedFiles,
-                      fileCount: selectedFiles.length,
-                      analysisType: selectedFiles.length === 1 ? 'single-file' : 'multi-file'
-                    }}
-                    onNodeClick={(node) => {
-                      // Extract file path and line number from node details
-                      const fileDetail = node.details?.find((detail: string) => detail.startsWith('File: '));
-                      if (fileDetail) {
+                <div className="h-[800px] border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden flex">
+                  {/* Visualization — shrinks when code panel is open */}
+                  <div className={`h-full bg-white dark:bg-slate-800 p-4 relative transition-all duration-300 ${nodeCodePanel ? 'w-[58%]' : 'w-full'}`}>
+                    <ImprovedFlexibleSubwayMap
+                      scenario={(() => {
+                        let professionalVisualization = analysis.visualization;
+                        if (professionalVisualization) {
+                          professionalVisualization = enhanceScenarioWithErrors(professionalVisualization, analysis);
+                          professionalVisualization = addStepNumbers(professionalVisualization);
+                        }
+                        return professionalVisualization;
+                      })()}
+                      onScenarioChange={() => {}}
+                      availableScenarios={[analysis.visualization]}
+                      repositoryInfo={{
+                        owner: repository.owner,
+                        name: repository.name,
+                        full_name: repository.full_name
+                      }}
+                      analysisInfo={{
+                        selectedFiles: selectedFiles,
+                        fileCount: selectedFiles.length,
+                        analysisType: selectedFiles.length === 1 ? 'single-file' : 'multi-file'
+                      }}
+                      onNodeClick={async (node) => {
+                        const fileDetail = node.details?.find((detail: string) => detail.startsWith('File: '));
+                        if (!fileDetail) return;
                         const fileInfo = fileDetail.replace('File: ', '');
                         const [filePath, lineNumber] = fileInfo.split(':');
                         const highlightLine = lineNumber ? parseInt(lineNumber) : undefined;
-                        viewFileContent(filePath, highlightLine);
-                      }
-                    }}
-                    onNodeSelect={() => {}}
-                  />
+                        try {
+                          const resp = await fetch(
+                            `https://api.github.com/repos/${repository.owner}/${repository.name}/contents/${filePath}`,
+                            { headers: { 'Authorization': `Bearer ${accessToken}`, 'Accept': 'application/vnd.github.v3+json' } }
+                          );
+                          if (resp.ok) {
+                            const fileData = await resp.json();
+                            if (fileData.content && fileData.encoding === 'base64') {
+                              const content = atob(fileData.content.replace(/\n/g, ''));
+                              const ext = filePath.split('.').pop()?.toLowerCase() || '';
+                              setNodeCodePanel({ content, path: filePath, highlightLine, language: getLanguageFromExtension('.' + ext) });
+                            }
+                          }
+                        } catch {}
+                      }}
+                      onNodeSelect={() => {}}
+                    />
+                  </div>
+
+                  {/* Slide-in code panel */}
+                  {nodeCodePanel && (
+                    <div className="w-[42%] h-full bg-slate-900 border-l border-slate-700 flex flex-col overflow-hidden">
+                      <div className="flex items-center justify-between px-3 py-2 border-b border-slate-700 shrink-0">
+                        <span className="text-xs text-slate-300 font-mono truncate">{nodeCodePanel.path}</span>
+                        {nodeCodePanel.highlightLine && (
+                          <span className="text-xs text-yellow-400 ml-2 shrink-0">:{nodeCodePanel.highlightLine}</span>
+                        )}
+                        <button
+                          onClick={() => setNodeCodePanel(null)}
+                          className="ml-3 text-slate-400 hover:text-white transition-colors shrink-0"
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                      <div className="flex-1 overflow-auto">
+                        <pre className="text-xs font-mono leading-5 p-2">
+                          {nodeCodePanel.content.split('\n').map((line, i) => {
+                            const lineNum = i + 1;
+                            const isHighlighted = lineNum === nodeCodePanel.highlightLine;
+                            return (
+                              <div
+                                key={lineNum}
+                                ref={isHighlighted ? nodePanelHighlightRef : null}
+                                className={`flex gap-2 px-1 ${isHighlighted ? 'bg-yellow-400/20 border-l-2 border-yellow-400' : ''}`}
+                              >
+                                <span className="text-slate-600 select-none w-8 text-right shrink-0">{lineNum}</span>
+                                <span className="text-slate-300 whitespace-pre">{line}</span>
+                              </div>
+                            );
+                          })}
+                        </pre>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
