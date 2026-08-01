@@ -129,7 +129,6 @@ export function generateSubwayLayout(analysisData: any): {
     return createEmptyLayout();
   }
 
-  console.log('🏗️ Generating hierarchical layout for', analysisData.nodes.length, 'nodes');
   
   // NEW: Use hierarchical triangular layout for any size
   const classifiedNodes = classifyNodes(analysisData.nodes);
@@ -144,11 +143,6 @@ export function generateSubwayLayout(analysisData: any): {
   // Calculate dynamic viewBox that GUARANTEES all nodes are visible
   const viewBox = calculateOptimalViewBox(layoutNodes);
 
-  console.log('✅ Generated layout:', {
-    nodeCount: layoutNodes.length,
-    viewBox,
-    nodeTypes: Array.from(new Set(layoutNodes.map(n => n.type)))
-  });
 
   return {
     nodes: layoutNodes,
@@ -230,7 +224,6 @@ function generateHierarchicalTriangularLayout(nodes: any[]): SubwayNode[] {
     const typeNodes = nodesByType[typeName] || [];
     if (typeNodes.length === 0) return;
     
-    console.log(`📊 Level ${levelIndex}: ${typeName} (${typeNodes.length} nodes)`);
     
     // Calculate nodes per row for this level (triangular expansion)
     const triangularFactor = Math.pow(config.triangleSpread, levelIndex);
@@ -280,7 +273,6 @@ function generateHierarchicalTriangularLayout(nodes: any[]): SubwayNode[] {
     currentY += config.levelHeight + (rowsNeeded > 1 ? (rowsNeeded - 1) * 90 : 0);
   });
 
-  console.log(`🎨 Generated hierarchical layout: ${positioned.length} nodes positioned`);
   return positioned;
 }
 
@@ -299,7 +291,6 @@ function calculateOptimalViewBox(nodes: SubwayNode[]): string {
   const minY = Math.min(...topEdges);
   const maxY = Math.max(...bottomEdges);
   
-  console.log('📏 Node bounds:', { minX, maxX, minY, maxY });
   
   const contentWidth = maxX - minX;
   const contentHeight = maxY - minY;
@@ -320,8 +311,6 @@ function calculateOptimalViewBox(nodes: SubwayNode[]): string {
   const viewBoxY = Math.min(finalMinY, 0);
   
   const viewBox = `${viewBoxX} ${viewBoxY} ${viewBoxWidth} ${viewBoxHeight}`;
-  console.log('📐 Calculated optimal viewBox:', viewBox);
-  console.log('📊 Content dimensions:', { contentWidth, contentHeight, paddingX, paddingY });
   
   return viewBox;
 }
@@ -330,7 +319,6 @@ function calculateOptimalViewBox(nodes: SubwayNode[]): string {
 function generateConnections(nodes: SubwayNode[], originalConnections?: any[]): SubwayConnection[] {
   const connections: SubwayConnection[] = [];
   
-  console.log('🎨 Creating beautiful connections for', nodes.length, 'nodes');
   
   // Group nodes by type for intelligent connections
   const nodesByType: Record<string, SubwayNode[]> = {};
@@ -389,7 +377,6 @@ function generateConnections(nodes: SubwayNode[], originalConnections?: any[]): 
     }
   });
   
-  console.log('✨ Generated', connections.length, 'beautiful connections');
   return connections;
 }
 

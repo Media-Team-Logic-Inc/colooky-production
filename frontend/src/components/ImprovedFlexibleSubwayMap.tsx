@@ -970,34 +970,37 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
               ))}
             </defs>
 
-            {/* Connections - Fixed to always stay connected */}
+            {/* Connections — resolved by ID first, position proximity as fallback */}
             {scenario.connections.map((connection, index) => {
-              // More robust node finding using node IDs from connection metadata
-              let fromNode = null;
-              let toNode = null;
+              // Build a fast ID lookup map (computed once per render via useMemo would be ideal,
+              // but inline here keeps the diff minimal)
+              const nodeById = new Map(scenario.nodes.map(n => [n.id, n]));
 
-              // Try to find nodes by proximity or by iterating through all nodes
-              for (const node of scenario.nodes) {
-                const nodePos = getNodePosition(node);
-                // Check if this node is the source (within reasonable distance)
-                if (Math.abs(nodePos.x + node.width/2 - connection.from.x) < 100 && 
-                    Math.abs(nodePos.y + node.height/2 - connection.from.y) < 100) {
-                  fromNode = node;
-                }
-                // Check if this node is the target
-                if (Math.abs(nodePos.x + node.width/2 - connection.to.x) < 100 && 
-                    Math.abs(nodePos.y + node.height/2 - connection.to.y) < 100) {
-                  toNode = node;
+              let fromNode = (connection as any).fromId ? nodeById.get((connection as any).fromId) ?? null : null;
+              let toNode   = (connection as any).toId   ? nodeById.get((connection as any).toId)   ?? null : null;
+
+              // Fallback: position proximity (keeps backward-compat with older saved scenarios)
+              if (!fromNode || !toNode) {
+                for (const node of scenario.nodes) {
+                  const nodePos = getNodePosition(node);
+                  if (!fromNode && Math.abs(nodePos.x + node.width/2 - connection.from.x) < 100 &&
+                      Math.abs(nodePos.y + node.height/2 - connection.from.y) < 100) {
+                    fromNode = node;
+                  }
+                  if (!toNode && Math.abs(nodePos.x + node.width/2 - connection.to.x) < 100 &&
+                      Math.abs(nodePos.y + node.height/2 - connection.to.y) < 100) {
+                    toNode = node;
+                  }
                 }
               }
 
-              // Calculate connection points
+              // Calculate connection endpoints from current (possibly dragged) node positions
               let fromX: number, fromY: number, toX: number, toY: number;
-              
+
               if (fromNode) {
                 const fromPos = getNodePosition(fromNode);
-                fromX = fromPos.x + fromNode.width/2;
-                fromY = fromPos.y + fromNode.height;  // Bottom of source node
+                fromX = fromPos.x + fromNode.width / 2;
+                fromY = fromPos.y + fromNode.height;
               } else {
                 fromX = connection.from.x;
                 fromY = connection.from.y;
@@ -1005,8 +1008,8 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
 
               if (toNode) {
                 const toPos = getNodePosition(toNode);
-                toX = toPos.x + toNode.width/2;
-                toY = toPos.y;  // Top of target node
+                toX = toPos.x + toNode.width / 2;
+                toY = toPos.y;
               } else {
                 toX = connection.to.x;
                 toY = connection.to.y;

@@ -743,101 +743,107 @@ async function generateVisualization(analysis: any): Promise<any> {
     ) || null;
   }
 
-  // --- Node layout (semantic grouping — unchanged) ---
+  // --- Hierarchical layout using call graph (topological sort) ---
 
-  const elementsByType = {
-    imports: analysis.elements.filter((e: any) => e.type === 'import'),
-    exports: analysis.elements.filter((e: any) => e.type === 'export'),
-    contexts: analysis.elements.filter((e: any) => e.name.toLowerCase().includes('context')),
-    providers: analysis.elements.filter((e: any) => e.name.toLowerCase().includes('provider')),
-    hooks: analysis.elements.filter((e: any) => e.name.startsWith('use')),
-    authMethods: analysis.elements.filter((e: any) => /sign|auth|login|logout|verify/i.test(e.name)),
-    profileMethods: analysis.elements.filter((e: any) => /profile|update|switch|fetch/i.test(e.name)),
-    utilities: analysis.elements.filter((e: any) =>
-      !e.name.toLowerCase().includes('context') &&
-      !e.name.toLowerCase().includes('provider') &&
-      !e.name.startsWith('use') &&
-      !/sign|auth|login|logout|verify|profile|update|switch|fetch/i.test(e.name) &&
-      e.type === 'function'
-    ),
-    interfaces: analysis.elements.filter((e: any) =>
-      e.type === 'class' || e.name.includes('Type') || e.name.includes('Interface')
-    )
-  };
+  // Build caller maps from call edges
+  const calledByFunctions = new Map<string, Set<string>>();
+  const callsMap = new Map<string, Set<string>>();
+  (analysis.callEdges || []).forEach((edge: any) => {
+    if (!calledByFunctions.has(edge.to)) calledByFunctions.set(edge.to, new Set());
+    calledByFunctions.get(edge.to)!.add(edge.from);
+    if (!callsMap.has(edge.from)) callsMap.set(edge.from, new Set());
+    callsMap.get(edge.from)!.add(edge.to);
+  });
 
-  const allLayoutGroups = [
-    { name: 'imports', elements: elementsByType.imports, color: '#f59e0b' },
-    { name: 'interfaces', elements: elementsByType.interfaces, color: '#8b5cf6' },
-    { name: 'contexts', elements: elementsByType.contexts, color: '#06b6d4' },
-    { name: 'providers', elements: elementsByType.providers, color: '#10b981' },
-    { name: 'hooks', elements: elementsByType.hooks, color: '#3b82f6' },
-    { name: 'authMethods', elements: elementsByType.authMethods, color: '#3b82f6' },
-    { name: 'profileMethods', elements: elementsByType.profileMethods, color: '#3b82f6' },
-    { name: 'utilities', elements: elementsByType.utilities, color: '#6b7280' },
-    { name: 'exports', elements: elementsByType.exports, color: '#87CEEB' }
-  ];
+  // Level assignment via recursive computation with cycle detection:
+  // 0 = imports   1 = top-level (no function callers)
+  // 2 = sub-functions   3 = deep sub-functions
+  const elementLevels = new Map<string, number>();
 
-  const layoutGroups = allLayoutGroups
-    .filter(group => group.elements.length > 0)
-    .map((group, index) => ({
-      ...group,
-      y: 50 + index * 80
-    }));
+  function computeLevel(el: any, visited = new Set<string>()): number {
+    if (elementLevels.has(el.name)) return elementLevels.get(el.name)!;
+    if (visited.has(el.name)) return 2; // break cycles
+    visited.add(el.name);
+    if (el.type === 'import') return 0;
+    if (el.type === 'class') return 1;
+    const funcCallers = Array.from(calledByFunctions.get(el.name) || []).filter((c: string) => {
+      const ce = analysis.elements.find((e: any) => e.name === c);
+      return ce && ce.type !== 'import';
+    });
+    if (funcCallers.length === 0) return 1;
+    const callerLevels = funcCallers.map(c => {
+      const ce = analysis.elements.find((e: any) => e.name === c);
+      return ce ? computeLevel(ce, new Set(visited)) : 1;
+    });
+    return Math.min(Math.max(...callerLevels) + 1, 3);
+  }
 
-  let globalIndex = 0;
+  analysis.elements.forEach((el: any) => {
+    elementLevels.set(el.name, computeLevel(el));
+  });
 
-  layoutGroups.forEach(group => {
-    group.elements.forEach((element: any, elementIndex: number) => {
-      const nodeX = 100 + elementIndex * 180;
-      const nodeY = group.y;
+  // Group by level, sort within level by connectivity (most-connected first)
+  const levelGroups = new Map<number, any[]>();
+  analysis.elements.forEach((el: any) => {
+    const lvl = elementLevels.get(el.name) ?? 1;
+    if (!levelGroups.has(lvl)) levelGroups.set(lvl, []);
+    levelGroups.get(lvl)!.push(el);
+  });
+  levelGroups.forEach((elements, level) => {
+    elements.sort((a: any, b: any) =>
+      level === 0
+        ? a.name.localeCompare(b.name)
+        : (callsMap.get(b.name) || new Set()).size - (callsMap.get(a.name) || new Set()).size
+    );
+  });
 
-      const isErrorFunction = /error|catch|throw|fail|reject|invalid|exception|abort/i.test(element.name);
-      const isValidationFunction = /valid|check|verify|confirm|test|assert/i.test(element.name);
+  // Map level → Y position
+  const LEVEL_Y: Record<number, number> = { 0: 60, 1: 240, 2: 420, 3: 600 };
+  const NODE_W = 180, NODE_H = 45, H_GAP = 210;
 
-      const nodeColor =
-        isErrorFunction ? '#ef4444' :
-        isValidationFunction ? '#f59e0b' :
-        group.color;
+  function getNodeColor(element: any): { color: string; strokeColor: string } {
+    const isErr = /error|catch|throw|fail|reject|invalid|exception|abort/i.test(element.name);
+    const isVal = /valid|check|verify|confirm|test|assert/i.test(element.name);
+    if (isErr) return { color: '#ef4444', strokeColor: '#f87171' };
+    if (isVal) return { color: '#f59e0b', strokeColor: '#fbbf24' };
+    if (element.type === 'import') return { color: '#f59e0b', strokeColor: '#fbbf24' };
+    if (element.type === 'class') return { color: '#8b5cf6', strokeColor: '#a78bfa' };
+    if (element.name.toLowerCase().includes('context')) return { color: '#06b6d4', strokeColor: '#38bdf8' };
+    if (element.name.toLowerCase().includes('provider')) return { color: '#10b981', strokeColor: '#34d399' };
+    if (element.name.startsWith('use')) return { color: '#3b82f6', strokeColor: '#60a5fa' };
+    if (/^handle|^on[A-Z]/.test(element.name)) return { color: '#10b981', strokeColor: '#34d399' };
+    if (element.type === 'function' && /^[A-Z]/.test(element.name)) return { color: '#3b82f6', strokeColor: '#60a5fa' };
+    return { color: '#6b7280', strokeColor: '#9ca3af' };
+  }
 
-      const strokeColor =
-        isErrorFunction ? '#f87171' :
-        isValidationFunction ? '#fbbf24' :
-        nodeColor === '#f59e0b' ? '#fbbf24' :
-        nodeColor === '#8b5cf6' ? '#a78bfa' :
-        nodeColor === '#06b6d4' ? '#38bdf8' :
-        nodeColor === '#10b981' ? '#34d399' :
-        nodeColor === '#3b82f6' ? '#60a5fa' :
-        nodeColor === '#6b7280' ? '#9ca3af' :
-        '#B0E0E6';
-
-      const nodeWidth = 180;
-      const nodeHeight = 45;
-
+  let stepNum = 0;
+  Array.from(levelGroups.keys()).sort().forEach(level => {
+    const elements = levelGroups.get(level)!;
+    const y = LEVEL_Y[level] ?? 60 + level * 180;
+    elements.forEach((element: any, idx: number) => {
+      const x = 80 + idx * H_GAP;
+      const { color, strokeColor } = getNodeColor(element);
+      const isErr = /error|catch|throw|fail|reject|invalid|exception|abort/i.test(element.name);
+      const isVal = /valid|check|verify|confirm|test|assert/i.test(element.name);
       nodes.push({
         id: element.id,
         title: element.name.length > 20 ? element.name.substring(0, 18) + '...' : element.name,
-        x: nodeX,
-        y: nodeY,
-        width: nodeWidth,
-        height: nodeHeight,
-        color: nodeColor,
-        strokeColor: strokeColor,
-        stepNumber: globalIndex + 1,
-        isError: isErrorFunction,
-        isValidation: isValidationFunction,
-        group: group.name,
+        x, y,
+        width: NODE_W, height: NODE_H,
+        color, strokeColor,
+        stepNumber: stepNum + 1,
+        isError: isErr, isValidation: isVal,
+        group: element.type,
         content: element.content,
+        level,
         details: element.details || [
-          `Group: ${group.name}`,
           `${element.type}: ${element.name}`,
           `File: ${element.file}:${element.line}`,
           `Language: ${element.language}`,
-          isErrorFunction ? 'Type: Error Handler' :
-          isValidationFunction ? 'Type: Validation' :
-          `Type: ${element.type}`
+          isErr ? 'Role: Error Handler' : isVal ? 'Role: Validation' : `Role: ${element.type}`
         ]
       });
-      globalIndex++;
+      stepNum++;
     });
   });
 
@@ -868,7 +874,7 @@ async function generateVisualization(analysis: any): Promise<any> {
         id: `hook_state_${hook.variable || i}_${hook.line}`,
         title: label.length > 20 ? label.substring(0, 18) + '...' : label,
         x: 100 + i * 200,
-        y: 180,
+        y: 330,
         width: 160,
         height: 40,
         color: '#7c3aed',
@@ -968,11 +974,15 @@ async function generateVisualization(analysis: any): Promise<any> {
 
   connections.push(...realConnections);
 
+  // Dynamic viewBox based on actual node positions
+  const maxX = nodes.length > 0 ? Math.max(...nodes.map((n: any) => n.x + n.width)) + 120 : 1200;
+  const maxY = nodes.length > 0 ? Math.max(...nodes.map((n: any) => n.y + n.height)) + 120 : 700;
+
   return {
     id: 'semantic-architecture-analysis',
-    title: `Semantic Architecture Flow - ${analysis.summary.main_language}`,
-    description: `Intelligent architecture visualization showing real call graph, JSX render tree, hook semantics, and import usage`,
-    viewBox: '0 0 4500 800',
+    title: `Code Architecture — ${analysis.summary.main_language}`,
+    description: `Hierarchical visualization: imports (top) → components → state → handlers → renders (bottom)`,
+    viewBox: `0 0 ${Math.max(maxX, 1200)} ${Math.max(maxY, 600)}`,
     nodes,
     connections,
     legendItems

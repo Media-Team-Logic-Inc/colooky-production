@@ -9,8 +9,6 @@ import ImprovedFlexibleSubwayMap from '../../../components/ImprovedFlexibleSubwa
 import FileDirectoryTree from '../../../components/FileDirectoryTree';
 import { enhanceScenarioWithErrors, addStepNumbers } from '../../../lib/errorDetection';
 import { transformToSubwayLayout } from '../../../lib/subwayLayoutGenerator';
-import { generateDetailedVisualization, hasDetailedAnalysisData } from '../../../lib/detailedScenarioGenerator';
-import { generateIntelligentVisualization } from '../../../lib/intelligentVisualizationGenerator';
 import { 
   Github, 
   Folder, 
