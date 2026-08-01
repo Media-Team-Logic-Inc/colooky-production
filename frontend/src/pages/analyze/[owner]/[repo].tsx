@@ -111,9 +111,47 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
   const [searchQuery, setSearchQuery] = useState('');
   const [filteredFileTree, setFilteredFileTree] = useState<FileTreeNode[]>([]);
   const [nodeCodePanel, setNodeCodePanel] = useState<{content: string, path: string, highlightLine?: number, language: string} | null>(null);
+  const [panelPos, setPanelPos] = useState<{x: number, y: number} | null>(null);
+  const panelDragRef = useRef<{startMouse: {x: number, y: number}, startPanel: {x: number, y: number}} | null>(null);
+  const vizContainerRef = useRef<HTMLDivElement>(null);
   const nodePanelHighlightRef = useCallback((el: HTMLDivElement | null) => {
     if (el) setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
   }, []);
+
+  const handlePanelDragStart = (e: React.MouseEvent) => {
+    e.preventDefault();
+    const container = vizContainerRef.current;
+    if (!container) return;
+    const containerRect = container.getBoundingClientRect();
+    const panelEl = (e.currentTarget as HTMLElement).closest('[data-floating-panel]') as HTMLElement;
+    if (!panelEl) return;
+    const panelRect = panelEl.getBoundingClientRect();
+    const startPanel = {
+      x: panelRect.left - containerRect.left,
+      y: panelRect.top - containerRect.top,
+    };
+    if (!panelPos) setPanelPos(startPanel);
+    panelDragRef.current = { startMouse: { x: e.clientX, y: e.clientY }, startPanel };
+    const onMove = (me: MouseEvent) => {
+      if (!panelDragRef.current) return;
+      const { startMouse, startPanel: sp } = panelDragRef.current;
+      const cr = vizContainerRef.current?.getBoundingClientRect();
+      if (!cr) return;
+      const panelW = panelEl.offsetWidth;
+      const panelH = panelEl.offsetHeight;
+      setPanelPos({
+        x: Math.max(0, Math.min(sp.x + (me.clientX - startMouse.x), cr.width - panelW)),
+        y: Math.max(0, Math.min(sp.y + (me.clientY - startMouse.y), cr.height - panelH)),
+      });
+    };
+    const onUp = () => {
+      panelDragRef.current = null;
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  };
 
   // Supported file extensions for analysis
   const supportedExtensions = new Set([
@@ -1255,70 +1293,87 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
             <div className="mb-6">
               {/* MAXIMUM WIDTH Visualization - Full viewport usage */}
               <div className="w-full">
-                <div className="h-[800px] border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden flex">
-                  {/* Visualization — shrinks when code panel is open */}
-                  <div className={`h-full bg-white dark:bg-slate-800 p-4 relative transition-all duration-300 ${nodeCodePanel ? 'w-[58%]' : 'w-full'}`}>
-                    <ImprovedFlexibleSubwayMap
-                      scenario={(() => {
-                        let professionalVisualization = analysis.visualization;
-                        if (professionalVisualization) {
-                          professionalVisualization = enhanceScenarioWithErrors(professionalVisualization, analysis);
-                          professionalVisualization = addStepNumbers(professionalVisualization);
-                        }
-                        return professionalVisualization;
-                      })()}
-                      onScenarioChange={() => {}}
-                      availableScenarios={[analysis.visualization]}
-                      repositoryInfo={{
-                        owner: repository.owner,
-                        name: repository.name,
-                        full_name: repository.full_name
-                      }}
-                      analysisInfo={{
-                        selectedFiles: selectedFiles,
-                        fileCount: selectedFiles.length,
-                        analysisType: selectedFiles.length === 1 ? 'single-file' : 'multi-file'
-                      }}
-                      onNodeClick={async (node) => {
-                        const fileDetail = node.details?.find((detail: string) => detail.startsWith('File: '));
-                        if (!fileDetail) return;
-                        const fileInfo = fileDetail.replace('File: ', '');
-                        const [filePath, lineNumber] = fileInfo.split(':');
-                        const highlightLine = lineNumber ? parseInt(lineNumber) : undefined;
-                        try {
-                          const resp = await fetch(
-                            `https://api.github.com/repos/${repository.owner}/${repository.name}/contents/${filePath}`,
-                            { headers: { 'Authorization': `Bearer ${accessToken}`, 'Accept': 'application/vnd.github.v3+json' } }
-                          );
-                          if (resp.ok) {
-                            const fileData = await resp.json();
-                            if (fileData.content && fileData.encoding === 'base64') {
-                              const content = atob(fileData.content.replace(/\n/g, ''));
-                              const ext = filePath.split('.').pop()?.toLowerCase() || '';
-                              setNodeCodePanel({ content, path: filePath, highlightLine, language: getLanguageFromExtension('.' + ext) });
-                            }
+                <div
+                  ref={vizContainerRef}
+                  className="h-[800px] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4 relative overflow-hidden"
+                >
+                  <ImprovedFlexibleSubwayMap
+                    scenario={(() => {
+                      let professionalVisualization = analysis.visualization;
+                      if (professionalVisualization) {
+                        professionalVisualization = enhanceScenarioWithErrors(professionalVisualization, analysis);
+                        professionalVisualization = addStepNumbers(professionalVisualization);
+                      }
+                      return professionalVisualization;
+                    })()}
+                    onScenarioChange={() => {}}
+                    availableScenarios={[analysis.visualization]}
+                    repositoryInfo={{
+                      owner: repository.owner,
+                      name: repository.name,
+                      full_name: repository.full_name
+                    }}
+                    analysisInfo={{
+                      selectedFiles: selectedFiles,
+                      fileCount: selectedFiles.length,
+                      analysisType: selectedFiles.length === 1 ? 'single-file' : 'multi-file'
+                    }}
+                    onNodeClick={async (node) => {
+                      const fileDetail = node.details?.find((detail: string) => detail.startsWith('File: '));
+                      if (!fileDetail) return;
+                      const fileInfo = fileDetail.replace('File: ', '');
+                      const [filePath, lineNumber] = fileInfo.split(':');
+                      const highlightLine = lineNumber ? parseInt(lineNumber) : undefined;
+                      try {
+                        const resp = await fetch(
+                          `https://api.github.com/repos/${repository.owner}/${repository.name}/contents/${filePath}`,
+                          { headers: { 'Authorization': `Bearer ${accessToken}`, 'Accept': 'application/vnd.github.v3+json' } }
+                        );
+                        if (resp.ok) {
+                          const fileData = await resp.json();
+                          if (fileData.content && fileData.encoding === 'base64') {
+                            const content = atob(fileData.content.replace(/\n/g, ''));
+                            const ext = filePath.split('.').pop()?.toLowerCase() || '';
+                            setNodeCodePanel({ content, path: filePath, highlightLine, language: getLanguageFromExtension('.' + ext) });
                           }
-                        } catch {}
-                      }}
-                      onNodeSelect={() => {}}
-                    />
-                  </div>
+                        }
+                      } catch {}
+                    }}
+                    onNodeSelect={() => {}}
+                  />
 
-                  {/* Slide-in code panel */}
+                  {/* Floating draggable code panel */}
                   {nodeCodePanel && (
-                    <div className="w-[42%] h-full bg-slate-900 border-l border-slate-700 flex flex-col overflow-hidden">
-                      <div className="flex items-center justify-between px-3 py-2 border-b border-slate-700 shrink-0">
-                        <span className="text-xs text-slate-300 font-mono truncate">{nodeCodePanel.path}</span>
+                    <div
+                      data-floating-panel
+                      className="absolute bg-slate-900 border border-slate-600 rounded-lg shadow-2xl flex flex-col overflow-hidden"
+                      style={{
+                        ...(panelPos
+                          ? { left: panelPos.x, top: panelPos.y }
+                          : { right: 8, top: 8 }),
+                        width: 400,
+                        height: 520,
+                        zIndex: 50,
+                      }}
+                    >
+                      {/* Drag handle / header */}
+                      <div
+                        className="flex items-center justify-between px-3 py-2 border-b border-slate-700 shrink-0 cursor-grab active:cursor-grabbing select-none"
+                        onMouseDown={handlePanelDragStart}
+                      >
+                        <span className="text-xs text-slate-400 font-mono truncate">{nodeCodePanel.path}</span>
                         {nodeCodePanel.highlightLine && (
                           <span className="text-xs text-yellow-400 ml-2 shrink-0">:{nodeCodePanel.highlightLine}</span>
                         )}
                         <button
-                          onClick={() => setNodeCodePanel(null)}
+                          onMouseDown={e => e.stopPropagation()}
+                          onClick={() => { setNodeCodePanel(null); setPanelPos(null); }}
                           className="ml-3 text-slate-400 hover:text-white transition-colors shrink-0"
                         >
                           <X size={14} />
                         </button>
                       </div>
+                      {/* Code content */}
                       <div className="flex-1 overflow-auto">
                         <pre className="text-xs font-mono leading-5 p-2">
                           {nodeCodePanel.content.split('\n').map((line, i) => {

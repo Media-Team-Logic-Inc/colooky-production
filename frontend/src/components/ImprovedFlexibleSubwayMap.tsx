@@ -325,6 +325,7 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
     if (e.target === svgRef.current || (e.target as Element).tagName === 'svg') {
       setIsPanning(true);
       setPanStart({ x: e.clientX, y: e.clientY });
+      setSelectedNode(null);
     }
   };
 
@@ -968,14 +969,16 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
                   <polygon points="0 0, 10 3.5, 0 7" fill={color} />
                 </marker>
               ))}
+              <filter id="connection-glow" x="-20%" y="-20%" width="140%" height="140%">
+                <feGaussianBlur stdDeviation="3" result="blur" />
+                <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+              </filter>
             </defs>
 
             {/* Connections — resolved by ID first, position proximity as fallback */}
-            {scenario.connections.map((connection, index) => {
-              // Build a fast ID lookup map (computed once per render via useMemo would be ideal,
-              // but inline here keeps the diff minimal)
+            {(() => {
               const nodeById = new Map(scenario.nodes.map(n => [n.id, n]));
-
+              return scenario.connections.map((connection, index) => {
               let fromNode = (connection as any).fromId ? nodeById.get((connection as any).fromId) ?? null : null;
               let toNode   = (connection as any).toId   ? nodeById.get((connection as any).toId)   ?? null : null;
 
@@ -1025,36 +1028,42 @@ const ImprovedFlexibleSubwayMap: React.FC<ImprovedFlexibleSubwayMapProps> = ({
               
               const pathData = `M ${fromX} ${fromY} Q ${controlX} ${controlY} ${toX} ${toY}`;
 
+              const isConnectedToSelected = selectedNode && (
+                (fromNode?.id === selectedNode) || (toNode?.id === selectedNode)
+              );
+              const dimmed = selectedNode && !isConnectedToSelected;
+
               return (
-                <g key={`connection-${index}`}>
+                <g key={`connection-${index}`} style={{ transition: 'opacity 0.2s' }}>
                   <path
                     d={pathData}
                     className="connection"
                     fill="none"
                     stroke={connection.isError ? '#ef4444' : connection.color}
-                    strokeWidth={connection.strokeWidth || "3"}
-                    opacity={connection.isError ? 0.9 : 0.8}
+                    strokeWidth={isConnectedToSelected ? (Number(connection.strokeWidth || 3) + 2) : (connection.strokeWidth || "3")}
+                    opacity={dimmed ? 0.12 : (connection.isError ? 0.9 : 0.8)}
                     markerEnd={`url(#arrowhead-${(connection.isError ? 'ef4444' : connection.color.replace('#', ''))})`}
+                    filter={isConnectedToSelected ? 'url(#connection-glow)' : undefined}
                     style={{
                       strokeDasharray: connection.strokeDasharray || (connection.animated ? '8 4' : 'none'),
-                      animation: connection.animated && connection.isError ? 'error-dash 1.5s linear infinite' : 
+                      animation: connection.animated && connection.isError ? 'error-dash 1.5s linear infinite' :
                                 connection.animated ? 'dash 2s linear infinite' : 'none'
                     }}
                   />
-                  {connection.label && (
+                  {connection.label && !dimmed && (
                     <text
                       x={controlX}
                       y={controlY - 10}
                       textAnchor="middle"
                       className="text-xs fill-slate-300"
-                      style={{ fontSize: '11px', pointerEvents: 'none' }}
+                      style={{ fontSize: '11px', pointerEvents: 'none', opacity: isConnectedToSelected ? 1 : 0.7 }}
                     >
                       {connection.label}
                     </text>
                   )}
                 </g>
               );
-            })}
+            })})()}
 
             {/* Nodes - Demo style with drag support and simulation */}
             {scenario.nodes.map((node) => {
