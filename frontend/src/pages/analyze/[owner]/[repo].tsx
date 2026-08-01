@@ -101,10 +101,6 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
   const [error, setError] = useState<string | null>(null);
   const [expandedDirs, setExpandedDirs] = useState<Set<string>>(new Set());
   const [currentStep, setCurrentStep] = useState<'select' | 'analyze' | 'results'>('select');
-  const [showCodeViewer, setShowCodeViewer] = useState(false);
-  const [selectedFileContent, setSelectedFileContent] = useState<{path: string, content: string, language: string, highlightLine?: number} | null>(null);
-  const codePreviewRef = useRef<HTMLDivElement>(null);
-  const [codeViewerFile, setCodeViewerFile] = useState<string | null>(null);
   const [analysisHistory, setAnalysisHistory] = useState<AnalysisHistory[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [savedAnalysisId, setSavedAnalysisId] = useState<string | null>(null);
@@ -502,51 +498,6 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-    }
-  };
-
-  const viewFileContent = async (filePath: string, highlightLine?: number) => {
-    try {
-      const response = await fetch(
-        `https://api.github.com/repos/${repository.owner}/${repository.name}/contents/${filePath}`,
-        {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Accept': 'application/vnd.github.v3+json',
-          },
-        }
-      );
-
-      if (response.ok) {
-        const fileData = await response.json();
-        
-        if (fileData.content && fileData.encoding === 'base64') {
-          const content = atob(fileData.content.replace(/\n/g, ''));
-          const extension = filePath.split('.').pop()?.toLowerCase() || '';
-          const language = getLanguageFromExtension('.' + extension);
-          
-          setSelectedFileContent({
-            path: filePath,
-            content,
-            language,
-            highlightLine
-          });
-          setCodeViewerFile(filePath);
-          setShowCodeViewer(true);
-          
-          // Auto-scroll to highlighted line when clicking nodes
-          if (highlightLine && codePreviewRef.current) {
-            setTimeout(() => {
-              const highlightedLine = codePreviewRef.current?.querySelector(`[data-line-number="${highlightLine}"]`);
-              if (highlightedLine) {
-                highlightedLine.scrollIntoView({ behavior: 'smooth', block: 'center' });
-              }
-            }, 100);
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching file content:', error);
     }
   };
 
@@ -1398,75 +1349,22 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
               </div>
             </div>
 
-            {/* Development Panel - Repository Files & Code Preview Side by Side */}
-            <div>
-              <div className="grid lg:grid-cols-2 gap-6">
-                {/* Code Preview - Left Side (Switched) */}
-                <div className="bg-slate-800 border border-slate-700 rounded-lg">
-                  <div className="border-b border-slate-700 p-4">
-                    <div className="text-sm font-medium text-slate-300">Code Preview</div>
-                    <div className="text-xs text-slate-400 mt-1 truncate">
-                      {selectedFileContent ? 
-                        `${selectedFileContent.path} (${selectedFileContent.language})` : 
-                        "Click a node in the visualization or file in the tree to view code"
-                      }
-                    </div>
-                  </div>
-                  <div ref={codePreviewRef} className="p-4 h-80 overflow-auto">
-                    {selectedFileContent ? (
-                      <div className="relative">
-                        <pre className="text-xs text-slate-300 whitespace-pre-wrap font-mono leading-relaxed">
-                          <code>
-                            {selectedFileContent.content.split('\n').map((line, index) => {
-                              const lineNumber = index + 1;
-                              const isHighlighted = selectedFileContent.highlightLine === lineNumber;
-                              return (
-                                <div 
-                                  key={lineNumber}
-                                  data-line-number={lineNumber}
-                                  className={`${isHighlighted ? 'bg-yellow-400/20 border-l-4 border-yellow-400 pl-2 -ml-2' : ''}`}
-                                  style={isHighlighted ? { animation: 'pulse 2s infinite' } : {}}
-                                >
-                                  <span className="text-slate-500 text-xs mr-3 select-none inline-block w-8 text-right">
-                                    {lineNumber}
-                                  </span>
-                                  {line}
-                                </div>
-                              );
-                            })}
-                          </code>
-                        </pre>
-                      </div>
-                    ) : (
-                      <div className="h-full flex items-center justify-center text-slate-400">
-                        <div className="text-center">
-                          <File className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                          <div>Click a node or file to view code</div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-                
-                {/* Repository Files - Right Side (Switched) */}
-                <div className="bg-slate-800 border border-slate-700 rounded-lg">
-                  <div className="border-b border-slate-700 p-4">
-                    <div className="text-sm font-medium text-slate-300">Repository Files</div>
-                    <div className="text-xs text-slate-400 mt-1">• Green files are analyzable • Click to analyze individual files</div>
-                  </div>
-                  <div className="p-4 h-80 overflow-auto">
-                    <FileDirectoryTree 
-                      owner={repository.owner}
-                      repo={repository.name}
-                      onFileSelect={(filePath) => {
-                        setSelectedFiles([filePath]);
-                        setAnalysis(null);
-                        // Trigger new analysis for selected file
-                        startAnalysis();
-                      }}
-                    />
-                  </div>
-                </div>
+            {/* Repository Files */}
+            <div className="bg-slate-800 border border-slate-700 rounded-lg">
+              <div className="border-b border-slate-700 p-4">
+                <div className="text-sm font-medium text-slate-300">Repository Files</div>
+                <div className="text-xs text-slate-400 mt-1">• Green files are analyzable • Click to analyze individual files</div>
+              </div>
+              <div className="p-4 h-80 overflow-auto">
+                <FileDirectoryTree
+                  owner={repository.owner}
+                  repo={repository.name}
+                  onFileSelect={(filePath) => {
+                    setSelectedFiles([filePath]);
+                    setAnalysis(null);
+                    startAnalysis();
+                  }}
+                />
               </div>
             </div>
 
