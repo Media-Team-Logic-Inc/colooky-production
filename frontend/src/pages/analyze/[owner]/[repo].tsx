@@ -8,7 +8,6 @@ import Header from '../../../components/layout/Header';
 import ImprovedFlexibleSubwayMap from '../../../components/ImprovedFlexibleSubwayMap';
 import FileDirectoryTree from '../../../components/FileDirectoryTree';
 import { enhanceScenarioWithErrors, addStepNumbers } from '../../../lib/errorDetection';
-import { transformToSubwayLayout } from '../../../lib/subwayLayoutGenerator';
 import { 
   Github, 
   Folder, 
@@ -1257,7 +1256,6 @@ export default function AnalyzeRepository({ user, accessToken, repository }: Ana
                     scenario={(() => {
                       let professionalVisualization = analysis.visualization;
                       if (professionalVisualization) {
-                        professionalVisualization = transformToSubwayLayout(professionalVisualization);
                         professionalVisualization = enhanceScenarioWithErrors(professionalVisualization, analysis);
                         professionalVisualization = addStepNumbers(professionalVisualization);
                       }
